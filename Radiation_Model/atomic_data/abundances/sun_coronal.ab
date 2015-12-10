@@ -1,0 +1,22 @@
+ 1  12.00
+ 2  10.90
+ 6   8.59
+ 7   8.00
+ 8   8.89
+10   8.08
+11   6.93
+12   8.15
+13   7.04
+14   8.10
+16   7.27
+18   6.58
+20   6.93
+26   8.10
+28   6.84
+-1
+%filename: sun_coronal.abund
+%elemental abundances: Feldman, U., Mandelbaum, P., Seely, J.L., Doschek, G.A., Gursky H., 1992, ApJSS, 81, 387
+% produced as part of the Arcetri/Cambridge/NRL 'CHIANTI' atomic data base collaboration
+%
+% Enrico Landi Jun 2002
+-1

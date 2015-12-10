@@ -1,0 +1,41 @@
+ 1  12.00
+ 2  10.80
+ 3   1.42
+ 4   1.72
+ 5   2.87
+ 6   8.41
+ 7   7.81
+ 8   8.74
+ 9   4.45
+10   7.95
+11   6.63
+12   7.90
+13   6.80
+14   7.87
+15   5.44
+16   7.32
+17   5.08
+18   6.36
+19   5.46
+20   6.66
+21   3.49
+22   5.25
+23   4.32
+24   6.00
+25   5.71
+26   7.83
+27   5.24
+28   6.56
+29   4.53
+30   4.09
+-1
+%filename: sun_hybrid_ext.abund
+%elemental abundances: Fludra, A. & Schmelz, J. T., 1999, A&A, 348, 286
+% Li,Be,B,F,Sc,V,Mn,Co, Cu elemental abundances: Grevesse N., Sauval A.J., 1998, Space Science 
+          Reviews, 85, 161. Their values have been scaled to mimic the "hybrid" FIP effect 
+          found by Fludra & Schmelz 1999: Grevesse high-FIP abundances have been decreased 
+          by a factor 1.3, Grevesse low-FIP abundances have been increased by a factor 2.09.
+% produced as part of the Arcetri/Cambridge/NRL 'CHIANTI' atomic data base collaboration
+%
+% Enrico Landi Jun 2002
+-1
