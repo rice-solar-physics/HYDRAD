@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/24/2015
+// * Date last modified: 02/03/2016
 // *
 // ****
 
@@ -84,6 +84,10 @@ pFile = fopen( "HYDRAD/config/HYDRAD.cfg", "r" );
 fscanf( pFile, "%s", Params.Profiles );
 // Get the gravity look-up table filename
 fscanf( pFile, "%s", Params.GravityFilename );
+#ifdef USE_TABULATED_CROSS_SECTION
+// Get the cross-section look-up table filename
+fscanf( pFile, "%s", Params.CrossSectionFilename );
+#endif // USE_TABULATED_CROSS_SECTION
 // Get the duration
 ReadDouble( pFile, &Params.Duration );
 // Get the output period
@@ -114,6 +118,20 @@ for( i=0; i<igdp; i++ )
 }
 fclose( pFile );
 
+#ifdef USE_TABULATED_CROSS_SECTION
+// Initialise the cross-section look-up table
+pFile = fopen( Params.CrossSectionFilename, "r" );
+fscanf( pFile, "%i", &icsdp );
+ppCrossSection = (double**)malloc( icsdp * sizeof( double ) );
+for( i=0; i<icsdp; i++ )
+{
+    ppCrossSection[i] = (double*)malloc( 2 * sizeof( double ) );
+    ReadDouble( pFile, &(ppCrossSection[i][0]) );
+    ReadDouble( pFile, &(ppCrossSection[i][1]) );
+}
+fclose( pFile );
+#endif // USE_TABULATED_CROSS_SECTION
+
 // Create the heating object and set the lower radiation temperature boundary
 pHeat = new CHeat( (char *)"Heating_Model/config/heating_model.cfg", Params.L );
 
@@ -137,6 +155,13 @@ int i;
 #ifdef USE_KINETIC_MODEL
 free( ppCellList );
 #endif // USE_KINETIC_MODEL
+
+#ifdef USE_TABULATED_CROSS_SECTION
+// Free the memory allocated to the cross-section look-up table
+for( i=0; i<icsdp; i++ )
+    free( ppCrossSection[i]);
+free( ppCrossSection );
+#endif // USE_TABULATED_CROSS_SECTION
 
 // Free the memory allocated to the gravity look-up table
 for( i=0; i<igdp; i++ )
@@ -361,6 +386,10 @@ int j;
 #ifdef USE_KINETIC_MODEL
 CalculateKineticModel( iFirstStep );
 #endif // USE_KINETIC_MODEL
+
+#ifdef USE_TABULATED_CROSS_SECTION
+double fCrossSection[3], fCellVolume;
+#endif // USE_TABULATED_CROSS_SECTION
 
 // ******************************************************************************
 // *                                                                            *
@@ -849,6 +878,13 @@ while( pNextActiveCell->pGetPointer( RIGHT )->pGetPointer( RIGHT ) )
     pFarRightCell->GetCellProperties( &FarRightCellProperties );
 #endif // NON_EQUILIBRIUM_RADIATION
 
+#ifdef USE_TABULATED_CROSS_SECTION
+    fCrossSection[0] = CalculateCrossSection( CellProperties.s[0] );
+    fCrossSection[1] = CalculateCrossSection( CellProperties.s[1] );
+    fCrossSection[2] = CalculateCrossSection( CellProperties.s[2] );
+    fCellVolume = fCrossSection[1] * CellProperties.cell_width;
+#endif // USE_TABULATED_CROSS_SECTION
+
 // ******************************************************************************
 // *                                                                            *
 // *    MASS CONSERVATION                                                       *
@@ -859,9 +895,15 @@ while( pNextActiveCell->pGetPointer( RIGHT )->pGetPointer( RIGHT ) )
 // *    ADVECTION                                                               *
 // ******************************************************************************
 
+#ifdef USE_TABULATED_CROSS_SECTION
+    LowerValue = CellProperties.rho[0] * CellProperties.v[0] * fCrossSection[0];
+    UpperValue = CellProperties.rho[2] * CellProperties.v[2] * fCrossSection[2];
+    CellProperties.rho_term[0] = - ( UpperValue - LowerValue ) / fCellVolume;
+#else // USE_TABULATED_CROSS_SECTION
     LowerValue = CellProperties.rho[0] * CellProperties.v[0];
     UpperValue = CellProperties.rho[2] * CellProperties.v[2];
     CellProperties.rho_term[0] = - ( UpperValue - LowerValue ) / CellProperties.cell_width;
+#endif // USE_TABULATED_CROSS_SECTION
 
     CellProperties.drhobydt = CellProperties.rho_term[0];
 
@@ -875,9 +917,15 @@ while( pNextActiveCell->pGetPointer( RIGHT )->pGetPointer( RIGHT ) )
 // *    ADVECTION                                                               *
 // ******************************************************************************
 
+#ifdef USE_TABULATED_CROSS_SECTION
+    LowerValue = CellProperties.rho_v[0] * CellProperties.v[0] * fCrossSection[0];
+    UpperValue = CellProperties.rho_v[2] * CellProperties.v[2] * fCrossSection[2];
+    CellProperties.rho_v_term[0] = - ( UpperValue - LowerValue ) / fCellVolume;
+#else // USE_TABULATED_CROSS_SECTION
     LowerValue = CellProperties.rho_v[0] * CellProperties.v[0];
     UpperValue = CellProperties.rho_v[2] * CellProperties.v[2];
     CellProperties.rho_v_term[0] = - ( UpperValue - LowerValue ) / CellProperties.cell_width;
+#endif // USE_TABULATED_CROSS_SECTION
 
 // ******************************************************************************
 // *    PRESSURE GRADIENT                                                       *
@@ -900,7 +948,11 @@ while( pNextActiveCell->pGetPointer( RIGHT )->pGetPointer( RIGHT ) )
 // *    VISCOUS STRESS                                                          *
 // ******************************************************************************
 
+#ifdef USE_TABULATED_CROSS_SECTION
+	CellProperties.rho_v_term[3] = ( ( CellProperties.Feta[2] * fCrossSection[2] ) - ( CellProperties.Feta[0] * fCrossSection[0] ) ) / fCellVolume;
+#else // USE_TABULATED_CROSS_SECTION
 	CellProperties.rho_v_term[3] = ( CellProperties.Feta[2] - CellProperties.Feta[0] ) / CellProperties.cell_width;
+#endif // USE_TABULATED_CROSS_SECTION
 
 // ******************************************************************************
 // *    NUMERICAL VISCOSITY                                                     *
@@ -908,7 +960,11 @@ while( pNextActiveCell->pGetPointer( RIGHT )->pGetPointer( RIGHT ) )
 
 #ifdef NUMERICAL_VISCOSITY
 	// Numerical viscosity is used to stabilise the solutions as in the Lax scheme
+#ifdef USE_TABULATED_CROSS_SECTION
+	CellProperties.rho_v_term[4] = ( ( CellProperties.Fnumerical[2] * fCrossSection[2] ) - ( CellProperties.Fnumerical[0] * fCrossSection[0] ) ) / fCellVolume;
+#else // USE_TABULATED_CROSS_SECTION
 	CellProperties.rho_v_term[4] = ( CellProperties.Fnumerical[2] - CellProperties.Fnumerical[0] ) / CellProperties.cell_width;
+#endif // USE_TABULATED_CROSS_SECTION
 #endif // NUMERICAL_VISCOSITY
     }
 
@@ -924,12 +980,21 @@ while( pNextActiveCell->pGetPointer( RIGHT )->pGetPointer( RIGHT ) )
 // *    ADVECTION                                                               *
 // ******************************************************************************
 
+#ifdef USE_TABULATED_CROSS_SECTION
+    for( j=0; j<SPECIES; j++ )
+    {
+	LowerValue = CellProperties.TE_KE_P[0][j] * CellProperties.v[0] * fCrossSection[0];
+	UpperValue = CellProperties.TE_KE_P[2][j] * CellProperties.v[2] * fCrossSection[2];
+	CellProperties.TE_KE_term[0][j] = - ( UpperValue - LowerValue ) / fCellVolume;
+    }
+#else // USE_TABULATED_CROSS_SECTION
     for( j=0; j<SPECIES; j++ )
     {
 	LowerValue = CellProperties.TE_KE_P[0][j] * CellProperties.v[0];
 	UpperValue = CellProperties.TE_KE_P[2][j] * CellProperties.v[2];
 	CellProperties.TE_KE_term[0][j] = - ( UpperValue - LowerValue ) / CellProperties.cell_width;
     }
+#endif // USE_TABULATED_CROSS_SECTION
 
     // Terms that must be integrated to first order in time only, otherwise they're unconditionally unstable
     if( iFirstStep )
@@ -938,15 +1003,24 @@ while( pNextActiveCell->pGetPointer( RIGHT )->pGetPointer( RIGHT ) )
 // *    THERMAL CONDUCTION                                                      *
 // ******************************************************************************
 
+#ifdef USE_TABULATED_CROSS_SECTION
+	for( j=0; j<SPECIES; j++ )
+            CellProperties.TE_KE_term[1][j] = - ( ( CellProperties.Fc[2][j] * fCrossSection[2] ) - ( CellProperties.Fc[0][j] * fCrossSection[0] ) ) / fCellVolume;
+#else // USE_TABULATED_CROSS_SECTION
 	for( j=0; j<SPECIES; j++ )
             CellProperties.TE_KE_term[1][j] = - ( CellProperties.Fc[2][j] - CellProperties.Fc[0][j] ) / CellProperties.cell_width;
+#endif // USE_TABULATED_CROSS_SECTION
 
 // ******************************************************************************
 // *    VISCOUS STRESS                                                          *
 // ******************************************************************************
 
         // Heating due to the viscous stress and work done on (by) the flow by (on) the viscous stress
+#ifdef USE_TABULATED_CROSS_SECTION
+	CellProperties.TE_KE_term[7][HYDROGEN] = ( ( CellProperties.Feta[2] * CellProperties.v[2] * fCrossSection[2] ) - ( CellProperties.Feta[0] * CellProperties.v[0] * fCrossSection[0] ) ) / fCellVolume;
+#else // USE_TABULATED_CROSS_SECTION
 	CellProperties.TE_KE_term[7][HYDROGEN] = ( ( CellProperties.Feta[2] * CellProperties.v[2] ) - ( CellProperties.Feta[0] * CellProperties.v[0] ) ) / CellProperties.cell_width;
+#endif // USE_TABULATED_CROSS_SECTION
 
 // ******************************************************************************
 // *    NUMERICAL VISCOSITY                                                     *
@@ -954,7 +1028,11 @@ while( pNextActiveCell->pGetPointer( RIGHT )->pGetPointer( RIGHT ) )
 
 #ifdef NUMERICAL_VISCOSITY
 	// Numerical viscosity is used to stabilise the solutions as in the Lax scheme
-	CellProperties.TE_KE_term[8][HYDROGEN] = CellProperties.rho_v_term[4] * CellProperties.v[1];
+#ifdef USE_TABULATED_CROSS_SECTION
+	CellProperties.TE_KE_term[8][HYDROGEN] = ( ( CellProperties.Fnumerical[2] * CellProperties.v[2] * fCrossSection[2] ) - ( CellProperties.Fnumerical[0] * CellProperties.v[0] * fCrossSection[0] ) ) / fCellVolume;
+#else // USE_TABULATED_CROSS_SECTION
+	CellProperties.TE_KE_term[8][HYDROGEN] = ( ( CellProperties.Fnumerical[2] * CellProperties.v[2] ) - ( CellProperties.Fnumerical[0] * CellProperties.v[0] ) ) / CellProperties.cell_width;
+#endif // USE_TABULATED_CROSS_SECTION
 #endif // NUMERICAL_VISCOSITY
     }
 
@@ -1117,6 +1195,32 @@ LinearFit( x, y, s, &g_parallel );
 
 return g_parallel;
 }
+
+#ifdef USE_TABULATED_CROSS_SECTION
+double CEquations::CalculateCrossSection( double s )
+{
+double x[3], y[3], cross_section;
+int i;
+
+for( i=0; i<icsdp; i++ )
+{
+    if( s < ppCrossSection[i][0] ) break;
+}
+
+if( i == 0 ) i = 1;
+if( i == icsdp ) i = icsdp - 1;
+
+x[1] = ppCrossSection[i-1][0];
+x[2] = ppCrossSection[i][0];
+
+y[1] = ppCrossSection[i-1][1];
+y[2] = ppCrossSection[i][1];
+
+LinearFit( x, y, s, &cross_section );
+
+return cross_section;
+}
+#endif // USE_TABULATED_CROSS_SECTION
 
 void CEquations::GetSmallestTimeScale( double *delta_t, int iFirstStep )
 {

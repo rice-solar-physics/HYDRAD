@@ -5,7 +5,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 05/11/2012
+// * Date last modified: 02/03/2016
 // *
 // ****
 
@@ -22,13 +22,24 @@ class CEquations {
 
     double **ppGravity;
     int igdp;
+
+#ifdef USE_TABULATED_CROSS_SECTION
+    double **ppCrossSection;
+    int icsdp;
+#endif // USE_TABULATED_CROSS_SECTION
+
     double lower_radiation_temperature_boundary;
 
     void Initialise( void );
     void FreeAll( void );
 
-    // Function for finding the gravitational acceleration from the loop-up table
+    // Function for finding the gravitational acceleration from the look-up table
     double CalculateGravity( double s );
+
+#ifdef USE_TABULATED_CROSS_SECTION
+    // Function for finding the cross-section from the look-up table
+    double CalculateCrossSection( double s );
+#endif // USE_TABULATED_CROSS_SECTION
 
     // Function for finding the smallest time-scale
     void GetSmallestTimeScale( double *delta_t, int iFirstStep );

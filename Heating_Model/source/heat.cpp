@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *     
-// * Date last modified: 25/09/2014
+// * Date last modified: 07/12/2015
 // *
 // ****
 
@@ -144,7 +144,7 @@ for( i=0; i<2; i++ )
 
 for( i=0; i<iVALHeatingDP; i++ )
 {
-    // Array index [0][i] contain the spatial coordinate and [1][i] contain the volumetric heating rate
+    // Array index [0][i] contain the column mass density and [1][i] contain the volumetric heating rate
     ReadDouble( pFile, &(ppVALHeating[0][i]) );
     ReadDouble( pFile, &(ppVALHeating[1][i]) );
 }

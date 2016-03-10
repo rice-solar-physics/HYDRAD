@@ -5,7 +5,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/19/2015
+// * Date last modified: 02/02/2016
 // *
 // ****
 
@@ -265,7 +265,7 @@ double dPbyds, dFcbyds, dTbyds;
 double FracDiff;
 int iStep;
 
-double H0lower, H0upper, dH0, finalH0 = 0.0;
+double H0lower, H0upper, dH0, finalH0;
 double minFc = LARGEST_DOUBLE;
 
 max_ds = Params.Lfull / MIN_CELLS;
@@ -276,6 +276,10 @@ sR = Params.Lfull - sL;
 H0lower = pow( 10.0, (Log_10H0-Params.dLog_10H0) );
 H0upper = pow( 10.0, (Log_10H0) );
 dH0 = ( H0upper - H0lower ) / Params.Hintervals;
+
+printf( "Peak heating range = %.4e -> %.4e erg cm^-3 s^-1\n\n", H0lower, H0upper );
+
+finalH0 = H0upper;
 
 // Now find the solution within the calculated heating range
 for( H0=H0lower; H0<=H0upper; H0+=dH0 )
@@ -436,6 +440,7 @@ s[iStep] = 0.0 + sL;
 ds = MIN_DS;
 
 H0 = finalH0;
+printf( "Optimum peak heating rate = %.4e erg cm^-3 s^-1\n\n", H0 );
 
 while( s[iStep] <= sR ) {
     do {

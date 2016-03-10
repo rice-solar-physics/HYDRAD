@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 21/12/2012
+// * Date last modified: 02/03/2016
 // *
 // ****
 
@@ -40,6 +40,10 @@ struct Parameters {
 
     // Gravity look-up table filename
     char GravityFilename[256];
+
+#ifdef USE_TABULATED_CROSS_SECTION
+    char CrossSectionFilename[256];
+#endif // USE_TABULATED_CROSS_SECTION
 
     // Duration and profile output period
     double Duration, OutputPeriod;
