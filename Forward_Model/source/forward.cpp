@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/03/2015
+// * Date last modified: 02/14/2017
 // *
 // ****
 
@@ -186,7 +186,7 @@ for( i=0; i<iNumVals; i++ )
 fprintf( pOutputFile, "\n" );
 
 // Allocate sufficient space for the pointers to the emission measure data files
-ppInputFile = (FILE**)malloc( sizeof(FILE) * iNumInstruments );
+ppInputFile = (FILE**)malloc( sizeof(FILE*) * iNumInstruments );
 
 // Open the emission measure data files for each instrument
 for( i=0; i<iNumInstruments; i++ )
@@ -203,8 +203,7 @@ for( i=0; i<iNumInstruments; i++ )
         ReadDouble( ppInputFile[i], &fBuffer );
 }
 
-// For each spatial coordinate, write the emission measures
-// into the output file following the above format
+// For each spatial coordinate, write the emission measures into the output file following the above format
 for ( ;; )
 {
     // Get the spatial coordinate
@@ -404,7 +403,7 @@ for( i=0; i<iNumVals; i++ )
 fprintf( pOutputFile, "\n" );
 
 // Allocate sufficient space for the pointers to the emission measure data files
-ppInputFile = (FILE**)malloc( sizeof(FILE) * iNumInstruments );
+ppInputFile = (FILE**)malloc( sizeof(FILE*) * iNumInstruments );
 
 // Open the emission measure data files for each instrument
 for( i=0; i<iNumInstruments; i++ )
@@ -421,8 +420,7 @@ for( i=0; i<iNumInstruments; i++ )
         ReadDouble( ppInputFile[i], &fBuffer );
 }
 
-// For each spatial coordinate, write the emission measures
-// into the output file following the above format
+// For each spatial coordinate, write the emission measures into the output file following the above format
 for ( ;; )
 {
     // Get the spatial coordinate

@@ -1,1 +1,1 @@
-g++ -m64 -Ofast -flto -march=native -funroll-loops -Wall ../source/main.cpp ../../../../Radiation_Model/source/OpticallyThick/OpticallyThickIon.cpp ../../../source/fitpoly.cpp ../../../source/file.cpp -o ../../../../calculateVALheating.exe
+g++ -m64 -Ofast -flto -march=native -funroll-loops -Wall ../source/main.cpp ../../../../Radiation_Model/source/radiation.cpp ../../../../Radiation_Model/source/element.cpp ../../../../Radiation_Model/source/OpticallyThick/OpticallyThickIon.cpp ../../../source/fitpoly.cpp ../../../source/file.cpp -o ../../../../calculateVALheating.exe

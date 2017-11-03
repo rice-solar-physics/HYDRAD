@@ -1,0 +1,4 @@
+Radiation_Model/atomic_data/OpticallyThick/radiative_rates/radiative_bb_rates.txt
+Radiation_Model/atomic_data/OpticallyThick/radiative_rates/radiative_bf_rates.txt
+Radiation_Model/atomic_data/OpticallyThick/radiative_rates/radiative_fb_rates.txt
+Radiation_Model/atomic_data/OpticallyThick/radiative_rates/collisional_rates.txt

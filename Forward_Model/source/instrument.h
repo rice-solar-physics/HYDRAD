@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/03/2015
+// * Date last modified: 02/14/2017
 // *
 // ****
 
@@ -65,12 +65,10 @@ class CInstrument {
     // Function to initialise the instrument object with a set of ions and response functions
     void Initialise( char *pszName );
 
-    // Function to read the instrument response function part of the
-    // virtual instrument configuration file
+    // Function to read the instrument response function part of the virtual instrument configuration file
     void GetRespFunc( FILE *pFile );
 
-    // Function to read the ion data part of the virtual instrument
-    // configuration file
+    // Function to read the ion data part of the virtual instrument configuration file
     void GetIonData( FILE *pFile );
 
     // Function to free all allocated memory
@@ -95,8 +93,7 @@ class CInstrument {
     void Detect( double fs, double fds, double fSD, double fLength, double fEQCount, double fNEQCounts );
     void Detect( double fs, double fds, double fSD, double fLength, double fEQCount );
 
-    // Functions to add the total counts for an emission line (DN pixel^-1 s^-1) to the spectrum at the
-    // appropriate detector pixel (DN pixel^-1 s^-1 A^-1)
+    // Functions to add the total counts for an emission line (DN pixel^-1 s^-1) to the spectrum at the appropriate detector pixel (DN pixel^-1 s^-1 A^-1)
     void Detect( PHYDATA PHYData, double fSD, double fLength, double fEQCounts, double fNEQCounts, double fRestLambda, double *fSpectralProperties );
     void Detect( PHYDATA PHYData, double fSD, double fLength, double fEQCounts, double fRestLambda, double *fSpectralProperties );
 
@@ -116,8 +113,7 @@ class CInstrument {
     // Function to return the name of the instrument
     void GetInstrumentName( char *pszName );
 
-    // Function to write a file containing a list of the ions and emission lines
-    // within the wavelength response region of the instrument
+    // Function to write a file containing a list of the ions and emission lines within the wavelength response region of the instrument
     void WriteIonLineListToFile( FILE *pFile );
 
     // Function to create a virtual detector

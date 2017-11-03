@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/20/2015
+// * Date last modified: 02/14/2017
 // *
 // ****
 
@@ -57,7 +57,7 @@ fscanf( pFile, "%s", buffer4 );
 fscanf( pFile, "%i", &NumElements );
 
 // Allocate sufficient memory to hold the pointers to each element object
-ppElements = (PPELEMENT)malloc( sizeof( CElement ) * NumElements );
+ppElements = (PPELEMENT)malloc( sizeof( CElement* ) * NumElements );
 
 // Allocate sufficient memory to hold the list of atomic numbers
 pZ = (int*)malloc( sizeof(int) * NumElements );
@@ -372,8 +372,7 @@ else if( flog_10T > pTemp[NumTemp-1] )
 for( j=0; j<NumTemp; j++ )
     if( pTemp[j] >= flog_10T ) break;
 
-// Deal with the special cases where there aren't two values either side of the
-// desired one
+// Deal with the special cases where there aren't two values either side of the desired one
 if( j < 2 ) j = 2;
 else if( j == NumTemp-1 ) j = NumTemp-2;
 
@@ -393,8 +392,7 @@ else if ( flog_10n > pDen[NumDen-1] )
 for( k=0; k<NumDen; k++ )
     if( pDen[k] >= flog_10n ) break;
 
-// Deal with the special cases where there aren't two values either side of the
-// desired one
+// Deal with the special cases where there aren't two values either side of the desired one
 if( k < 2 ) k = 2;
 else if( k == NumDen-1 ) k = NumDen-2;
 
@@ -411,8 +409,7 @@ x2[4] = pDen[k+1];
 // Allocate an array of pointers to pointers for the values
 y = (double**)alloca( sizeof(double) * 5 );
 
-// Allocate an array to hold the values corresponding to the specified range of
-// densities and temperatures
+// Allocate an array to hold the values corresponding to the specified range of densities and temperatures
 for( l=1; l<=4; l++ )
     y[l] = (double*)alloca( sizeof(double) * 5 );
 
@@ -421,8 +418,7 @@ for( l=1; l<=4; l++ )
     // Point to the start of the phi( n, T ) values for the element
     pfTemp = pTotalPhi;
 
-    // Skip to the set corresponding to the l'th density value and get the
-    // values of total phi( n, T ) corresponding to the four temperature values
+    // Skip to the set corresponding to the l'th density value and get the values of total phi( n, T ) corresponding to the four temperature values
     pfTemp += ( k + l - 3 ) * NumTemp;
 
     y[1][l] = *( pfTemp + ( j - 2 ) );
@@ -542,8 +538,7 @@ double CRadiation::GetPowerLawRad( double flog_10T, double flog_10n )
 {
 double chi, alpha, fEmiss, n;
 
-// The formulation used here is based on the calculations of John Raymond (1994, private communication)
-// and twice the coronal abundances of Meyer (1985)
+// The formulation used here is based on the calculations of John Raymond (1994, private communication) and twice the coronal abundances of Meyer (1985)
 
 if( flog_10T <= 4.97 )
 {
@@ -563,12 +558,14 @@ else if( flog_10T <= 6.18 )
 else if( flog_10T <= 6.55 )
 {
     chi = 3.53e-13;
-    alpha = -3.0/2.0;
+    // alpha = -3.0/2.0;
+    alpha = -1.50;
 }
 else if( flog_10T <= 6.90 )
 {
     chi = 3.46e-25;
-    alpha = 1.0/3.0;
+    // alpha = 1.0/3.0;
+    alpha = 0.33333333333333333333333333333333;
 }
 else if( flog_10T <= 7.63 )
 {
@@ -578,7 +575,8 @@ else if( flog_10T <= 7.63 )
 else
 {
     chi = 1.96e-27;
-    alpha = 1.0/2.0;
+    // alpha = 1.0/2.0;
+    alpha = 0.50;
 }
 
 fEmiss = chi * pow( 10.0, (alpha*flog_10T) );
@@ -596,7 +594,7 @@ double CRadiation::GetFreeFreeRad( double flog_10T, double flog_10n )
 {
 double SqrtT, n;
 
-// Calculate the free-free emission due to thermal bremsstralung for a low-density and fully ionised plasma.
+// Calculate the free-free emission due to thermal bremsstralung for a low-density and fully ionised plasma
 // The previous formulation used here was taken from Mason & Monsignori Fossi (1994, Astron. Astrophys. Rev., 6, 123) where (1.96e-27) is replaced with (2.40e-27)
 // The current formulation is taken from the power-law fit for log_10 T > 7.63
 

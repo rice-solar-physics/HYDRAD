@@ -5,12 +5,21 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 02/03/2016
+// * Date last modified: 11/03/2017
 // *
 // ****
 
 
 #include "cell.h"
+
+
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+	#define MAX_ITERATIONS			300
+	#define CONVERGENCE_EPSILON		0.1
+	#define CONVERGENCE_CONDITION		1E-6
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
 
 
 // **** EQUATIONS CLASS ****
@@ -20,12 +29,12 @@ class CEquations {
 
     private:
 
-    double **ppGravity;
-    int igdp;
+    // Coefficients for the polynomial describing the field-aligned gravitational acceleration profile
+    double *pfGravityCoefficients;
 
 #ifdef USE_TABULATED_CROSS_SECTION
-    double **ppCrossSection;
-    int icsdp;
+    // Coefficients for the polynomial describing the cross-section in the field-aligned direction
+    double *pfCrossSectionCoefficients;
 #endif // USE_TABULATED_CROSS_SECTION
 
     double lower_radiation_temperature_boundary;
@@ -71,6 +80,12 @@ class CEquations {
 
     // Pointer to the centre of the row at the current time (approx. the loop apex)
     PCELL pCentreOfCurrentRow;
+
+#ifdef NLTE_CHROMOSPHERE
+    // Pointer to the radiative rates for the 6-level hydrogen atom
+    PRADIATIVERATES pRadiativeRates;
+#endif // NLTE_CHROMOSPHERE
+
 #endif // OPTICALLY_THICK_RADIATION
 
     // Pointer to the left-most cell at the previous time (the start of the previous row)
@@ -90,6 +105,13 @@ class CEquations {
 
     // Function for calculating physical quantities
     void CalculatePhysicalQuantities( void );
+
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+    void CalculateInitialPhysicalQuantities( void );
+    void InitialiseRadiativeRates( void );
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
 
     // Function for evaluating the terms of the equations
     void EvaluateTerms( double current_time, double *delta_t, int iFirstStep );

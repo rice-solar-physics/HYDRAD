@@ -21,10 +21,10 @@ double gammp(double a, double x)
 {
 void gcf(double *gammcf, double a, double x, double *gln);
 void gser( double *gamser, double a, double x, double *gln);
-void nrerror(char error_text[]);	// Defined in fitpoly.cpp
+void nrerror2(char error_text[]);	// Defined in fitpoly.cpp
 double gamser,gammcf,gln;
 
-if (x < 0.0 || a <= 0.0) nrerror((char *)"Invalid arguments in routine gammp");
+if (x < 0.0 || a <= 0.0) nrerror2((char *)"Invalid arguments in routine gammp");
 if(x < (a+1.0)) {
     gser(&gamser,a,x,&gln);
 #ifdef REGULARISED
@@ -70,7 +70,7 @@ return -tmp+log(2.5066282746310005*ser/x);
 void gcf(double *gammcf, double a, double x, double *gln)
 {
     double gammln(double xx);
-    void nrerror(char error_text[]);	// Defined in fitpoly.cpp
+    void nrerror2(char error_text[]);	// Defined in fitpoly.cpp
     int i;
     double an,b,c,d,del,h;
 
@@ -91,20 +91,20 @@ void gcf(double *gammcf, double a, double x, double *gln)
 	h *= del;
 	if (fabs(del-1.0) < EPS) break;
     }
-    if (i > ITMAX) nrerror((char *)"a too large, ITMAX too small in gcf");
+    if (i > ITMAX) nrerror2((char *)"a too large, ITMAX too small in gcf");
     *gammcf=exp(-x+a*log(x)-(*gln))*h;
 }
 
 void gser(double *gamser, double a, double x, double *gln)
 {
 double gammln(double xx);
-void nrerror(char error_text[]);	// Defined in fitpoly.cpp
+void nrerror2(char error_text[]);	// Defined in fitpoly.cpp
 int n;
 double sum,del,ap;
 
 *gln=gammln(a);
 if (x <= 0.0) {
-    if (x < 0.0) nrerror((char *)"x less than 0 in routine gser");
+    if (x < 0.0) nrerror2((char *)"x less than 0 in routine gser");
     *gamser=0.0;
     return;
 } else {
@@ -119,7 +119,7 @@ if (x <= 0.0) {
             return;
 	}
     }
-    nrerror((char *)"a too large, ITMAX too small in routine gser");
+    nrerror2((char *)"a too large, ITMAX too small in routine gser");
     return;
 }
 }

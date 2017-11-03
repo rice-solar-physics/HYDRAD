@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 02/03/2016
+// * Date last modified: 10/31/2017
 // *
 // ****
 
@@ -21,6 +21,9 @@
 
 #ifdef OPTICALLY_THICK_RADIATION
 #include "../../Radiation_Model/source/OpticallyThick/OpticallyThickIon.h"
+#ifdef NLTE_CHROMOSPHERE
+#include "../../Radiation_Model/source/OpticallyThick/RadiativeRates.h"
+#endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
 
 #ifdef USE_KINETIC_MODEL

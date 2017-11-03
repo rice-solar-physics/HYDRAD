@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 08/06/2015
+// * Date last modified: 02/14/2017
 // *
 // ****
 
@@ -19,8 +19,7 @@ class CLoop {
     // The directory from which to read the data for the strands comprising the loop
     char szWorkingDirectory[256];
 
-    // The number of strands comprising the loop and the
-    // range of profiles to use as individual strands
+    // The number of strands comprising the loop and the range of profiles to use as individual strands
     int iNumStrands, iStrandRange[3];
 
     // Array of pointers to individual strands
@@ -43,8 +42,7 @@ class CLoop {
     // Function to the return a string pointing to the working directory name
     char *pGetWorkingDirectory( void );
 
-    // Functions to return the number of strands and the
-    // range of profiles used as individual strands
+    // Functions to return the number of strands and the range of profiles used as individual strands
     int GetNumStrands( void );
     void GetStrandRange( int *piStrandRange );
 
@@ -60,20 +58,16 @@ class CLoop {
     // Function to return the length of a specified strand
     double GetLength( int iStrand );
 
-    // Function to return the physical properties of a
-    // specified grid cell in a specified strand
+    // Function to return the physical properties of a specified grid cell in a specified strand
     void GetPHYData( int iStrand, int iCell, PPHYDATA pStrandPHYData );
 
-    // Function to return the number of elements for which the
-    // non-equilibrium ionisation state exists for a specified strand
+    // Function to return the number of elements for which the non-equilibrium ionisation state exists for a specified strand
     int GetNumNEQElements( int iStrand );
 
-    // Function to return the atomic number of the specified element
-    // in the list for a specified strand
+    // Function to return the atomic number of the specified element in the list for a specified strand
     int GetAtomicNumber( int iStrand, int iElement );
 
-    // Function to return the non-equilibrium ion population fraction of the
-    // specified ion / element for a specified cell / strand
+    // Function to return the non-equilibrium ion population fraction of the specified ion / element for a specified cell / strand
     double GetNEQ( int iStrand, int iCell, int iElement, int iIon );
 
 };

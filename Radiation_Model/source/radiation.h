@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/20/2015
+// * Date last modified: 02/14/2017
 // *
 // ****
 
@@ -22,9 +22,8 @@ class CRadiation {
     // Pointer to an array of pointers of type PELEMENT
     PPELEMENT ppElements;
 	
-    // Pointer to an array containing each element's atomic number.  The offset
-    // of the atomic number corresponds to the offset of the element object in
-    // the ppElements array
+    // Pointer to an array containing each element's atomic number
+    // The offset of the atomic number corresponds to the offset of the element object in the ppElements array
     int *pZ;
 
     // The temperature and density values in log_10 form
@@ -60,13 +59,11 @@ class CRadiation {
     // Function to return the abundance of a specified element
     double GetAbundance( int iZ );
 
-    // Function to return the ion fractional populations of a particular element at a
-    // specified temperature and density in equilibrium
+    // Function to return the ion fractional populations of a particular element at a specified temperature and density in equilibrium
     void GetEquilIonFrac( int iZ, double *pni, double flog_10T );
     void GetEquilIonFrac( int iZ, double *pni, double flog_10T, double flog_10n );
 
-    // Functions to write either a given set of ion fractional populations or all
-    // fractional populations to a data file
+    // Functions to write either a given set of ion fractional populations or all fractional populations to a data file
     void WriteEquilIonFracToFile( void *pFile, int iZ, double flog_10T );
     void WriteEquilIonFracToFile( void *pFile, int iZ, double flog_10T, double flog_10n );
     void WriteEquilIonFracToFile( void *pFile, double flog_10T );
@@ -80,8 +77,7 @@ class CRadiation {
     double GetRadiation( int iZ, double flog_10T, double flog_10n );
     double GetRadiation( double flog_10T, double flog_10n );
 
-    // Functions to calculate the rate of change with respect to time of the fractional
-    // populations of the ions and the characteristic time-scale
+    // Functions to calculate the rate of change with respect to time of the fractional populations of the ions and the characteristic time-scale
     void Getdnibydt( int iZ, double flog_10T, double flog_10n, double *pni0, double *pni1, double *pni2, double *pni3, double *pni4, double *s, double *s_pos, double *pv, double delta_s, double *pdnibydt, double *pTimeScale );
     void GetAlldnibydt( double flog_10T, double flog_10n, double **ppni0, double **ppni1, double **ppni2, double **ppni3, double **ppni4, double *s, double *s_pos, double *pv, double delta_s, double **ppdnibydt, double *pTimeScale );
 

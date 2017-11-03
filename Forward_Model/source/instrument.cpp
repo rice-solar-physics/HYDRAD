@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/03/2015
+// * Date last modified: 02/14/2017
 // *
 // ****
 
@@ -80,11 +80,8 @@ iNumRespFuncDataPoints *= 2;
 // Allocate sufficient memory for the response function
 pRespFunc = (double*)malloc( sizeof(double) * iNumRespFuncDataPoints );
 
-// Read the response function values as a function
-// of wavelength from the data file
-// The response function has units of:
-// Effective area [cm^2 electron photon^-1] * platescale [sr pixel^-1] / gain [electron DN^-1]
-// --> [DN pixel^-1 photon^-1 sr cm^2]
+// Read the response function values as a function of wavelength from the data file
+// The response function has units of: Effective area [cm^2 electron photon^-1] * platescale [sr pixel^-1] / gain [electron DN^-1] --> [DN pixel^-1 photon^-1 sr cm^2]
 for( i=0; i<iNumRespFuncDataPoints; i++ )
     ReadDouble( pFile, &(pRespFunc[i]) );
 
@@ -133,7 +130,7 @@ fclose( pEmissFilePath );
 fscanf( pFile, "%i", &iNumIons );
 
 // Allocate sufficient memory for the ion objects
-ppIon = (PPION)malloc( sizeof(CIon) * iNumIons );
+ppIon = (PPION)malloc( sizeof(CIon*) * iNumIons );
 
 printf( "Adding ion: " );
 
@@ -151,7 +148,6 @@ for( i=0; i<iNumIons; i++ )
     fscanf( pFile, "%i", &iSpecNum );
 
     // Construct the emissivity filename
-    // sprintf( szEmissFilename, "Forward_Model/ion_emiss_tables/%s.em", szLabel );
     sprintf( szEmissFilename, "%s/%s.em", szEmissFilePath, szLabel );
 
     // Instantiate each ion object
@@ -283,8 +279,7 @@ int iStartPixel, iEndPixel, iRemainingPixels, i;
 if( !pfEQDetector || !pfNEQDetector )
     return;
 
-// Convert the field-aligned grid cell left boundary, centre and right boundary coordinates
-// to solar-X displacement in arcsec
+// Convert the field-aligned grid cell left boundary, centre and right boundary coordinates to solar-X displacement in arcsec
 fX_pos_arcsec[1] = ( fR * ( 1.0 - cos(fs/fR) ) ) / CM_PER_ARCSEC;
 
 fsL = fs - ( fds / 2.0 );
@@ -401,8 +396,7 @@ int iStartPixel, iEndPixel, iRemainingPixels, i;
 if( !pfEQDetector )
     return;
 
-// Convert the field-aligned grid cell left boundary, centre and right boundary coordinates
-// to solar-X displacement in arcsec
+// Convert the field-aligned grid cell left boundary, centre and right boundary coordinates to solar-X displacement in arcsec
 fX_pos_arcsec[1] = ( fR * ( 1.0 - cos(fs/fR) ) ) / CM_PER_ARCSEC;
 
 fsL = fs - ( fds / 2.0 );
@@ -516,8 +510,7 @@ if( !ppfEQDetector_SPEC || !ppfNEQDetector_SPEC )
 fs = PHYData.fs;
 fds = PHYData.fds;
 
-// Convert the field-aligned grid cell left boundary, centre and right boundary coordinates
-// to solar-X displacement in arcsec
+// Convert the field-aligned grid cell left boundary, centre and right boundary coordinates to solar-X displacement in arcsec
 fX_pos_arcsec[1] = ( fR * ( 1.0 - cos(fs/fR) ) ) / CM_PER_ARCSEC;
 
 fsL = fs - ( fds / 2.0 );
@@ -710,8 +703,7 @@ if( !ppfEQDetector_SPEC )
 fs = PHYData.fs;
 fds = PHYData.fds;
 
-// Convert the field-aligned grid cell left boundary, centre and right boundary coordinates
-// to solar-X displacement in arcsec
+// Convert the field-aligned grid cell left boundary, centre and right boundary coordinates to solar-X displacement in arcsec
 fX_pos_arcsec[1] = ( fR * ( 1.0 - cos(fs/fR) ) ) / CM_PER_ARCSEC;
 
 fsL = fs - ( fds / 2.0 );
@@ -933,8 +925,7 @@ for( i=0; i<iNumStrands; i++ )
 
             for( k=0; k<iNumNEQElements; k++ )
             {
-                // Reset the total emission due to this element
-		// (summed over all ionisation states)
+                // Reset the total emission due to this element (summed over all ionisation states)
 		fEQElementEmiss = 0.0;
 		fNEQElementEmiss = 0.0;
 
@@ -967,8 +958,7 @@ for( i=0; i<iNumStrands; i++ )
 		fEQElementEmiss *= ( fAb * PHYData.fn * PHYData.fn );
 		fNEQElementEmiss *= ( fAb * PHYData.fn * PHYData.fn );
 
-		// Record the specified counts (DN pixel^-1 s^-1) at the appropriate detector pixel, taking into
-		// account the line-of-sight depth
+		// Record the specified counts [DN pixel^-1 s^-1] at the appropriate detector pixel, taking into account the line-of-sight depth
 		Detect( PHYData.fs, PHYData.fds, fSD, fLength, fEQElementEmiss, fNEQElementEmiss );
 
                 // Keep track of the total counts detected from the current grid cell
@@ -978,8 +968,7 @@ for( i=0; i<iNumStrands; i++ )
 		free( pfEQ );
             }
 
-            // Write the equilibrium and non-equilibrium counts to the strands data file
-            // DN pixel^-1 s^-1
+            // Write the equilibrium and non-equilibrium counts to the strands data file [DN pixel^-1 s^-1]
             fprintf( pStrandsFile, "%.8e\t%.8e\t%.8e\t%.8e\n", PHYData.fs, PHYData.fds, ( PHYData.fds * fEQCounts ), ( PHYData.fds * fNEQCounts ) );
 	}
 
@@ -999,8 +988,7 @@ for( i=0; i<iNumStrands; i++ )
 
             for( k=0; k<iNumEQElements; k++ )
             {
-                // Reset the total emission due to this element
-		// (summed over all ionisation states)
+                // Reset the total emission due to this element (summed over all ionisation states)
 		fEQElementEmiss = 0.0;
 
 		// Get the element abundance
@@ -1023,8 +1011,7 @@ for( i=0; i<iNumStrands; i++ )
 		// Multiply by the element abundance relative to hydrogen and the column emission measure
 		fEQElementEmiss *= ( fAb * PHYData.fn * PHYData.fn );
 
-		// Record the specified counts (DN pixel^-1 s^-1) at the appropriate detector pixel, taking into
-		// account the line-of-sight depth
+		// Record the specified counts [DN pixel^-1 s^-1] at the appropriate detector pixel, taking into account the line-of-sight depth
 		Detect( PHYData.fs, PHYData.fds, fSD, fLength, fEQElementEmiss );
 
                 // Keep track of the total counts detected from the current grid cell
@@ -1033,8 +1020,7 @@ for( i=0; i<iNumStrands; i++ )
 		free( pfEQ );
             }
 
-            // Write the equilibrium counts to the strands data file
-            // DN pixel^-1 s^-1
+            // Write the equilibrium counts to the strands data file [DN pixel^-1 s^-1]
             fprintf( pStrandsFile, "%.8e\t%.8e\t%.8e\n", PHYData.fs, PHYData.fds, ( PHYData.fds * fEQCounts ) );
 	}
 
@@ -1119,8 +1105,8 @@ for( i=0; i<iNumStrands; i++ )
 		pNEQRadiation->GetEquilIonFrac( iZ, pfEQ, log10(PHYData.fTe) );
 #endif // DENSITY_DEPENDENT_RATES
 
-                // Calculate the multiplicative factor used to convert to DN pixel^-1 s^-1
-                fConst = fAb * PHYData.fn * PHYData.fn; // * ( fArea / fPixel_Area_cm );// **** NOT NEEDED ****
+                // Calculate the multiplicative factor used to convert to [DN pixel^-1 s^-1]
+                fConst = fAb * PHYData.fn * PHYData.fn;
 
                 // Calculate the most probable ion speed (page 221, Dere, K. P., & Mason, H. E. 1993, Sol. Phys., 144, 217)
                 fvi_th = sqrt( (2.0*BOLTZMANN_CONSTANT*PHYData.fTi) / GetMass( iZ ) );
@@ -1141,16 +1127,6 @@ for( i=0; i<iNumStrands; i++ )
 
                     for( n=0; n<iNumLines; n++ )
                     {
-			/*
-                        // Calculate the spectral properties of the line
-                        fSpectralProperties[0] = ( pfLineList[n] * pfLineList[n] ) / ( SPEED_OF_LIGHT * SPEED_OF_LIGHT );
-                        // Calculate the Doppler width plus instrumental width
-                        fSpectralProperties[1] = ( (0.66666666666666666666666666666667) * fSpectralProperties[0] * fvi_th * fvi_th ) + ( 0.36 * fInstrumentalLineWidth * fInstrumentalLineWidth );
-                        fSpectralProperties[2] = sqrt( fSpectralProperties[1] ) * SQRT_PI;
-                        // Calculate the line-of-sight Doppler shift
-                        fSpectralProperties[3] = sqrt( fSpectralProperties[0] ) * PHYData.fvp;
-			*/
-
                        	// Calculate the spectral properties of the line
 			// (Eq. (2), Dere, K. P., & Mason, H. E. 1993, Sol. Phys., 144, 217)
                         fSpectralProperties[0] = ( pfLineList[n] * pfLineList[n] ) / ( 2.0 * SPEED_OF_LIGHT * SPEED_OF_LIGHT );
@@ -1163,9 +1139,7 @@ for( i=0; i<iNumStrands; i++ )
                         
 			// Get the line emissivity
                         fLineEmiss = GetLineEmission( iZ, m+1, pfLineList[n], log10(PHYData.fTe), log10(PHYData.fn) );
-                        // Multiply the stored line emissivity by the equilibrium and non-equilibrium
-                        // ion population fractions, the element abundance relative to hydrogen, the
-                        // density squared and the strand area divided by the instrument pixel area
+                        // Multiply the stored line emissivity by the equilibrium and non-equilibrium ion population fractions, the element abundance relative to hydrogen, and the density squared
                         fLineEmiss *= fConst;
                         Detect( PHYData, fSD, fLength, fLineEmiss*pfEQ[m], fLineEmiss*fNEQ, pfLineList[n], fSpectralProperties );
 
@@ -1180,8 +1154,7 @@ for( i=0; i<iNumStrands; i++ )
 		free( pfEQ );
             }
 
-            // Write the equilibrium and non-equilibrium counts to the strands data file
-            // DN pixel^-1 s^-1
+            // Write the equilibrium and non-equilibrium counts to the strands data file [DN pixel^-1 s^-1]
             fprintf( pStrandsFile, "%.8e\t%.8e\t%.8e\t%.8e\n", PHYData.fs, PHYData.fds, ( PHYData.fds * fEQCounts ), ( PHYData.fds * fNEQCounts ) );
 	}
 
@@ -1212,8 +1185,8 @@ for( i=0; i<iNumStrands; i++ )
 		pEQRadiation->GetEquilIonFrac( piZ[k], pfEQ, log10(PHYData.fTe) );
 #endif // DENSITY_DEPENDENT_RATES
 
-                // Calculate the multiplicative factor used to convert to DN pixel^-1 s^-1
-                fConst = fAb * PHYData.fn * PHYData.fn; // * ( fArea / fPixel_Area_cm );// **** NOT NEEDED ****
+                // Calculate the multiplicative factor used to convert to [DN pixel^-1 s^-1]
+                fConst = fAb * PHYData.fn * PHYData.fn;
 
                 // Calculate the most probable ion speed (page 221, Dere, K. P., & Mason, H. E. 1993, Sol. Phys., 144, 217)
                 fvi_th = sqrt( (2.0*BOLTZMANN_CONSTANT*PHYData.fTi) / GetMass( piZ[k] ) );
@@ -1231,16 +1204,6 @@ for( i=0; i<iNumStrands; i++ )
 
                     for( n=0; n<iNumLines; n++ )
                     {
-			/*
-                        // Calculate the spectral properties of the line
-                        fSpectralProperties[0] = ( pfLineList[n] * pfLineList[n] ) / ( SPEED_OF_LIGHT * SPEED_OF_LIGHT );
-                        // Calculate the Doppler width plus instrumental width
-                        fSpectralProperties[1] = ( (0.66666666666666666666666666666667) * fSpectralProperties[0] * fvi_th * fvi_th ) + ( 0.36 * fInstrumentalLineWidth * fInstrumentalLineWidth );
-                        fSpectralProperties[2] = sqrt( fSpectralProperties[1] ) * SQRT_PI;
-                        // Calculate the line-of-sight Doppler shift
-                        fSpectralProperties[3] = sqrt( fSpectralProperties[0] ) * PHYData.fvp;
-			*/
-
                         // Calculate the spectral properties of the line
 			// (Eq. (2), Dere, K. P., & Mason, H. E. 1993, Sol. Phys., 144, 217)
                         fSpectralProperties[0] = ( pfLineList[n] * pfLineList[n] ) / ( 2.0 * SPEED_OF_LIGHT * SPEED_OF_LIGHT );
@@ -1253,9 +1216,7 @@ for( i=0; i<iNumStrands; i++ )
 
                         // Get the line emissivity
                         fLineEmiss = GetLineEmission( piZ[k], m+1, pfLineList[n], log10(PHYData.fTe), log10(PHYData.fn) );
-                        // Multiply the stored line emissivity by the equilibrium and non-equilibrium
-                        // ion population fractions, the element abundance relative to hydrogen, the
-                        // density squared and the strand area divided by the instrument pixel area
+                        // Multiply the stored line emissivity by the equilibrium and non-equilibrium ion population fractions, the element abundance relative to hydrogen, and the density squared
                         fLineEmiss *= fConst;
                         Detect( PHYData, fSD, fLength, fLineEmiss*pfEQ[m], pfLineList[n], fSpectralProperties );
 
@@ -1269,8 +1230,7 @@ for( i=0; i<iNumStrands; i++ )
 		free( pfEQ );
             }
 
-            // Write the equilibrium and non-equilibrium counts to the strands data file
-            // DN pixel^-1 s^-1
+            // Write the equilibrium and non-equilibrium counts to the strands data file [DN pixel^-1 s^-1]
             fprintf( pStrandsFile, "%.8e\t%.8e\t%.8e\n", PHYData.fs, PHYData.fds, ( PHYData.fds * fEQCounts ) );
 	}
 
@@ -1327,7 +1287,7 @@ for( i=0; i<2; i++ )
 	iXY[i] = (int)( ( ( 2.0 * fR ) / fPixel_cm[i] ) + 1.0 );
 
 // Calculate the solar-X and Y coordinates in arcsec at centre of each pixel
-ppfSolarXY = (double**)malloc( sizeof(double) * 2 );
+ppfSolarXY = (double**)malloc( sizeof(double*) * 2 );
 for( i=0; i<2; i++ )
 {
     ppfSolarXY[i] = (double*)malloc( sizeof(double) * iXY[i] );
@@ -1354,17 +1314,15 @@ if( fSpecRes )
     for( i=0; i<iNumSpectralDataPoints; i++ )
         pfLambda[i] = fLambda_min + ( ((double)i) * fSpecRes );
 
-    // Create a 1D detector initially, with pixels in the solar-X direction, and a
-    // spectrum associated with each pixel
-    ppfEQDetector_SPEC = (double**)malloc( sizeof(double) * iXY[0] );
+    // Create a 1D detector initially, with pixels in the solar-X direction, and a spectrum associated with each pixel
+    ppfEQDetector_SPEC = (double**)malloc( sizeof(double*) * iXY[0] );
     for( i=0; i<iXY[0]; i++ )
         ppfEQDetector_SPEC[i] = (double*)malloc( sizeof(double) * iNumSpectralDataPoints );
 
     if( iNEQ )
     {
-        // Create a 1D detector initially, with pixels in the solar-X direction, and a
-        // spectrum associated with each pixel
-        ppfNEQDetector_SPEC = (double**)malloc( sizeof(double) * iXY[0] );
+        // Create a 1D detector initially, with pixels in the solar-X direction, and a spectrum associated with each pixel
+        ppfNEQDetector_SPEC = (double**)malloc( sizeof(double*) * iXY[0] );
         for( i=0; i<iXY[0]; i++ )
             ppfNEQDetector_SPEC[i] = (double*)malloc( sizeof(double) * iNumSpectralDataPoints );
     }

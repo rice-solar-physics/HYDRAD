@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 25/09/2013
+// * Date last modified: 02/14/2017
 // *
 // ****
 
@@ -42,8 +42,7 @@ class CIon {
     // The temperature and density values in log_10 form
     double *pTemp, *pDen;
 		
-    // Pointer to an array of pointers, each pointing to the emissivity
-    // data for a particular line in a NumTemp * NumDen size array
+    // Pointer to an array of pointers, each pointing to the emissivity data for a particular line in a NumTemp * NumDen size array
     double **ppEmiss;
     double *pIonEmiss;
 
@@ -57,7 +56,7 @@ class CIon {
     void OpenEmissivityFile( char *szEmissFilename, double *pRespFunc, int iNumDataPoints );
 
     // Function to calculate the total line emission as a function of temperature and density (summed over the wavelength range)
-     void CalculateTotalIonEmission( void );
+    void CalculateTotalIonEmission( void );
 
     public:
 	
@@ -82,8 +81,7 @@ class CIon {
     // Function to write the emission line wavelength list into a pre-allocated array
     void GetLineList( double *pfLineList );
 
-    // Function to write a list of the emission lines within the
-    // wavelength response region of the instrument to a file
+    // Function to write a list of the emission lines within the wavelength response region of the instrument to a file
     void WriteIonLineListToFile( FILE *pFile );
 
     // Function to return the line emission as a function of wavelength, temperature and density

@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 25/09/2013
+// * Date last modified: 02/14/2017
 // *
 // ****
 
@@ -100,8 +100,7 @@ for( i=0; i<iNumLines; i++ )
         NumLines++;
 }
 
-// Allocate sufficient memory for the wavelengths in the sensitivity range 
-// of the instrument 
+// Allocate sufficient memory for the wavelengths in the sensitivity range of the instrument 
 pLambda = (double*)malloc( sizeof(double) * NumLines );
 
 j = 0;
@@ -143,7 +142,7 @@ NumTempxNumDen = NumDen * NumTemp;
 
 // Allocate sufficient memory for the emissivity values
 
-ppEmiss = (double**)malloc( sizeof(double) * NumLines );
+ppEmiss = (double**)malloc( sizeof(double*) * NumLines );
 
 i = 0;
 
@@ -158,8 +157,7 @@ for(;;)
     // Necessary if the data for the final emission line in the file is read
     if( feof(pFile) ) break;
 
-    // If the wavelength of the line is greater than the maximum wavelength
-    // of the instrument sensitivity range then there is no point reading further
+    // If the wavelength of the line is greater than the maximum wavelength of the instrument sensitivity range then there is no point reading further
     if( fBuffer > fLambda_max ) break;
 
     if( fBuffer >= fLambda_min && fBuffer <= fLambda_max )
@@ -176,24 +174,20 @@ for(;;)
 		y[1] = pRespFunc[j-1];
 		y[2] = pRespFunc[j+1];
 		      
-		// Perform a linear fit to the instrument response function because
-		// the curve can vary both smoothly and extremely rapidly in different
-		// wavelength regions
+		// Perform a linear fit to the instrument response function because the curve can vary both smoothly and extremely rapidly in different wavelength regions
 		LinearFit( x, y, pLambda[i], &fIRC );
 
 		break;
             }
         }
 
-        // Allocate sufficient memory for the emissivity values corresponding
-	// to each wavelength
+        // Allocate sufficient memory for the emissivity values corresponding to each wavelength
 	ppEmiss[i] = (double*)malloc( sizeof(double) * NumTempxNumDen );
 
         // Get the individual emissivity values
         for( j=0; j<NumTempxNumDen; j++ )
         {
-            // The values in the .em files have units of [erg s^-1] and were
-            // calculated using the Chianti function EMISS_CALC
+            // The values in the .em files have units of [erg s^-1] and were calculated using the Chianti function EMISS_CALC
             ReadDouble( pFile, &fBuffer );
 #ifdef UNITS_DN
             // Calculate the value to store, assuming:
@@ -204,8 +198,7 @@ for(;;)
             // 2.495681203e-7 = hc * 4 _PI_ [erg A sr]
             term1 = fIRC * 0.83 * pLambda[i];
             term2 = pow(10.0, pDen[iIndexDen]) * (2.495681203e-7);
-            // The stored value has units of [DN pixel^-1 photon^-1 sr cm^2] * [photon cm^3 s^-1 sr^-1]
-            // --> [DN pixel^-1 s^-1 cm^5]
+            // The stored value has units of [DN pixel^-1 photon^-1 sr cm^2] * [photon cm^3 s^-1 sr^-1] --> [DN pixel^-1 s^-1 cm^5]
 #endif // UNITS_DN
 #ifdef UNITS_PHOTONS
             // Calculate the value to store, assuming:
@@ -359,9 +352,7 @@ for( i=0; i<NumLines; i++ )
     if( fLambda == pLambda[i] ) break;
 
 #ifdef CHOOSE_NEAREST_WAVELENGTH
-    // If the specified wavelength is not exactly equal to the stored
-    // wavelength then select the first one that is greater than the
-    // specified wavelength
+    // If the specified wavelength is not exactly equal to the stored wavelength then select the first one that is greater than the specified wavelength
     if( fLambda < pLambda[i] ) break;
 #endif // CHOOSE_NEAREST_WAVELENGTH
 }
@@ -377,8 +368,7 @@ if( flog10T < pTemp[0] || flog10T > pTemp[NumTemp-1] ) return 0.0;
 for( j=0; j<NumTemp; j++ )
     if( pTemp[j] >= flog10T ) break;
 
-// Deal with the special cases where there aren't two values either side of the
-// desired one
+// Deal with the special cases where there aren't two values either side of the desired one
 if( j < 2 ) j = 2;
 else if( j == NumTemp-1 ) j = NumTemp-2;
 
@@ -395,8 +385,7 @@ if( flog10n < pDen[0] || flog10n > pDen[NumDen-1] ) return 0.0;
 for( k=0; k<NumDen; k++ )
     if( pDen[k] >= flog10n ) break;
 
-// Deal with the special cases where there aren't two values either side of the
-// desired one
+// Deal with the special cases where there aren't two values either side of the desired one
 if( k < 2 ) k = 2;
 else if( k == NumDen-1 ) k = NumDen-2;
 
@@ -414,8 +403,7 @@ x2[4] = pDen[k+1];
 // Allocate an array of pointers to pointers for the line emission values
 y = (double**)alloca( sizeof(double) * 5 );
 
-// Allocate an array to hold the line emission values corresponding to the set of
-// temperatures at the current density
+// Allocate an array to hold the line emission values corresponding to the set of temperatures at the current density
 for( l=1; l<=4; l++ )
     y[l] = (double*)alloca( sizeof(double) * 5 );
 
@@ -424,8 +412,7 @@ for( l=1; l<=4; l++ )
     // Point to the start of the line emission values for the required line
     pfTemp = ppEmiss[i];
 
-    // Skip to the line emission set corresponding to the l'th density value and get the
-    // line emissions corresponding to the four temperature values
+    // Skip to the line emission set corresponding to the l'th density value and get the line emissions corresponding to the four temperature values
     pfTemp += ( k + l - 3 ) * NumTemp;
 
     y[1][l] = *( pfTemp + ( j - 2 ) );
@@ -460,8 +447,7 @@ if( flog10T < pTemp[0] || flog10T > pTemp[NumTemp-1] ) return 0.0;
 for( j=0; j<NumTemp; j++ )
     if( pTemp[j] >= flog10T ) break;
 
-// Deal with the special cases where there aren't two values either side of the
-// desired one
+// Deal with the special cases where there aren't two values either side of the desired one
 if( j < 2 ) j = 2;
 else if( j == NumTemp-1 ) j = NumTemp-2;
 
@@ -478,8 +464,7 @@ if( flog10n < pDen[0] || flog10n > pDen[NumDen-1] ) return 0.0;
 for( k=0; k<NumDen; k++ )
     if( pDen[k] >= flog10n ) break;
 
-// Deal with the special cases where there aren't two values either side of the
-// desired one
+// Deal with the special cases where there aren't two values either side of the desired one
 if( k < 2 ) k = 2;
 else if( k == NumDen-1 ) k = NumDen-2;
 
@@ -496,8 +481,7 @@ x2[4] = pDen[k+1];
 // Allocate an array of pointers to pointers for the ion emission values
 y = (double**)alloca( sizeof(double) * 5 );
 
-// Allocate an array to hold the ion emission values corresponding to the set of
-// temperatures at the current density
+// Allocate an array to hold the ion emission values corresponding to the set of temperatures at the current density
 for( l=1; l<=4; l++ )
     y[l] = (double*)alloca( sizeof(double) * 5 );
 
@@ -506,8 +490,7 @@ for( l=1; l<=4; l++ )
     // Point to the start of the ion emission values
     pfTemp = pIonEmiss;
 
-    // Skip to the ion emission set corresponding to the l'th density value and get the
-    // ion emissions corresponding to the four temperature values
+    // Skip to the ion emission set corresponding to the l'th density value and get the ion emissions corresponding to the four temperature values
     pfTemp += ( k + l - 3 ) * NumTemp;
 
     y[1][l] = *( pfTemp + ( j - 2 ) );

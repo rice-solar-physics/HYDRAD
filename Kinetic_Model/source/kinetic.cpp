@@ -8,7 +8,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 05/11/2012
+// * Date last modified: 02/14/2017
 // *
 // ****
 
@@ -24,8 +24,7 @@
 
 
 // The Coulomb logarithm for electron-electron collisions
-// (The Coulomb logarithms for electron-ion and ion-ion 
-// collisions are already defined in eqns.cpp)
+// (The Coulomb logarithms for electron-ion and ion-ion collisions are already defined in eqns.cpp)
 
 double fLogLambda_ee( double Te, double n )
 {
@@ -41,8 +40,7 @@ double fLogLambda_ee( double Te, double n )
     }
 }
 
-// This function calculates the electron collisional mean free path at near
-// thermal velocities
+// This function calculates the electron collisional mean free path at near thermal velocities
 double fSHMeanFreePath( double u_th, double Te, double Ti, double n )
 {
 double upsilon2, upsilon3;
@@ -139,9 +137,7 @@ for( i=half_data_points; i<DISTRIBUTION_DATA_POINTS; i++ )
 }
 }
 
-// This function calculates the collision frequencies and mean-free-paths
-// for the current grid cell, using the equations given on page 31 of the
-// NRL Plasma Formulary (revised 1984)
+// This function calculates the collision frequencies and mean-free-paths for the current grid cell, using the equations given on page 31 of the NRL Plasma Formulary (revised 1984)
 void CKinetic::CalculateCollisionalProperties( double Te, double Ti, double n )
 {
 double term1_ee, term2_ee, term1_ei;
@@ -208,8 +204,7 @@ int i;
 double term1e, term1i, term2e, term2i, term3, term4e, term4i;
 
 // Simplified Greene, 1973, equation (16)
-// For details of simplification procedure refer to research diary
-// entry: Wednesday 31st January 2007 (p18)
+// For details of simplification procedure refer to research diary entry: Wednesday 31st January 2007 (p18)
 double alpha_E, Te_bar;
 double temp0, temp1, temp2;
 // Omit extra factor of n so that alpha_E is in units of [T]^-1
@@ -227,8 +222,7 @@ term2e = pow( ( term1e / _PI_ ), (1.5) );
 for( i=0; i<DISTRIBUTION_DATA_POINTS; i++ )
 {
     // Simplified Greene, 1973, equation (16)
-    // For details of simplification procedure refer to research diary
-    // entry: Wednesday 31st January 2007 (p18)
+    // For details of simplification procedure refer to research diary entry: Wednesday 31st January 2007 (p18)
     Te_bar = Te + ( temp2 / fabs( pnu_ei[i] ) );
     if( Te_bar < 0.0 ) Te_bar = Ti; // Seems only necessary for highest velocity (least influential) particles
     // ELECTRON_MASS / ( 2.0 * BOLTZMANN_CONSTANT ) = 3.30072463768116e-12
