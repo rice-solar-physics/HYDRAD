@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/13/2015
+// * Date last modified: 11/03/2017
 // *
 // ****
 
@@ -94,6 +94,11 @@ for( i = 0; i < iNumberOfCells; i++ )
     CellProperties.s[0] = CellProperties.s[1] - ( 0.5 * CellProperties.cell_width );
     CellProperties.s[2] = CellProperties.s[1] + ( 0.5 * CellProperties.cell_width );
 
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+    ReadDouble( pFile, &(CellProperties.rho_e) );
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
     ReadDouble( pFile, &(CellProperties.rho[1]) );
     ReadDouble( pFile, &(CellProperties.rho_v[1]) );
     ReadDouble( pFile, &(CellProperties.TE_KE[1][ELECTRON]) );
@@ -155,7 +160,12 @@ if( mesh_time == 0.0 )
     Adapt();
 #endif // ADAPT
 
+#if defined (OPTICALLY_THICK_RADIATION) && defined (NLTE_CHROMOSPHERE)
+InitialiseRadiativeRates();
+CalculateInitialPhysicalQuantities();
+#else // OPTICALLY_THICK_RADIATION && NLTE_CHROMOSPHERE
 CalculatePhysicalQuantities();
+#endif // OPTICALLY_THICK_RADIATION && NLTE_CHROMOSPHERE
 
 // ******************************************************************************
 // *    INITIALISE THE IONISATION STATE                                         *
@@ -228,7 +238,7 @@ void CAdaptiveMesh::Adapt( void )
 {
 PCELL pNextActiveCell, pFarLeftCell, pLeftCell, pRightCell, pFarRightCell, pNewCell[2];
 CELLPROPERTIES FarLeftCellProperties, LeftCellProperties, CellProperties, RightCellProperties, FarRightCellProperties, NewCellProperties[2];
-double drho = 0.0, dTE_KEe = 0.0, dTE_KEh = 0.0, x[6], y[6];
+double drho = 0.0, dTE_KEe = 0.0, dTE_KEh = 0.0, drho_e = 0.0, x[6], y[6];
 int iProlonged, iRestricted, j;
 
 #ifdef NON_EQUILIBRIUM_RADIATION
@@ -280,7 +290,12 @@ do {
 #ifdef REFINE_ON_HYDROGEN_ENERGY
             dTE_KEh = 1.0 - ( min( CellProperties.TE_KE[1][HYDROGEN], RightCellProperties.TE_KE[1][HYDROGEN] ) / max( CellProperties.TE_KE[1][HYDROGEN], RightCellProperties.TE_KE[1][HYDROGEN] ) );
 #endif // REFINE_ON_HYDROGEN_ENERGY
-            if( drho < MIN_FRAC_DIFF && dTE_KEe < MIN_FRAC_DIFF && dTE_KEh < MIN_FRAC_DIFF )
+#if defined (OPTICALLY_THICK_RADIATION) && defined (NLTE_CHROMOSPHERE)
+#ifdef REFINE_ON_ELECTRON_DENSITY
+            drho_e = 1.0 - ( min( CellProperties.rho_e, RightCellProperties.rho_e ) / max( CellProperties.rho_e, RightCellProperties.rho_e ) );
+#endif // REFINE_ON_ELECTRON_DENSITY
+#endif // OPTICALLY_THICK_RADIATION && NLTE_CHROMOSPHERE
+            if( drho < MIN_FRAC_DIFF && dTE_KEe < MIN_FRAC_DIFF && dTE_KEh < MIN_FRAC_DIFF && drho_e < MIN_FRAC_DIFF )
             {
                 iProlonged = TRUE;
 
@@ -343,6 +358,12 @@ do {
                     NewCellProperties[0].pIonFrac->InterpolateAllIonFrac( x, ppIonFrac, 2, NewCellProperties[0].s[1] );
                 }
 #endif // NON_EQUILIBRIUM_RADIATION
+
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+		NewCellProperties[0].rho_e = ( CellProperties.rho_e + RightCellProperties.rho_e ) / 2.0;
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
 
 		pNewCell[0] = new CAdaptiveMeshCell( &(NewCellProperties[0]) );
 
@@ -427,8 +448,12 @@ do {
 #ifdef REFINE_ON_HYDROGEN_ENERGY
 	dTE_KEh = 1.0 - ( min( CellProperties.TE_KE[1][HYDROGEN], RightCellProperties.TE_KE[1][HYDROGEN] ) / max( CellProperties.TE_KE[1][HYDROGEN], RightCellProperties.TE_KE[1][HYDROGEN] ) );
 #endif // REFINE_ON_HYDROGEN_ENERGY
-	if( ( drho > MAX_FRAC_DIFF || dTE_KEe > MAX_FRAC_DIFF || dTE_KEh > MAX_FRAC_DIFF || abs( CellProperties.iRefinementLevel - RightCellProperties.iRefinementLevel ) > 1 ) &&
-            ( CellProperties.iRefinementLevel < MAX_REFINEMENT_LEVEL || RightCellProperties.iRefinementLevel < MAX_REFINEMENT_LEVEL ) )
+#if defined (OPTICALLY_THICK_RADIATION) && defined (NLTE_CHROMOSPHERE)
+#ifdef REFINE_ON_ELECTRON_DENSITY
+            drho_e = 1.0 - ( min( CellProperties.rho_e, RightCellProperties.rho_e ) / max( CellProperties.rho_e, RightCellProperties.rho_e ) );
+#endif // REFINE_ON_ELECTRON_DENSITY
+#endif // OPTICALLY_THICK_RADIATION && NLTE_CHROMOSPHERE
+	if( ( drho > MAX_FRAC_DIFF || dTE_KEe > MAX_FRAC_DIFF || dTE_KEh > MAX_FRAC_DIFF || drho_e > MAX_FRAC_DIFF || abs( CellProperties.iRefinementLevel - RightCellProperties.iRefinementLevel ) > 1 ) && ( CellProperties.iRefinementLevel < MAX_REFINEMENT_LEVEL || RightCellProperties.iRefinementLevel < MAX_REFINEMENT_LEVEL ) )
 	{
             iRestricted = TRUE;
 
@@ -563,7 +588,25 @@ do {
 #endif // LINEAR_RESTRICTION
                         }
 #endif // NON_EQUILIBRIUM_RADIATION
-                    }
+                    
+
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+			y[1] = FarLeftCellProperties.rho_e;
+			y[2] = LeftCellProperties.rho_e;
+			y[3] = CellProperties.rho_e;
+			y[4] = RightCellProperties.rho_e;
+			y[5] = FarRightCellProperties.rho_e;
+#ifdef LINEAR_RESTRICTION
+                        LinearFit( &(x[1]), &(y[1]), NewCellProperties[0].s[1], &(NewCellProperties[0].rho_e) );
+                        LinearFit( &(x[2]), &(y[2]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_e) );
+#else
+                        FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho_e), &error );
+                        FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_e), &error );
+#endif // LINEAR_RESTRICTION
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
+		    }
                     else if( !pFarLeftCell )
                     {
 // ******************************************************************************
@@ -598,6 +641,14 @@ do {
                             NewCellProperties[0].pIonFrac->InterpolateAllIonFrac( x, ppIonFrac, 2, NewCellProperties[0].s[1] );
                         }
 #endif // NON_EQUILIBRIUM_RADIATION
+
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+			y[1] = LeftCellProperties.rho_e;
+                        y[2] = CellProperties.rho_e;
+                        LinearFit( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho_e) );
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
 
 			pFarRightCell->GetCellProperties( &FarRightCellProperties );
 
@@ -653,6 +704,20 @@ do {
 #endif // LINEAR_RESTRICTION
                         }
 #endif // NON_EQUILIBRIUM_RADIATION
+
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+			y[2] = LeftCellProperties.rho_e;
+			y[3] = CellProperties.rho_e;
+			y[4] = RightCellProperties.rho_e;
+			y[5] = FarRightCellProperties.rho_e;
+#ifdef LINEAR_RESTRICTION
+			LinearFit( &(x[2]), &(y[2]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_e) );
+#else
+			FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_e), &error );
+#endif // LINEAR_RESTRICTION
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
                     }
                     else if( !pFarRightCell )
                     {
@@ -711,6 +776,20 @@ do {
                         }
 #endif // NON_EQUILIBRIUM_RADIATION
 
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+			y[1] = FarLeftCellProperties.rho_e;
+			y[2] = LeftCellProperties.rho_e;
+			y[3] = CellProperties.rho_e;
+			y[4] = RightCellProperties.rho_e;
+#ifdef LINEAR_RESTRICTION
+			LinearFit( &(x[1]), &(y[1]), NewCellProperties[0].s[1], &(NewCellProperties[0].rho_e) );
+#else
+			FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho_e), &error );
+#endif // LINEAR_RESTRICTION
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
+
 // ******************************************************************************
 // *    IMPLEMENT HYDROSTATIC BOUNDARY CONDITIONS                               *
 // ******************************************************************************
@@ -743,6 +822,14 @@ do {
                             NewCellProperties[1].pIonFrac->InterpolateAllIonFrac( x, ppIonFrac, 2, NewCellProperties[1].s[1] );
                         }
 #endif // NON_EQUILIBRIUM_RADIATION
+
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+			y[1] = CellProperties.rho_e;
+                        y[2] = RightCellProperties.rho_e;
+                        LinearFit( x, y, NewCellProperties[1].s[1], &(NewCellProperties[1].rho_e) );
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
                     }
 		}
 		else
@@ -791,6 +878,15 @@ do {
                         NewCellProperties[1].pIonFrac->InterpolateAllIonFrac( x, ppIonFrac, 2, NewCellProperties[1].s[1] );
                     }
 #endif // NON_EQUILIBRIUM_RADIATION
+
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+		    y[1] = CellProperties.rho_e;
+                    y[2] = RightCellProperties.rho_e;
+                    LinearFit( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho_e) );
+                    LinearFit( x, y, NewCellProperties[1].s[1], &(NewCellProperties[1].rho_e) );
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
 		}
 
 // ******************************************************************************
@@ -819,6 +915,14 @@ do {
 		    NewCellProperties[0].TE_KE[1][j] *= fWeight;
 		    NewCellProperties[1].TE_KE[1][j] *= fWeight;
 		}
+
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+		fWeight = ( 2.0 * CellProperties.rho_e ) / ( NewCellProperties[0].rho_e + NewCellProperties[1].rho_e );
+		NewCellProperties[0].rho_e *= fWeight;
+		NewCellProperties[1].rho_e *= fWeight;
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
 #endif // ENFORCE_CONSERVATION
 
                 pNewCell[0] = new CAdaptiveMeshCell( &(NewCellProperties[0]) );
@@ -991,6 +1095,23 @@ do {
 #endif // LINEAR_RESTRICTION
                         }
 #endif // NON_EQUILIBRIUM_RADIATION
+
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+			y[1] = FarLeftCellProperties.rho_e;
+			y[2] = LeftCellProperties.rho_e;
+			y[3] = CellProperties.rho_e;
+			y[4] = RightCellProperties.rho_e;
+			y[5] = FarRightCellProperties.rho_e;
+#ifdef LINEAR_RESTRICTION
+			LinearFit( &(x[1]), &(y[1]), NewCellProperties[0].s[1], &(NewCellProperties[0].rho_e) );
+			LinearFit( &(x[2]), &(y[2]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_e) );
+#else
+			FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho_e), &error );
+			FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_e), &error );
+#endif // LINEAR_RESTRICTION
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
                     }
                     else if( !pFarLeftCell )
                     {
@@ -1026,6 +1147,14 @@ do {
                             NewCellProperties[0].pIonFrac->InterpolateAllIonFrac( x, ppIonFrac, 2, NewCellProperties[0].s[1] );
                         }
 #endif // NON_EQUILIBRIUM_RADIATION
+
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+                        y[1] = LeftCellProperties.rho_e;
+                        y[2] = CellProperties.rho_e;
+                        LinearFit( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho_e) );
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
 
 			pFarRightCell->GetCellProperties( &FarRightCellProperties );
 
@@ -1081,6 +1210,20 @@ do {
 #endif // LINEAR_RESTRICTION
                         }
 #endif // NON_EQUILIBRIUM_RADIATION
+
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+			y[2] = LeftCellProperties.rho_e;
+			y[3] = CellProperties.rho_e;
+			y[4] = RightCellProperties.rho_e;
+			y[5] = FarRightCellProperties.rho_e;
+#ifdef LINEAR_RESTRICTION
+			LinearFit( &(x[2]), &(y[2]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_e) );
+#else
+			FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_e), &error );
+#endif // LINEAR_RESTRICTION
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
                     }
                     else if( !pFarRightCell )
                     {
@@ -1139,6 +1282,21 @@ do {
                         }
 #endif // NON_EQUILIBRIUM_RADIATION
 
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+
+			y[1] = FarLeftCellProperties.rho_e;
+			y[2] = LeftCellProperties.rho_e;
+			y[3] = CellProperties.rho_e;
+			y[4] = RightCellProperties.rho_e;
+#ifdef LINEAR_RESTRICTION
+			LinearFit( &(x[1]), &(y[1]), NewCellProperties[0].s[1], &(NewCellProperties[0].rho_e) );
+#else
+			FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho_e), &error );
+#endif // LINEAR_RESTRICTION
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
+
 // ******************************************************************************
 // *    IMPLEMENT HYDROSTATIC BOUNDARY CONDITIONS                               *
 // ******************************************************************************
@@ -1171,6 +1329,14 @@ do {
                             NewCellProperties[1].pIonFrac->InterpolateAllIonFrac( x, ppIonFrac, 2, NewCellProperties[1].s[1] );
                         }
 #endif // NON_EQUILIBRIUM_RADIATION
+
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+			y[1] = CellProperties.rho_e;
+                        y[2] = RightCellProperties.rho_e;
+                        LinearFit( x, y, NewCellProperties[1].s[1], &(NewCellProperties[1].rho_e) );
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
                     }
 		}
 		else
@@ -1219,6 +1385,15 @@ do {
                         NewCellProperties[1].pIonFrac->InterpolateAllIonFrac( x, ppIonFrac, 2, NewCellProperties[1].s[1] );
                     }
 #endif // NON_EQUILIBRIUM_RADIATION
+
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+                    y[1] = LeftCellProperties.rho_e;
+                    y[2] = CellProperties.rho_e;
+                    LinearFit( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho_e) );
+                    LinearFit( x, y, NewCellProperties[1].s[1], &(NewCellProperties[1].rho_e) );
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
 		}
 
 // ******************************************************************************
@@ -1247,6 +1422,14 @@ do {
 		    NewCellProperties[0].TE_KE[1][j] *= fWeight;
 		    NewCellProperties[1].TE_KE[1][j] *= fWeight;
 		}
+
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+		fWeight = ( 2.0 * CellProperties.rho_e ) / ( NewCellProperties[0].rho_e + NewCellProperties[1].rho_e );
+		NewCellProperties[0].rho_e *= fWeight;
+		NewCellProperties[1].rho_e *= fWeight;
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
 #endif // ENFORCE_CONSERVATION
 
 		pNewCell[0] = new CAdaptiveMeshCell( &(NewCellProperties[0]) );
@@ -1534,6 +1717,17 @@ sprintf( szTermsFilename, "Results/profile%i.trm", iFileNumber );
 pTermsFile = fopen( szTermsFilename, "w" );
 #endif // WRITE_FILE_TERMS
 
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+#ifdef WRITE_FILE_HSTATE
+FILE *pHStateFile;
+char szHStateFilename[256];
+sprintf( szHStateFilename, "Results/profile%i.Hstate", iFileNumber );
+pHStateFile = fopen( szHStateFilename, "w" );
+#endif // WRITE_FILE_HSTATE
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
+
 PCELL pNextActiveCell;
 CELLPROPERTIES CellProperties;
 
@@ -1615,6 +1809,17 @@ while( pNextActiveCell )
     }
 #endif // WRITE_FILE_TERMS
 
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+#ifdef WRITE_FILE_HSTATE
+    fprintf( pHStateFile, "%.8e", CellProperties.s[1] );
+    for( j=0; j<6; j++ )
+	fprintf( pHStateFile, "\t%.8e", CellProperties.Hstate[j] );
+    fprintf( pHStateFile, "\n" );
+#endif // WRITE_FILE_HSTATE
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
+
     pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
 }
 
@@ -1636,6 +1841,14 @@ fclose( pScaleFile );
 fclose( pTermsFile );
 #endif // WRITE_FILE_TERMS
 
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+#ifdef WRITE_FILE_HSTATE
+fclose( pHStateFile );
+#endif // WRITE_FILE_HSTATE
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
+
 // Create the .amr file so that the simulation can be continued from the current output if necessary
 
 sprintf( szAMRFilename, "Results/profile%i.amr", iFileNumber );
@@ -1651,7 +1864,16 @@ while( pNextActiveCell )
     pActiveCell = pNextActiveCell;
     pActiveCell->GetCellProperties( &CellProperties );
 
-    fprintf( pAMRFile, "%.16e\t%.16e\t%.16e\t%.16e", CellProperties.s[1], CellProperties.cell_width, CellProperties.rho[1], CellProperties.rho_v[1] );
+    fprintf( pAMRFile, "%.16e\t%.16e\t", CellProperties.s[1], CellProperties.cell_width );
+
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+    fprintf( pAMRFile, "%.16e\t", CellProperties.rho_e );
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
+
+    fprintf( pAMRFile, "%.16e\t%.16e", CellProperties.rho[1], CellProperties.rho_v[1] );
+
     for( j=0; j<SPECIES; j++ )
         fprintf( pAMRFile, "\t%.16e", CellProperties.TE_KE[1][j] );
 

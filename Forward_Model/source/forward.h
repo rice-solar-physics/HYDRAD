@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/03/2015
+// * Date last modified: 02/14/2017
 // *
 // ****
 
@@ -39,8 +39,7 @@ class CForward {
     // Function to return the number of virtual instruments
     int GetNumInstruments( void );
 
-    // Function to write a file containing a list of the ions and emission lines
-    // within the wavelength response region of the instruments
+    // Function to write a file containing a list of the ions and emission lines within the wavelength response region of the instruments
     void WriteIonLineListToFile( char *szFilename );
 
     // Function to create a virtual detector

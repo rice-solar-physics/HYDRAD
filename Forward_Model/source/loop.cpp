@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 08/06/2015
+// * Date last modified: 02/10/2017
 // *
 // ****
 
@@ -47,7 +47,7 @@ iStrandRange[1] = iTo;
 iStrandRange[2] = iStep;
 
 // Allocate sufficient memory for the strands
-ppStrand = (PPSTRAND)malloc( sizeof(CStrand) * iNumStrands );
+ppStrand = (PPSTRAND)malloc( sizeof(CStrand*) * iNumStrands );
 
 for( i=0; i<iNumStrands; i++ )
 {

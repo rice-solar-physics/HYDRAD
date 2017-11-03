@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 19/12/2012
+// * Date last modified: 01/12/2016
 // *
 // ****
 
@@ -16,35 +16,27 @@
 #include "config.h"
 #include  "../../Resources/source/fitpoly.h"
 #include "../../Resources/source/constants.h"
+#include "../../Resources/Utils/regPoly/regpoly.h"
 
 
-double CalcdPbyds( double s, double n, int igdp, double **ppGravity )
+double CalcdPbyds( double s, double n, double Lfull, double *pfGravityCoefficients )
 {
-double CalcSolarGravity( double s, int igdp, double **ppGravity );
+double CalcSolarGravity( double s, double *a );
 
-return AVERAGE_PARTICLE_MASS * n * CalcSolarGravity( s, igdp, ppGravity );
+return AVERAGE_PARTICLE_MASS * n * CalcSolarGravity( s/Lfull, pfGravityCoefficients );
 }
 
-double CalcSolarGravity( double s, int igdp, double **ppGravity )
+double CalcSolarGravity( double s, double *pfGravityCoefficients )
 {
-double x[3], y[3], g_parallel;
+double sum = 0.0;
 int i;
 
-for( i=0; i<igdp; i++ )
-	if( s < ppGravity[i][0] ) break;
+sum += ( 1.0 * pfGravityCoefficients[0] );
+for( i=1; i<(POLY_ORDER+1); i++ ) {
+	sum += ( pow(s,i) * pfGravityCoefficients[i] );
+}
 
-if( i == 0 ) i = 1;
-if( i == igdp ) i = igdp - 1;
-
-x[1] = ppGravity[i-1][0];
-x[2] = ppGravity[i][0];
-
-y[1] = ppGravity[i-1][1];
-y[2] = ppGravity[i][1];
-
-LinearFit( x, y, s, &g_parallel );
-
-return g_parallel;
+return sum;
 }
 
 double CalcdFcbyds( double EH, double ER )

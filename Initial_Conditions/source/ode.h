@@ -6,12 +6,12 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 19/12/2012
+// * Date last modified: 01/12/2016
 // *
 // ****
 
 
-double CalcdPbyds( double s, double n, int igdp, double **ppGravity );
+double CalcdPbyds( double s, double n, double Lfull, double *pfGravityCoefficients );
 double CalcdFcbyds( double EH, double ER );
 double CalcdTbyds( double Fc, double T );
 

@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 28/10/2013
+// * Date last modified: 01/12/2016
 // *
 // ****
 
@@ -18,6 +18,8 @@
 #include "../../Resources/source/file.h"
 #include "../../Resources/source/fitpoly.h"
 #include "../../Resources/source/constants.h"
+#include "../../Resources/Utils/regPoly/regpoly.h"
+#include "../../Resources/Utils/regPoly/nrutil.h"
 
 
 void GetConfigurationParameters( PARAMETERS *pParams )
@@ -58,24 +60,54 @@ double CalcSolarGravity( double s, double Lfull, double Inc );
 
 FILE *pFile;
 char szGravityFilename[256];
-
 double s, ds;
-int i, igdp;
+int i;
 
-igdp = MIN_CELLS / 5; // Hard wired
+// **** FUNCTIONS AND VARIABLES FOR THE CURVE-FITTING CODE ****
+void BasisFuncs( double x, double *bfunc, int ma );
+double *x, *y, *sig, *a, chisq;
+double **u, **v, *w;
+int ndat, ma;
+// **** FUNCTIONS AND VARIABLES FOR THE CURVE-FITTING CODE ****
+
+ndat = MIN_CELLS + 1;
+
+x = vector( 1, ndat );
+y = vector( 1, ndat );
+sig = vector( 1, ndat );
 
 s = 0.0;
-ds = Params.Lfull / ((double)igdp);
+ds = Params.Lfull / ( ndat - 1 );
+for( i=1; i<=ndat; i++ )
+{
+    x[i] = s / Params.Lfull;
+    y[i] = CalcSolarGravity( s, Params.Lfull, Params.Inc );
+    sig[i] = 1.0;
+    s += ds;
+}
+
+ma = POLY_ORDER + 1;
+a = vector( 1, ma );
+u = matrix( 1, ndat, 1, ma );
+v = matrix( 1, ma, 1, ma );
+w = vector( 1, ma );
+
+// Call the function that returns the coefficients of the best-fit polynomial (Single Value Decomposition)
+svdfit( x, y, sig, ndat, a, ma, u, v, w, &chisq, BasisFuncs );
 
 sprintf( szGravityFilename, "%s.gravity", Params.szOutputFilename );
 pFile = fopen( szGravityFilename, "w" );
-fprintf( pFile, "%i\n", igdp+1 );
-for( i=0; i<=igdp; i++ )
-{
-    fprintf( pFile, "%.16e\t%.16e\n", s, CalcSolarGravity( s, Params.Lfull, Params.Inc ) );
-    s += ds;
-}
+for( i=1; i<=ma; i++ )
+    fprintf( pFile, "%.16e\t", a[i] );
 fclose( pFile );
+
+free_vector( w, 1, ma );
+free_matrix( v, 1, ma, 1, ma );
+free_matrix( u, 1, ndat, 1, ma );
+free_vector( a, 1, ma );
+free_vector( sig, 1, ndat );
+free_vector( y, 1, ndat );
+free_vector( x, 1, ndat );
 }
 
 double CalcSolarGravity( double s, double Lfull, double Inc )
@@ -93,6 +125,15 @@ r = ( SOLAR_RADIUS + fHeight ) / cos( fPhi2 );
 result = - SOLAR_SURFACE_GRAVITY * ( SOLAR_RADIUS_SQUARED / ( r * r ) ) * cos( fTheta ) * cos( fPhi1 );
 
 return result;
+}
+
+void BasisFuncs( double x, double *bfunc, int ma )
+{
+int i=1;
+
+bfunc[i] = 1.0;
+for( i=2; i<=ma; i++ )
+	bfunc[i] = bfunc[i-1] * x;	
 }
 #endif // USE_TABULATED_GRAVITY
 
@@ -228,12 +269,37 @@ void WritePHYFile( int iTotalSteps, double *s, double *T, double *nH, double *ne
 {
 FILE *pFile;
 char szPHYFilename[256];
+double v, rho, Pe, PH, P, Cs, Fce, FcH;
 int i;
+
+// In the hydrostatic case the velocity equals zero
+v = 0.0;
 
 sprintf( szPHYFilename, "%s.phy", Params.szOutputFilename );
 pFile = fopen( szPHYFilename, "w" );
+
 for( i=0; i<iTotalSteps; i++ )
-    fprintf( pFile, "%.16e\t%.16e\t%.16e\t%.16e\t%.16e\t%.16e\n", s[i], ne[i], nH[i], T[i], BOLTZMANN_CONSTANT * ne[i] * T[i], BOLTZMANN_CONSTANT * nH[i] * T[i] );
+{
+    rho = AVERAGE_PARTICLE_MASS * nH[i];
+    Pe = BOLTZMANN_CONSTANT * ne[i] * T[i];
+    PH = BOLTZMANN_CONSTANT * nH[i] * T[i];
+    P = Pe + PH;
+    Cs = sqrt( ( GAMMA * P ) / rho );
+
+    if( i > 1 && i < iTotalSteps-2 )
+    {
+	Fce = - SPITZER_ELECTRON_CONDUCTIVITY * pow( T[i], 2.5 ) * ( ( T[i+1] - T[i-1] ) / ( s[i+1] - s[i-1] ) );
+	FcH = - SPITZER_ION_CONDUCTIVITY * pow( T[i], 2.5 ) * ( ( T[i+1] - T[i-1] ) / ( s[i+1] - s[i-1] ) );
+    }
+    else
+    {
+	Fce = 0.0;
+	FcH = 0.0;
+    }
+
+    fprintf( pFile, "%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\n", s[i], v, Cs, ne[i], nH[i], Pe, PH, T[i], T[i], Fce, FcH );
+}
+
 fclose( pFile );
 }
 

@@ -6,9 +6,13 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 06/12/2012
+// * Date last modified: 02/06/2017
 // *
 // ****
+
+#include "../config.h"
+
+#ifdef OPTICALLY_THICK_RADIATION
 
 #define AMU 1.660538782E-24                     // [g]
 #define AMU_FILENAME "Radiation_Model/atomic_data/masses/masses.amu"
@@ -79,3 +83,5 @@ class COpticallyThickIon {
 
 typedef COpticallyThickIon* POPTICALLYTHICKION;
 typedef COpticallyThickIon** PPOPTICALLYTHICKION;
+
+#endif // OPTICALLY_THICK_RADIATION

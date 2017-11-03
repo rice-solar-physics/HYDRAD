@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 08/06/2015
+// * Date last modified: 02/10/2017
 // *
 // ****
 
@@ -127,10 +127,10 @@ if( pINEFile )
     fclose( pNEQFile );
 
     // Allocate sufficient memory to hold the ion population fractions for each cell
-    pppfNEQ = (double***)malloc( sizeof(double) * iNumCells );
+    pppfNEQ = (double***)malloc( sizeof(double**) * iNumCells );
     for( i=0; i<iNumCells; i++ )
     {
-        pppfNEQ[i] = (double**)malloc( sizeof(double) * iNumNEQElements );
+        pppfNEQ[i] = (double**)malloc( sizeof(double*) * iNumNEQElements );
 	for( j=0; j<iNumNEQElements; j++ )
             pppfNEQ[i][j] = (double*)malloc( sizeof(double) * (piNEQ_Z[j] + 1) );
     }

@@ -6,16 +6,18 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 01/20/2015
+// * Date last modified: 02/14/2017
 // *
 // ****
 
+#include "OpticallyThickIon.h"
+
+#ifdef OPTICALLY_THICK_RADIATION
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <malloc.h>
 #include <math.h>
 
-#include "OpticallyThickIon.h"
 #include "../../../Resources/source/file.h"
 #include "../../../Resources/source/fitpoly.h"
 
@@ -175,7 +177,7 @@ pFile = fopen( szIonFracFilename, "r" );
 fscanf( pFile, "%i", &iIonFracDP );
 
 // Allocate sufficient memory to hold the ion data
-ppIonFrac = (double**)malloc( sizeof(double) * 2 );
+ppIonFrac = (double**)malloc( sizeof(double*) * 2 );
 for( i=0; i<2; i++ )
     ppIonFrac[i] = (double*)malloc( sizeof(double) * iIonFracDP );
 
@@ -201,12 +203,12 @@ pFile = fopen( szEmissFilename, "r" );
 fscanf( pFile, "%i", &iEmissDP );
 
 // Allocate sufficient memory to hold the ion data
-ppOriginalEmiss = (double**)malloc( sizeof(double) * 2 );
+ppOriginalEmiss = (double**)malloc( sizeof(double*) * 2 );
 for( i=0; i<2; i++ )
     ppOriginalEmiss[i] = (double*)malloc( sizeof(double) * iEmissDP );
 
 // Allocate sufficient memory to hold the ion data
-ppEmiss = (double**)malloc( sizeof(double) * 2 );
+ppEmiss = (double**)malloc( sizeof(double*) * 2 );
 for( i=0; i<2; i++ )
     ppEmiss[i] = (double*)malloc( sizeof(double) * iEmissDP );
 
@@ -239,7 +241,7 @@ pFile = fopen( szEscProbFilename, "r" );
 fscanf( pFile, "%i", &iEscProbDP );
 
 // Allocate sufficient memory to hold the ion data
-ppEscProb = (double**)malloc( sizeof(double) * 2 );
+ppEscProb = (double**)malloc( sizeof(double*) * 2 );
 for( i=0; i<2; i++ )
     ppEscProb[i] = (double*)malloc( sizeof(double) * iEscProbDP );
 
@@ -270,7 +272,7 @@ if( !pFile )
 fscanf( pFile, "%i", &ikappa_0DP );
 
 // Allocate sufficient memory to hold the ion data
-ppkappa_0 = (double**)malloc( sizeof(double) * 2 );
+ppkappa_0 = (double**)malloc( sizeof(double*) * 2 );
 for( i=0; i<2; i++ )
     ppkappa_0[i] = (double*)malloc( sizeof(double) * ikappa_0DP );
 
@@ -444,3 +446,5 @@ double COpticallyThickIon::GetVolumetricLossRate( double flog_10T, double fIonFr
 {
 return GetEmiss( flog_10T, fIonFrac ) * GetEscProb( fX ) * N_H * n_e_rho;
 }
+
+#endif // OPTICALLY_THICK_RADIATION

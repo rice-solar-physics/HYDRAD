@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 05/11/2012
+// * Date last modified: 11/01/2017
 // *
 // ****
 
@@ -50,8 +50,8 @@ struct AdaptiveMeshCellProperties {
     // Thermal flux
     double Fc[3][SPECIES];
 
-    // Compressive viscosity
-    double eta, dvbyds, Feta[3];
+    // Viscosity
+    double eta, Feta[3];
 
     // Numerical viscosity
     double Fnumerical[3];
@@ -65,8 +65,20 @@ struct AdaptiveMeshCellProperties {
 #endif // NON_EQUILIBRIUM_RADIATION
 
 #ifdef OPTICALLY_THICK_RADIATION
-    // The column number and mass densities
-    double HI_c, rho_c;
+    // The neutral hydrogen population fraction, and the column number and mass densities
+    double HI, HI_c, rho_c;
+	#ifdef BEAM_HEATING
+	    // The hydrogen and modified hydrogen column densities
+	    double nH_c, nH_star_c;
+	#endif // BEAM_HEATING
+	#ifdef NLTE_CHROMOSPHERE
+	    double rho_e, Mc, Trad[10], Hstate[6], Del_Hstate_dot_v[6];
+	#endif // NLTE_CHROMOSPHERE
+#else // // OPTICALLY_THICK_RADIATION
+	#ifdef BEAM_HEATING
+	    // The neutral hydrogen population fraction, and the hydrogen and modified hydrogen column densities
+	    double HI, nH_c, nH_star_c;
+	#endif // BEAM_HEATING
 #endif // OPTICALLY_THICK_RADIATION
 
 #ifdef USE_KINETIC_MODEL

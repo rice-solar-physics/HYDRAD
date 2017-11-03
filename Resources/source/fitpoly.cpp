@@ -7,21 +7,20 @@
 // *
 // * Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 20/12/2012
+// * Date last modified: 02/12/2017
 // *
 // ****
 
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <malloc.h>
 #include <math.h>
 
 #include "fitpoly.h"
 
 
 // ** Numerical Recipes standard error handler **
-void nrerror(char error_text[])
+void nrerror2(char error_text[])
 {
 fprintf(stderr,"\nNumerical Recipes run-time error...\n");
 fprintf(stderr,"%s\n",error_text);
@@ -45,7 +44,7 @@ void FitPolynomial(double xa[], double ya[], int n, double x, double *y, double 
 int i,m,ns=1;
 double den,dif,dift,ho,hp,w;
 double *c,*d;
-    
+
 dif=fabs(x-xa[1]);
 c=(double*)alloca((size_t) ((n+1)*sizeof(double)));
 d=(double*)alloca((size_t) ((n+1)*sizeof(double)));
@@ -63,7 +62,7 @@ for (m=1;m<n;m++) {
         ho=xa[i]-x;
     	hp=xa[i+m]-x;
     	w=c[i+1]-d[i];
-    	if ( (den=ho-hp) == 0.0) nrerror((char*)"Error in routine FitPolynomial");
+    	if ( (den=ho-hp) == 0.0) nrerror2((char*)"Error in routine FitPolynomial");
     	den=w/den;
     	d[i]=hp*den;
     	c[i]=ho*den;
@@ -78,7 +77,7 @@ void FitPolynomial4(double xa[], double ya[], double x, double *y, double *dy)
 int i,m,ns=1;
 double den,dif,dift,ho,hp,w;
 double *c,*d;
-    
+
 dif=fabs(x-xa[1]);
 c=(double*)alloca((size_t) (5*sizeof(double)));
 d=(double*)alloca((size_t) (5*sizeof(double)));
@@ -96,7 +95,7 @@ for (m=1;m<4;m++) {
         ho=xa[i]-x;
     	hp=xa[i+m]-x;
     	w=c[i+1]-d[i];
-    	if ( (den=ho-hp) == 0.0) nrerror((char*)"Error in routine FitPolynomial");
+    	if ( (den=ho-hp) == 0.0) nrerror2((char*)"Error in routine FitPolynomial");
     	den=w/den;
     	d[i]=hp*den;
     	c[i]=ho*den;

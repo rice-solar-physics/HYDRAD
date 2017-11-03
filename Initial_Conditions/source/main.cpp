@@ -5,7 +5,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 02/02/2016
+// * Date last modified: 07/18/2017
 // *
 // ****
 
@@ -25,14 +25,15 @@
 #endif // OPTICALLY_THICK_RADIATION
 #include "../../Resources/source/file.h"
 #include "../../Resources/source/constants.h"
+#include "../../Resources/Utils/regPoly/regpoly.h"
 
 
 int main(void)
 {
-double FindHeatingRange( double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, int igdp, double **ppGravity );
-double RefineSolution( double Log_10H0, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, int igdp, double **ppGravity );
-int CalculateSolution( double finalH0, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, int igdp, double **ppGravity );
-int AddChromospheres( int iTRplusCoronaplusTRSteps, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, int igdp, double **ppGravity );
+double FindHeatingRange( double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, double *pfGravityCoefficients );
+double RefineSolution( double Log_10H0, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, double *pfGravityCoefficients );
+int CalculateSolution( double finalH0, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, double *pfGravityCoefficients );
+int AddChromospheres( int iTRplusCoronaplusTRSteps, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, double *pfGravityCoefficients );
 
 PARAMETERS Params;
 PRADIATION pRadiation;
@@ -42,8 +43,8 @@ FILE *pFile;
 #else // USE_TABULATED_GRAVITY
 char szGravityFilename[256];
 #endif // USE_TABULATED_GRAVITY
-double **ppGravity;
-int i, igdp;
+double *pfGravityCoefficients;
+int i;
 
 double *s, *P, *T, *nH, *ne;
 double Log_10H0, finalH0;
@@ -66,14 +67,9 @@ GenerateSemiCircularLoop( Params );
 sprintf( szGravityFilename, "%s.gravity", Params.szOutputFilename );
 pFile = fopen( szGravityFilename, "r" );
 #endif // USE_TABULATED_GRAVITY
-fscanf( pFile, "%i", &igdp );
-ppGravity = (double**)malloc( igdp * sizeof( double ) );
-for( i=0; i<igdp; i++ )
-{
-    ppGravity[i] = (double*)malloc( 2 * sizeof( double ) );
-    ReadDouble( pFile, &(ppGravity[i][0]) );
-    ReadDouble( pFile, &(ppGravity[i][1]) );
-}
+pfGravityCoefficients = (double*)malloc( sizeof(double) * (POLY_ORDER+1) );
+for( i=0; i<POLY_ORDER+1; i++ )
+    ReadDouble( pFile, &(pfGravityCoefficients[i]) );
 fclose( pFile );
 
 // Allocate memory to store the hydrostatic profiles
@@ -83,10 +79,14 @@ T = (double*)malloc( sizeof(double) * MAX_CELLS );
 nH = (double*)malloc( sizeof(double) * MAX_CELLS );
 ne = (double*)malloc( sizeof(double) * MAX_CELLS );
 
-Log_10H0 = FindHeatingRange( s, P, T, nH, ne, Params, pRadiation, igdp, ppGravity );
-finalH0 = RefineSolution( Log_10H0, s, P, T, nH, ne, Params, pRadiation, igdp, ppGravity );
-iTRplusCoronaplusTRSteps = CalculateSolution( finalH0, s, P, T, nH, ne, Params, pRadiation, igdp, ppGravity );
-iTotalSteps = AddChromospheres( iTRplusCoronaplusTRSteps, s, P, T, nH, ne, Params, igdp, ppGravity );
+#ifdef ISOTHERMAL
+finalH0 = 0.0;
+#else // ISOTHERMAL
+Log_10H0 = FindHeatingRange( s, P, T, nH, ne, Params, pRadiation, pfGravityCoefficients );
+finalH0 = RefineSolution( Log_10H0, s, P, T, nH, ne, Params, pRadiation, pfGravityCoefficients );
+#endif // ISOTHERMAL
+iTRplusCoronaplusTRSteps = CalculateSolution( finalH0, s, P, T, nH, ne, Params, pRadiation, pfGravityCoefficients );
+iTotalSteps = AddChromospheres( iTRplusCoronaplusTRSteps, s, P, T, nH, ne, Params, pfGravityCoefficients );
 
 printf( "Writing initial conditions file...\n\n" );
 
@@ -102,9 +102,7 @@ free( nH );
 free( ne );
 
 // Free the memory allocated to the gravitational geometry
-for( i=0; i<igdp; i++ )
-    free( ppGravity[i]);
-free( ppGravity );
+free( pfGravityCoefficients );
 
 // Close the radiative losses
 delete pRadiation;
@@ -114,13 +112,15 @@ printf( "Done!\n\n" );
 return 0;
 }
 
-double FindHeatingRange( double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, int igdp, double **ppGravity )
+double FindHeatingRange( double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, double *pfGravityCoefficients )
 {
 double ds, max_ds, sL, sR;
 double Fc, P2, Fc2, T2, nH2;
 double Log_10H0, H0, H, R;
 double dPbyds, dFcbyds, dTbyds;
-double FracDiff;
+// **** NEW ****
+double FracDiff_T, FracDiff_nH;
+// **** NEW ****
 int iStep;
 
 max_ds = Params.Lfull / MIN_CELLS;
@@ -133,11 +133,7 @@ for( Log_10H0=Params.Log_10H0[0]; Log_10H0<=Params.Log_10H0[1]; Log_10H0+=Params
 {
     iStep = 0;
 
-#ifdef ISOTHERMAL
-    H0 = 0.0;
-#else // ISOTHERMAL
     H0 = pow( 10.0, Log_10H0 );
-#endif // ISOTHERMAL
 
     // Set the initial conditions
     Fc = 0.0;
@@ -161,20 +157,15 @@ for( Log_10H0=Params.Log_10H0[0]; Log_10H0<=Params.Log_10H0[1]; Log_10H0+=Params
 // *****************************************************************************
 
             // Get the pressure gradient
-            dPbyds = CalcdPbyds( s[iStep], nH[iStep], igdp, ppGravity );
+            dPbyds = CalcdPbyds( s[iStep], nH[iStep], Params.Lfull, pfGravityCoefficients );
 
             // Calculate the heat input and the radiation
-#ifdef ISOTHERMAL
-            H = 0.0;
-            R = 0.0;
-#else // ISOTHERMAL
             H = Eheat( s[iStep], H0, Params.sH0, Params.sH );
 #ifdef USE_POWER_LAW_RADIATIVE_LOSSES
             R = - pRadiation->GetPowerLawRad( log10( T[iStep] ), log10( nH[iStep] ) );
 #else // USE_POWER_LAW_RADIATIVE_LOSSES
             R = - ( pRadiation->GetRadiation( log10( T[iStep] ), log10( nH[iStep] ) ) + pRadiation->GetFreeFreeRad( log10( T[iStep] ), log10( nH[iStep] ) ) );
 #endif // USE_POWER_LAW_RADIATIVE_LOSSES
-#endif // ISOTHERMAL
 
             // Get the heat flux gradient
             dFcbyds = CalcdFcbyds( H, R );
@@ -192,20 +183,15 @@ for( Log_10H0=Params.Log_10H0[0]; Log_10H0<=Params.Log_10H0[1]; Log_10H0+=Params
 // *****************************************************************************
 
             // Get the pressure gradient
-            dPbyds = CalcdPbyds( (s[iStep]+(ds/2.0)), nH2, igdp, ppGravity );
+            dPbyds = CalcdPbyds( (s[iStep]+(ds/2.0)), nH2, Params.Lfull, pfGravityCoefficients );
 
             // Calculate the heat input and the radiation
-#ifdef ISOTHERMAL
-            H = 0.0;
-            R = 0.0;
-#else // ISOTHERMAL
             H = Eheat( (s[iStep]+(ds/2.0)), H0, Params.sH0, Params.sH );
 #ifdef USE_POWER_LAW_RADIATIVE_LOSSES
             R = - pRadiation->GetPowerLawRad( log10( T2 ), log10( nH2 ) );
 #else // USE_POWER_LAW_RADIATIVE_LOSSES
             R = - ( pRadiation->GetRadiation( log10( T2 ), log10( nH2 ) ) + pRadiation->GetFreeFreeRad( log10( T2 ), log10( nH2 ) ) );
 #endif // USE_POWER_LAW_RADIATIVE_LOSSES
-#endif // ISOTHERMAL
 
             // Get the heat flux gradient
             dFcbyds = CalcdFcbyds( H, R );
@@ -216,10 +202,14 @@ for( Log_10H0=Params.Log_10H0[0]; Log_10H0<=Params.Log_10H0[1]; Log_10H0+=Params
 // *****************************************************************************
 // *    STEP 3                                                                 *
 // *****************************************************************************
-
+// **** NEW ****
             T[iStep+1] = T[iStep] + ( dTbyds * ds );
-            FracDiff = fabs( 1.0 - ( T[iStep+1] / T[iStep] ) );
-            if( FracDiff > EPSILON )
+            P[iStep+1] = P[iStep] + ( dPbyds * ds );
+            nH[iStep+1] = P[iStep+1] / ( 2.0 * BOLTZMANN_CONSTANT * T[iStep+1] );
+
+            FracDiff_T = fabs( 1.0 - ( T[iStep+1] / T[iStep] ) );
+            FracDiff_nH = fabs( 1.0 - ( nH[iStep+1] / nH[iStep] ) );
+            if( FracDiff_T > EPSILON || FracDiff_nH > EPSILON )
             {
 		ds /= MAX_VARIATION;
 		if( ds < MIN_DS )
@@ -227,8 +217,9 @@ for( Log_10H0=Params.Log_10H0[0]; Log_10H0<=Params.Log_10H0[1]; Log_10H0+=Params
 			ds = MIN_DS;
 		}
             }
-        } while ( FracDiff > EPSILON && ds > MIN_DS );
 
+        } while ( ( FracDiff_T > EPSILON || FracDiff_nH > EPSILON ) && ds > MIN_DS );
+// **** NEW ****
         s[iStep+1] = s[iStep] + ds;
         if( s[iStep+1] >= sR ) break;
 
@@ -256,13 +247,15 @@ for( Log_10H0=Params.Log_10H0[0]; Log_10H0<=Params.Log_10H0[1]; Log_10H0+=Params
 return Log_10H0;
 }
 
-double RefineSolution( double Log_10H0, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, int igdp, double **ppGravity )
+double RefineSolution( double Log_10H0, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, double *pfGravityCoefficients )
 {
 double ds, max_ds, sL, sR;
 double Fc, P2, Fc2, T2, nH2;
 double H0, H, R;
 double dPbyds, dFcbyds, dTbyds;
-double FracDiff;
+// **** NEW ****
+double FracDiff_T, FracDiff_nH;
+// **** NEW ****
 int iStep;
 
 double H0lower, H0upper, dH0, finalH0;
@@ -308,20 +301,15 @@ for( H0=H0lower; H0<=H0upper; H0+=dH0 )
 // *****************************************************************************
 
             // Get the pressure gradient
-            dPbyds = CalcdPbyds( s[iStep], nH[iStep], igdp, ppGravity );
+            dPbyds = CalcdPbyds( s[iStep], nH[iStep], Params.Lfull, pfGravityCoefficients);
 
             // Calculate the heat input and the radiation
-#ifdef ISOTHERMAL
-            H = 0.0;
-            R = 0.0;
-#else // ISOTHERMAL
             H = Eheat( s[iStep], H0, Params.sH0, Params.sH );
 #ifdef USE_POWER_LAW_RADIATIVE_LOSSES
             R = - pRadiation->GetPowerLawRad( log10( T[iStep] ), log10( nH[iStep] ) );
 #else // USE_POWER_LAW_RADIATIVE_LOSSES
             R = - ( pRadiation->GetRadiation( log10( T[iStep] ), log10( nH[iStep] ) ) + pRadiation->GetFreeFreeRad( log10( T[iStep] ), log10( nH[iStep] ) ) );
 #endif // USE_POWER_LAW_RADIATIVE_LOSSES
-#endif // ISOTHERMAL
 
             // Get the heat flux gradient
             dFcbyds = CalcdFcbyds( H, R );
@@ -339,20 +327,15 @@ for( H0=H0lower; H0<=H0upper; H0+=dH0 )
 // *****************************************************************************
 
             // Get the pressure gradient
-            dPbyds = CalcdPbyds( (s[iStep]+(ds/2.0)), nH2, igdp, ppGravity );
+            dPbyds = CalcdPbyds( (s[iStep]+(ds/2.0)), nH2, Params.Lfull, pfGravityCoefficients );
 
             // Calculate the heat input and the radiation
-#ifdef ISOTHERMAL
-            H = 0.0;
-            R = 0.0;
-#else // ISOTHERMAL
             H = Eheat( (s[iStep]+(ds/2.0)), H0, Params.sH0, Params.sH );
 #ifdef USE_POWER_LAW_RADIATIVE_LOSSES
             R = - pRadiation->GetPowerLawRad( log10( T2 ), log10( nH2 ) );
 #else // USE_POWER_LAW_RADIATIVE_LOSSES
             R = - ( pRadiation->GetRadiation( log10( T2 ), log10( nH2 ) ) + pRadiation->GetFreeFreeRad( log10( T2 ), log10( nH2 ) ) );
 #endif // USE_POWER_LAW_RADIATIVE_LOSSES
-#endif // ISOTHERMAL
 
             // Get the heat flux gradient
             dFcbyds = CalcdFcbyds( H, R );
@@ -363,18 +346,24 @@ for( H0=H0lower; H0<=H0upper; H0+=dH0 )
 // *****************************************************************************
 // *    STEP 3                                                                 *
 // *****************************************************************************
-
+// **** NEW ****
             T[iStep+1] = T[iStep] + ( dTbyds * ds );
-            FracDiff = fabs( 1.0 - ( T[iStep+1] / T[iStep] ) );
-            if( FracDiff > EPSILON )
+            P[iStep+1] = P[iStep] + ( dPbyds * ds );
+            nH[iStep+1] = P[iStep+1] / ( 2.0 * BOLTZMANN_CONSTANT * T[iStep+1] );
+
+            FracDiff_T = fabs( 1.0 - ( T[iStep+1] / T[iStep] ) );
+            FracDiff_nH = fabs( 1.0 - ( nH[iStep+1] / nH[iStep] ) );
+            if( FracDiff_T > EPSILON || FracDiff_nH > EPSILON )
             {
 		ds /= MAX_VARIATION;
 		if( ds < MIN_DS )
-                    ds = MIN_DS;
+		{
+			ds = MIN_DS;
+		}
             }
 
-        } while ( FracDiff > EPSILON && ds > MIN_DS );
-
+        } while ( ( FracDiff_T > EPSILON || FracDiff_nH > EPSILON ) && ds > MIN_DS );
+// **** NEW ****
         s[iStep+1] = s[iStep] + ds;
         if( s[iStep+1] >= sR ) break;
 
@@ -408,13 +397,15 @@ for( H0=H0lower; H0<=H0upper; H0+=dH0 )
 return finalH0;
 }
 
-int CalculateSolution( double finalH0, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, int igdp, double **ppGravity )
+int CalculateSolution( double finalH0, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, double *pfGravityCoefficients )
 {
 double ds, max_ds, sL, sR;
 double Fc, P2, Fc2, T2, nH2;
 double H0, H, R;
 double dPbyds, dFcbyds, dTbyds;
-double FracDiff;
+// **** NEW ****
+double FracDiff_T, FracDiff_nH;
+// **** NEW ****
 int iStep;
 
 max_ds = Params.Lfull / MIN_CELLS;
@@ -449,11 +440,10 @@ while( s[iStep] <= sR ) {
 // *****************************************************************************
 
         // Get the pressure gradient
-        dPbyds = CalcdPbyds( s[iStep], nH[iStep], igdp, ppGravity );
+        dPbyds = CalcdPbyds( s[iStep], nH[iStep], Params.Lfull, pfGravityCoefficients );
 
         // Calculate the heat input and the radiation
 #ifdef ISOTHERMAL
-        H = 0.0;
         R = 0.0;
 #else // ISOTHERMAL
         H = Eheat( s[iStep], H0, Params.sH0, Params.sH );
@@ -480,11 +470,10 @@ while( s[iStep] <= sR ) {
 // *****************************************************************************
 
         // Get the pressure gradient
-        dPbyds = CalcdPbyds( (s[iStep]+(ds/2.0)), nH2, igdp, ppGravity );
+        dPbyds = CalcdPbyds( (s[iStep]+(ds/2.0)), nH2, Params.Lfull, pfGravityCoefficients );
 
         // Calculate the heat input and the radiation
 #ifdef ISOTHERMAL
-        H = 0.0;
         R = 0.0;
 #else // ISOTHERMAL
         H = Eheat( (s[iStep]+(ds/2.0)), H0, Params.sH0, Params.sH );
@@ -504,18 +493,24 @@ while( s[iStep] <= sR ) {
 // *****************************************************************************
 // *    STEP 3                                                                 *
 // *****************************************************************************
+// **** NEW ****
+            T[iStep+1] = T[iStep] + ( dTbyds * ds );
+            P[iStep+1] = P[iStep] + ( dPbyds * ds );
+            nH[iStep+1] = P[iStep+1] / ( 2.0 * BOLTZMANN_CONSTANT * T[iStep+1] );
 
-        T[iStep+1] = T[iStep] + ( dTbyds * ds );
-        FracDiff = fabs( 1.0 - ( T[iStep+1] / T[iStep] ) );
-        if( FracDiff > EPSILON )
-        {
-            ds /= MAX_VARIATION;
-            if( ds < MIN_DS )
-		ds = MIN_DS;
-        }
+            FracDiff_T = fabs( 1.0 - ( T[iStep+1] / T[iStep] ) );
+            FracDiff_nH = fabs( 1.0 - ( nH[iStep+1] / nH[iStep] ) );
+            if( FracDiff_T > EPSILON || FracDiff_nH > EPSILON )
+            {
+		ds /= MAX_VARIATION;
+		if( ds < MIN_DS )
+		{
+			ds = MIN_DS;
+		}
+            }
 
-    } while ( FracDiff > EPSILON && ds > MIN_DS );
-
+        } while ( ( FracDiff_T > EPSILON || FracDiff_nH > EPSILON ) && ds > MIN_DS );
+// **** NEW ****
     s[iStep+1] = s[iStep] + ds;
 
     Fc += dFcbyds * ds;
@@ -538,7 +533,7 @@ return iStep;
 }
 
 #ifdef OPTICALLY_THICK_RADIATION
-int AddChromospheres( int iTRplusCoronaplusTRSteps, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, int igdp, double **ppGravity )
+int AddChromospheres( int iTRplusCoronaplusTRSteps, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, double *pfGravityCoefficients )
 {
 double GetVALTemperature( double s, int iVALTemperatureDP, double **ppVALTemperature );
 
@@ -604,7 +599,7 @@ for( ;; ) {
 // *****************************************************************************
 
         // Get the pressure gradient
-        dPbyds = CalcdPbyds( s[iStep], nH[iStep], igdp, ppGravity );
+        dPbyds = CalcdPbyds( s[iStep], nH[iStep], Params.Lfull, pfGravityCoefficients );
 
         P2 = P[iStep] + ( dPbyds * (ds/2.0) );
         T2 = GetVALTemperature( s[iStep]+(ds/2.0), iVALTemperatureDP, ppVALTemperature );
@@ -617,7 +612,7 @@ for( ;; ) {
 // *****************************************************************************
 
         // Get the pressure gradient
-        dPbyds = CalcdPbyds( s[iStep]+(ds/2.0), nH2, igdp, ppGravity );
+        dPbyds = CalcdPbyds( s[iStep]+(ds/2.0), nH2, Params.Lfull, pfGravityCoefficients );
 
 // *****************************************************************************
 // *    STEP 3                                                                 *
@@ -679,7 +674,7 @@ for( ;; ) {
 // *****************************************************************************
 
         // Get the pressure gradient
-        dPbyds = CalcdPbyds( s[iStep], nH[iStep], igdp, ppGravity );
+        dPbyds = CalcdPbyds( s[iStep], nH[iStep], Params.Lfull, pfGravityCoefficients );
 
         P2 = P[iStep] + ( dPbyds * (ds/2.0) );
         T2 = GetVALTemperature( Params.Lfull - ( s[iStep]+(ds/2.0) ), iVALTemperatureDP, ppVALTemperature );
@@ -692,7 +687,7 @@ for( ;; ) {
 // *****************************************************************************
 
         // Get the pressure gradient
-        dPbyds = CalcdPbyds( s[iStep]+(ds/2.0), nH2, igdp, ppGravity );
+        dPbyds = CalcdPbyds( s[iStep]+(ds/2.0), nH2, Params.Lfull, pfGravityCoefficients );
 
 // *****************************************************************************
 // *    STEP 3                                                                 *
@@ -767,7 +762,7 @@ FitPolynomial4( x, y, s, &fVALTemperature, &error );
 return fVALTemperature;
 }
 #else // OPTICALLY_THICK_RADIATION
-int AddChromospheres( int iTRplusCoronaplusTRSteps, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, int igdp, double **ppGravity )
+int AddChromospheres( int iTRplusCoronaplusTRSteps, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, double *pfGravityCoefficients )
 {
 double ds, max_ds;
 double P2, T2, nH2;
@@ -807,7 +802,7 @@ for( ;; ) {
 // *****************************************************************************
 
         // Get the pressure gradient
-        dPbyds = CalcdPbyds( s[iStep], nH[iStep], igdp, ppGravity );
+        dPbyds = CalcdPbyds( s[iStep], nH[iStep], Params.Lfull, pfGravityCoefficients );
 
         P2 = P[iStep] + ( dPbyds * (ds/2.0) );
         T2 = T[iStep];
@@ -818,7 +813,7 @@ for( ;; ) {
 // *****************************************************************************
 
         // Get the pressure gradient
-        dPbyds = CalcdPbyds( (s[iStep]+(ds/2.0)), nH2, igdp, ppGravity );
+        dPbyds = CalcdPbyds( (s[iStep]+(ds/2.0)), nH2, Params.Lfull, pfGravityCoefficients );
 
 // *****************************************************************************
 // *    STEP 3                                                                 *
@@ -878,7 +873,7 @@ for( ;; ) {
 // *****************************************************************************
 
         // Get the pressure gradient
-        dPbyds = CalcdPbyds( s[iStep], nH[iStep], igdp, ppGravity );
+        dPbyds = CalcdPbyds( s[iStep], nH[iStep], Params.Lfull, pfGravityCoefficients );
 
         P2 = P[iStep] + ( dPbyds * (ds/2.0) );
         T2 = T[iStep];
@@ -889,7 +884,7 @@ for( ;; ) {
 // *****************************************************************************
 
         // Get the pressure gradient
-        dPbyds = CalcdPbyds( (s[iStep]+(ds/2.0)), nH2, igdp, ppGravity );
+        dPbyds = CalcdPbyds( (s[iStep]+(ds/2.0)), nH2, Params.Lfull, pfGravityCoefficients );
 
 // *****************************************************************************
 // *    STEP 3                                                                 *

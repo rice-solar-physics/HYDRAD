@@ -4,14 +4,13 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/20/2015
+// * Date last modified: 02/14/2017
 // *
 // ****
 
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <malloc.h>
 #include <math.h>
 
 #include "element.h"
@@ -112,8 +111,7 @@ fHAb = pow( 10.0, fTemp );
 
 for(;;)
 {
-    // If the atomic number read is the atomic number of the element then
-    // calculate the abundance relative to hydrogen
+    // If the atomic number read is the atomic number of the element then calculate the abundance relative to hydrogen
     if( buffer == Z )
     {
         fAbund = pow( 10.0, fTemp ) / fHAb;
@@ -130,8 +128,7 @@ for(;;)
     ReadDouble( pFile, &fTemp );
 }
 
-// If the atomic number of the element was not found in the abundance file then
-// set the abundance to zero
+// If the atomic number of the element was not found in the abundance file then set the abundance to zero
 if( buffer == -1 )
     fAbund = 0.0;
 
@@ -172,13 +169,12 @@ for( i=0; i<NumIons; i++ )
 // Get the emissivity values for each ion
 
 // Allocate an array to hold the pointers to the emissivity for each ion
-ppEmiss = (double**)malloc( sizeof(double) * NumIons );
+ppEmiss = (double**)malloc( sizeof(double*) * NumIons );
 
 // Calculate the 2D array sizes
 NumTempxNumDen = NumTemp * NumDen;
 
-// Allocate arrays to hold the NumTemp * NumDen emissivity values for each ion and get
-// the values from the file
+// Allocate arrays to hold the NumTemp * NumDen emissivity values for each ion and get the values from the file
 for( i=0; i<NumIons; i++)
 {
     ppEmiss[i] = (double*)malloc( sizeof(double) * NumTempxNumDen );
@@ -195,9 +191,7 @@ for( i=0; i<NumIons; i++)
     {
         ReadDouble( pFile, &fTemp );
     
-	// The value stored is the product of the Chianti calculated emissivity
-	// obtained using emiss_calc, the constant 0.83 and the abundance relative
-	// to hydrogen of the element, divided by the electron number density.
+	// The value stored is the product of the Chianti calculated emissivity obtained using emiss_calc, the constant 0.83 and the abundance relative to hydrogen of the element, divided by the electron number density
 	ppEmiss[i][j] = ( 0.83 * fAbund * fTemp ) / pow( 10.0, pDen[indexDen] );
 
 	indexTemp++;
@@ -220,8 +214,8 @@ int i, j, NumTempxNumDen;
 char buffer[8];
 
 // Allocate arrays to hold the pointers to the rates for each ion
-ppIonRate = (double**)malloc( sizeof(double) * Z );
-ppRecRate = (double**)malloc( sizeof(double) * Z );
+ppIonRate = (double**)malloc( sizeof(double*) * Z );
+ppRecRate = (double**)malloc( sizeof(double*) * Z );
 
 #ifdef DENSITY_DEPENDENT_RATES
     // Calculate the 2D array sizes
@@ -280,8 +274,7 @@ ppIonFrac = (double**)malloc( sizeof(double*) * ( Z + 1 ) );
     NumTempxNumDen = NumTemp; // NumDen = 1
 #endif // DENSITY_DEPENDENT_RATES
 
-// Allocate an array for each ion to contain the fractional population of that ion as
-// a function of temperature
+// Allocate an array for each ion to contain the fractional population of that ion as a function of temperature
 for( i=0; i<=Z; i++ )
     ppIonFrac[i] = (double*)malloc( sizeof(double) * NumTempxNumDen );
 
@@ -306,7 +299,7 @@ void CElement::CalculatePhi( void )
 int i, j, NumTempxNumDen, indexTemp, indexDen;
 
 // Allocate an array to hold the pointers to the values of phi( n, T ) for the element
-ppPhi = (double**)malloc( sizeof(double) * NumIons );
+ppPhi = (double**)malloc( sizeof(double*) * NumIons );
 
 // Calculate the 2D array sizes
 NumTempxNumDen = NumTemp * NumDen;
@@ -413,8 +406,7 @@ else if( flog_10T > pTemp[NumTemp-1] )
 for( j=0; j<NumTemp; j++ )
     if( pTemp[j] >= flog_10T ) break;
 
-// Deal with the special cases where there aren't two values either side of the
-// desired one
+// Deal with the special cases where there aren't two values either side of the desired one
 if( j < 2 ) j = 2;
 else if( j == NumTemp-1 ) j = NumTemp-2;
 
@@ -453,8 +445,7 @@ x2[4] = pDen[k+1];
 // Allocate an array of pointers to pointers for the emissivity values
 y = (double**)alloca( sizeof(double) * 5 );
 
-// Allocate an array to hold the emissivity values corresponding to the set of
-// temperatures at the current density
+// Allocate an array to hold the emissivity values corresponding to the set of temperatures at the current density
 for( l=1; l<=4; l++ )
     y[l] = (double*)alloca( sizeof(double) * 5 );
 
@@ -463,8 +454,7 @@ for( l=1; l<=4; l++ )
     // Point to the start of the emissivity values for the required ion
     pfTemp = ppEmiss[i];
 
-    // Skip to the emissivity set corresponding to the l'th density value and get the
-    // emissivities corresponding to the four temperature values
+    // Skip to the emissivity set corresponding to the l'th density value and get the emissivities corresponding to the four temperature values
     pfTemp += ( k + l - 3 ) * NumTemp;
 
     y[1][l] = *( pfTemp + ( j - 2 ) );
@@ -505,8 +495,7 @@ if( !iIon || iIon > Z )
 // Select the required ion
 i = iIon - 1;
 
-// Select the four temperature values, ionisation and recombination rates surrounding 
-// the desired one
+// Select the four temperature values, ionisation and recombination rates surrounding the desired one
 
 // If the temperature is out of range then set it to the appropriate limit
 if( flog_10T < pTemp[0] )
@@ -517,8 +506,7 @@ else if( flog_10T > pTemp[NumTemp-1] )
 for( j=0; j<NumTemp; j++ )
     if( pTemp[j] >= flog_10T ) break;
 
-// Deal with the special cases where there aren't two values either side of the
-// desired one
+// Deal with the special cases where there aren't two values either side of the desired one
 if( j < 2 ) j = 2;
 else if( j == NumTemp-1 ) j = NumTemp-2;
 
@@ -562,8 +550,7 @@ if( !iIon || iIon > Z )
 // Select the required ion
 i = iIon - 1;
 
-// Select the four temperature values, ionisation and recombination rates surrounding 
-// the desired one
+// Select the four temperature values, ionisation and recombination rates surrounding the desired one
 
 // If the temperature is out of range then set it to the appropriate limit
 if( flog_10T < pTemp[0] )
@@ -574,8 +561,7 @@ else if( flog_10T > pTemp[NumTemp-1] )
 for( j=0; j<NumTemp; j++ )
     if( pTemp[j] >= flog_10T ) break;
 
-// Deal with the special cases where there aren't two values either side of the
-// desired one
+// Deal with the special cases where there aren't two values either side of the desired one
 if( j < 2 ) j = 2;
 else if( j == NumTemp-1 ) j = NumTemp-2;
 
@@ -595,8 +581,7 @@ else if ( flog_10n > pDen[NumDen-1] )
 for( k=0; k<NumDen; k++ )
     if( pDen[k] >= flog_10n ) break;
 
-// Deal with the special cases where there aren't two values either side of the
-// desired one
+// Deal with the special cases where there aren't two values either side of the desired one
 if( k < 2 ) k = 2;
 else if( k == NumDen-1 ) k = NumDen-2;
 
@@ -614,8 +599,7 @@ x2[4] = pDen[k+1];
 // Allocate an array of pointers to pointers for the ionisation and recombination rates
 y = (double**)alloca( sizeof(double) * 5 );
 
-// Allocate an array to hold the ionisation and recombination values corresponding to the set of
-// temperatures at the current density
+// Allocate an array to hold the ionisation and recombination values corresponding to the set of temperatures at the current density
 for( l=1; l<=4; l++ )
 	y[l] = (double*)alloca( sizeof(double) * 5 );
 
@@ -625,8 +609,7 @@ for( l=1; l<=4; l++ )
     // Point to the start of the ionisation rates for the required ion
     pfTemp = ppIonRate[i];
 
-    // Skip to the ionisation rate set corresponding to the l'th density value and get the
-    // ionisation rates corresponding to the four temperature values
+    // Skip to the ionisation rate set corresponding to the l'th density value and get the ionisation rates corresponding to the four temperature values
     pfTemp += ( k + l - 3 ) * NumTemp;
 
     y[1][l] = *( pfTemp + ( j - 2 ) );
@@ -643,8 +626,7 @@ for( l=1; l<=4; l++ )
     // Point to the start of the recombination rates for the required ion
     pfTemp = ppRecRate[i];
 
-    // Skip to the recombination rate set corresponding to the l'th density value and get the
-    // recombination rates corresponding to the four temperature values
+    // Skip to the recombination rate set corresponding to the l'th density value and get the recombination rates corresponding to the four temperature values
     pfTemp += ( k + l - 3 ) * NumTemp;
 
     y[1][l] = *( pfTemp + ( j - 2 ) );
@@ -671,8 +653,7 @@ if( !iIon || iIon > Z+1 )
 // Select the required ion
 i = iIon - 1;
 
-// Select the four temperature values and fractional populations surrounding
-// the desired one
+// Select the four temperature values and fractional populations surrounding the desired one
 
 // If the temperature is out of range then set it to the appropriate limit
 if( flog_10T < pTemp[0] )
@@ -683,8 +664,7 @@ else if( flog_10T > pTemp[NumTemp-1] )
 for( j=0; j<NumTemp; j++ )
     if( pTemp[j] >= flog_10T ) break;
 
-// Deal with the special cases where there aren't two values either side of the
-// desired one
+// Deal with the special cases where there aren't two values either side of the desired one
 if( j < 2 ) j = 2;
 else if( j == NumTemp-1 ) j = NumTemp-2;
 
@@ -703,7 +683,7 @@ FitPolynomial( x, y, 4, flog_10T, &IonFrac, &error );
 
 // Ensure the minimum ion fraction remains above the cut-off and is physically realistic
 if( IonFrac < CUTOFF_ION_FRACTION )
-    IonFrac = 0.0;
+    IonFrac = CUTOFF_ION_FRACTION;
 
 return IonFrac;
 }
@@ -719,8 +699,7 @@ if( !iIon || iIon > Z+1 )
 // Select the required ion
 i = iIon - 1;
 
-// Select the four temperature values and fractional populations surrounding
-// the desired one
+// Select the four temperature values and fractional populations surrounding the desired one
 
 // If the temperature is out of range then set it to the appropriate limit
 if( flog_10T < pTemp[0] )
@@ -731,8 +710,7 @@ else if( flog_10T > pTemp[NumTemp-1] )
 for( j=0; j<NumTemp; j++ )
     if( pTemp[j] >= flog_10T ) break;
 
-// Deal with the special cases where there aren't two values either side of the
-// desired one
+// Deal with the special cases where there aren't two values either side of the desired one
 if( j < 2 ) j = 2;
 else if( j == NumTemp-1 ) j = NumTemp-2;
 
@@ -752,8 +730,7 @@ else if ( flog_10n > pDen[NumDen-1] )
 for( k=0; k<NumDen; k++ )
     if( pDen[k] >= flog_10n ) break;
 
-// Deal with the special cases where there aren't two values either side of the
-// desired one
+// Deal with the special cases where there aren't two values either side of the desired one
 if( k < 2 ) k = 2;
 else if( k == NumDen-1 ) k = NumDen-2;
 
@@ -771,8 +748,7 @@ x2[4] = pDen[k+1];
 // Allocate an array of pointers to pointers for the ion population fractions
 y = (double**)alloca( sizeof(double) * 5 );
 
-// Allocate an array to hold the ion population fractions corresponding to the set of
-// temperatures at the current density
+// Allocate an array to hold the ion population fractions corresponding to the set of temperatures at the current density
 for( l=1; l<=4; l++ )
 	y[l] = (double*)alloca( sizeof(double) * 5 );
 
@@ -781,8 +757,7 @@ for( l=1; l<=4; l++ )
     // Point to the start of the ion population fractions for the required ion
     pfTemp = ppIonFrac[i];
 
-    // Skip to the ion population fraction set corresponding to the l'th density value and get the
-    // ion population fractions corresponding to the four temperature values
+    // Skip to the ion population fraction set corresponding to the l'th density value and get the ion population fractions corresponding to the four temperature values
     pfTemp += ( k + l - 3 ) * NumTemp;
 
     y[1][l] = *( pfTemp + ( j - 2 ) );
@@ -795,7 +770,7 @@ FitPolynomial2D( x1, x2, y, 4, 4, flog_10T, flog_10n, &IonFrac, &error );
 
 // Ensure the minimum ion fraction remains above the cut-off and is physically realistic
 if( IonFrac < CUTOFF_ION_FRACTION )
-    IonFrac = 0.0;
+    IonFrac = CUTOFF_ION_FRACTION;
 
 return IonFrac;
 }
@@ -824,8 +799,7 @@ else if( flog_10T > pTemp[NumTemp-1] )
 for( j=0; j<NumTemp; j++ )
     if( pTemp[j] >= flog_10T ) break;
 
-// Deal with the special cases where there aren't two values either side of the
-// desired one
+// Deal with the special cases where there aren't two values either side of the desired one
 if( j < 2 ) j = 2;
 else if( j == NumTemp-1 ) j = NumTemp-2;
 
@@ -845,8 +819,7 @@ else if ( flog_10n > pDen[NumDen-1] )
 for( k=0; k<NumDen; k++ )
     if( pDen[k] >= flog_10n ) break;
 
-// Deal with the special cases where there aren't two values either side of the
-// desired one
+// Deal with the special cases where there aren't two values either side of the desired one
 if( k < 2 ) k = 2;
 else if( k == NumDen-1 ) k = NumDen-2;
 
@@ -864,8 +837,7 @@ x2[4] = pDen[k+1];
 // Allocate an array of pointers to pointers for the values
 y = (double**)alloca( sizeof(double) * 5 );
 
-// Allocate an array to hold the values corresponding to the specified range of
-// densities and temperatures
+// Allocate an array to hold the values corresponding to the specified range of densities and temperatures
 for( l=1; l<=4; l++ )
     y[l] = (double*)alloca( sizeof(double) * 5 );
 
@@ -910,8 +882,7 @@ else if( flog_10T > pTemp[NumTemp-1] )
 for( j=0; j<NumTemp; j++ )
     if( pTemp[j] >= flog_10T ) break;
 
-// Deal with the special cases where there aren't two values either side of the
-// desired one
+// Deal with the special cases where there aren't two values either side of the desired one
 if( j < 2 ) j = 2;
 else if( j == NumTemp-1 ) j = NumTemp-2;
 
@@ -931,8 +902,7 @@ else if ( flog_10n > pDen[NumDen-1] )
 for( k=0; k<NumDen; k++ )
     if( pDen[k] >= flog_10n ) break;
 
-// Deal with the special cases where there aren't two values either side of the
-// desired one
+// Deal with the special cases where there aren't two values either side of the desired one
 if( k < 2 ) k = 2;
 else if( k == NumDen-1 ) k = NumDen-2;
 
@@ -949,8 +919,7 @@ x2[4] = pDen[k+1];
 // Allocate an array of pointers to pointers for the values
 y = (double**)alloca( sizeof(double) * 5 );
 
-// Allocate an array to hold the values corresponding to the specified range of
-// densities and temperatures
+// Allocate an array to hold the values corresponding to the specified range of densities and temperatures
 for( l=1; l<=4; l++ )
     y[l] = (double*)alloca( sizeof(double) * 5 );
 
@@ -959,8 +928,7 @@ for( l=1; l<=4; l++ )
     // Point to the start of the phi( n, T ) values for the element
     pfTemp = pTotalPhi;
 
-    // Skip to the set corresponding to the l'th density value and get the
-    // values of total phi( n, T ) corresponding to the four temperature values
+    // Skip to the set corresponding to the l'th density value and get the values of total phi( n, T ) corresponding to the four temperature values
     pfTemp += ( k + l - 3 ) * NumTemp;
 
     y[1][l] = *( pfTemp + ( j - 2 ) );
@@ -1173,22 +1141,18 @@ for( iIndex=0; iIndex<=Z; iIndex++ )
     }
     else
         term3 = 0.0;
-	
-    term4 = - pni2[iIndex] * ( IonRate[1] + RecRate[0] );
 
+    term4 = - pni2[iIndex] * ( IonRate[1] + RecRate[0] );
     term5 = ne * ( term2 + term3 + term4 );
 
-    pdnibydt[iIndex] = term1 + term5;
-	
-    if( term5 && pni2[iIndex] > CUTOFF_ION_FRACTION )
+    if( term5 && pni2[iIndex] >= CUTOFF_ION_FRACTION )
     {
-        term5 = fabs( term5 );
-
-        delta_t1 = SAFETY_ATOMIC * ( EPSILON_D / term5 );
-        delta_t2 = SAFETY_ATOMIC * pni2[iIndex] * ( EPSILON_R / term5 );
+        delta_t1 = SAFETY_ATOMIC * ( EPSILON_D / fabs(term5) );
+        delta_t2 = SAFETY_ATOMIC * pni2[iIndex] * ( EPSILON_R / fabs(term5) );
 
         TimeScale = min( delta_t1, delta_t2 );
-
+/*
+	// (1) Commenting in this block of code sets the ionization state to equilibrium in the lower chromosphere, but still allows it to be evolved by the flows
         if( TimeScale < MINIMUM_COLLISIONAL_COUPLING_TIME_SCALE )
         {
 #ifdef DENSITY_DEPENDENT_RATES
@@ -1196,8 +1160,15 @@ for( iIndex=0; iIndex<=Z; iIndex++ )
 #else // DENSITY_DEPENDENT_RATES
             pni2[iIndex] = GetEquilIonFrac( iIndex+1, flog_10T );
 #endif // DENSITY_DEPENDENT_RATES
-            pdnibydt[iIndex] = 0.0;
+            term5 = 0.0;
             TimeScale = LARGEST_DOUBLE;
+        }
+*/
+	// (2) Commenting in this block of code evolves the ionization state on the minimum collision coupling timescale in the lower chromosphere
+        if( TimeScale < MINIMUM_COLLISIONAL_COUPLING_TIME_SCALE )
+        {
+            term5 *= ( TimeScale / MINIMUM_COLLISIONAL_COUPLING_TIME_SCALE );
+	    TimeScale = MINIMUM_COLLISIONAL_COUPLING_TIME_SCALE;
         }
     }
     else
@@ -1205,6 +1176,8 @@ for( iIndex=0; iIndex<=Z; iIndex++ )
 
     if( TimeScale < SmallestTimeScale )
         SmallestTimeScale = TimeScale;
+
+    pdnibydt[iIndex] = term1 + term5;
 }
 
 *pTimeScale = SmallestTimeScale;

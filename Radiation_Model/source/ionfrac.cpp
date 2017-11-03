@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 10/29/2015
+// * Date last modified: 02/14/2017
 // *
 // ****
 
@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "ionfrac.h"
 #include "config.h"
@@ -59,9 +60,8 @@ if( !pIonFrac )
     // Get the number of elements from the file
     fscanf( pFile, "%i", &NumElements );
 
-    // Allocate sufficient memory to hold the pointers to the ionisation fractions and their
-    // rates of change with respect to time for each element
-    iBytes = sizeof(double) * NumElements;
+    // Allocate sufficient memory to hold the pointers to the ionisation fractions and their rates of change with respect to time for each element
+    iBytes = sizeof(double*) * NumElements;
     ppIonFrac = (double**)malloc( iBytes );
     ppdnibydt = (double**)malloc( iBytes );
 
@@ -76,14 +76,12 @@ if( !pIonFrac )
         // Get the atomic number
         fscanf( pFile, "%i", &(pZ[i]) );
 	
-        // Allocate sufficient memory to hold the ionisation fractions and their rates of
-        // change with respect to time for each element
+        // Allocate sufficient memory to hold the ionisation fractions and their rates of change with respect to time for each element
         iBytes = sizeof(double) * ( pZ[i] + 1 );
         ppIonFrac[i] = (double*)malloc( iBytes );
         ppdnibydt[i] = (double*)malloc( iBytes );
 	
-        // Zero the arrays containing the rates of change with respect to time of the ionisation
-        // fractions
+        // Zero the arrays containing the rates of change with respect to time of the ionisation fractions
         memset( ppdnibydt[i], 0, iBytes );
     }
 
@@ -91,20 +89,18 @@ if( !pIonFrac )
 }
 else
 {
-    // Get the element info from the ionfrac object being used to initialise the new
-    // ionfrac object
+    // Get the element info from the ionfrac object being used to initialise the new ionfrac object
     pAtomicNumber = pIonFrac->pGetElementInfo( &NumElements );
 
-    // Allocate sufficient memory to hold the pointers to the ionisation fractions and their
-    // rates of change with respect to time for each element
-    iBytes = sizeof(double) * NumElements;
+    // Allocate sufficient memory to hold the pointers to the ionisation fractions and their rates of change with respect to time for each element
+    iBytes = sizeof(double*) * NumElements;
     ppIonFrac = (double**)malloc( iBytes );
     ppdnibydt = (double**)malloc( iBytes );
         
     // Allocate sufficient memory to hold the list of atomic numbers
     pZ = (int*)malloc( sizeof(int) * NumElements );
 
-	// Get the pointers to the ionfracs and dnibydt's to copy into the new ionfrac object
+    // Get the pointers to the ionfracs and dnibydt's to copy into the new ionfrac object
     ppInitIonFrac = pIonFrac->ppGetIonFrac();
     ppInitdnibydt = pIonFrac->ppGetdnibydt();
 
@@ -113,8 +109,7 @@ else
         // Get the atomic number
         pZ[i] = pAtomicNumber[i];
 
-        // Allocate sufficient memory to hold the ionisation fractions and their rates of
-        // change with respect to time for each element
+        // Allocate sufficient memory to hold the ionisation fractions and their rates of change with respect to time for each element
         iBytes = sizeof(double) * ( pZ[i] + 1 );
         ppIonFrac[i] = (double*)malloc( iBytes );
         ppdnibydt[i] = (double*)malloc( iBytes );
@@ -257,11 +252,11 @@ for( i=0; i<NumElements; i++ )
 
 	// Ensure the minimum ion fraction remains above the cut-off and is physically realistic
         if( ppIonFrac[i][j] < CUTOFF_ION_FRACTION )
-            ppIonFrac[i][j] = 0.0;
+            ppIonFrac[i][j] = CUTOFF_ION_FRACTION;
 
         fTotal += ppIonFrac[i][j];
     }
-	
+
     // Normalise the sum total of the ion fractional populations to 1
     pRadiation->Normalise( pZ[i], ppIonFrac[i], fTotal );
 }
@@ -284,7 +279,7 @@ for( j=0; j<=pZ[i]; j++ )
 
     // Ensure the minimum ion fraction remains above the cut-off and is physically realistic
     if( ppIonFrac[i][j] < CUTOFF_ION_FRACTION )
-        ppIonFrac[i][j] = 0.0;
+        ppIonFrac[i][j] = CUTOFF_ION_FRACTION;
 
     fTotal += ppIonFrac[i][j];
 }
