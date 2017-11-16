@@ -5,7 +5,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/15/2017
+// * Date last modified: 11/16/2017
 // *
 // ****
 
@@ -164,7 +164,7 @@ for( Log_10H0=Params.Log_10H0[0]; Log_10H0<=Params.Log_10H0[1]; Log_10H0+=Params
 #ifdef USE_POWER_LAW_RADIATIVE_LOSSES
             R = - pRadiation->GetPowerLawRad( log10( T[iStep] ), ne[iStep], nH[iStep] );
 #else // USE_POWER_LAW_RADIATIVE_LOSSES
-            R = - ( pRadiation->GetRadiation( log10( T[iStep] ), log10( nH[iStep] ) ) + pRadiation->GetFreeFreeRad( log10( T[iStep] ), log10( nH[iStep] ) ) );
+            R = - ( pRadiation->GetRadiation( log10( T[iStep] ), ne[iStep], nH[iStep] ) + pRadiation->GetFreeFreeRad( log10( T[iStep] ), ne[iStep], nH[iStep] ) );
 #endif // USE_POWER_LAW_RADIATIVE_LOSSES
 
             // Get the heat flux gradient
@@ -196,7 +196,7 @@ for( Log_10H0=Params.Log_10H0[0]; Log_10H0<=Params.Log_10H0[1]; Log_10H0+=Params
 #ifdef USE_POWER_LAW_RADIATIVE_LOSSES
             R = - pRadiation->GetPowerLawRad( log10( T2 ), ne2, nH2 );
 #else // USE_POWER_LAW_RADIATIVE_LOSSES
-            R = - ( pRadiation->GetRadiation( log10( T2 ), log10( nH2 ) ) + pRadiation->GetFreeFreeRad( log10( T2 ), log10( nH2 ) ) );
+            R = - ( pRadiation->GetRadiation( log10( T2 ), ne2, nH2 ) + pRadiation->GetFreeFreeRad( log10( T2 ), ne2, nH2 ) );
 #endif // USE_POWER_LAW_RADIATIVE_LOSSES
 
             // Get the heat flux gradient
@@ -314,7 +314,7 @@ for( H0=H0lower; H0<=H0upper; H0+=dH0 )
 #ifdef USE_POWER_LAW_RADIATIVE_LOSSES
             R = - pRadiation->GetPowerLawRad( log10( T[iStep] ), ne[iStep], nH[iStep] );
 #else // USE_POWER_LAW_RADIATIVE_LOSSES
-            R = - ( pRadiation->GetRadiation( log10( T[iStep] ), log10( nH[iStep] ) ) + pRadiation->GetFreeFreeRad( log10( T[iStep] ), log10( nH[iStep] ) ) );
+            R = - ( pRadiation->GetRadiation( log10( T[iStep] ), ne[iStep], nH[iStep] ) + pRadiation->GetFreeFreeRad( log10( T[iStep] ), ne[iStep], nH[iStep] ) );
 #endif // USE_POWER_LAW_RADIATIVE_LOSSES
 
             // Get the heat flux gradient
@@ -346,7 +346,7 @@ for( H0=H0lower; H0<=H0upper; H0+=dH0 )
 #ifdef USE_POWER_LAW_RADIATIVE_LOSSES
             R = - pRadiation->GetPowerLawRad( log10( T2 ), ne2, nH2 );
 #else // USE_POWER_LAW_RADIATIVE_LOSSES
-            R = - ( pRadiation->GetRadiation( log10( T2 ), log10( nH2 ) ) + pRadiation->GetFreeFreeRad( log10( T2 ), log10( nH2 ) ) );
+            R = - ( pRadiation->GetRadiation( log10( T2 ), ne2, nH2 ) + pRadiation->GetFreeFreeRad( log10( T2 ), ne2, nH2 ) );
 #endif // USE_POWER_LAW_RADIATIVE_LOSSES
 
             // Get the heat flux gradient
@@ -462,7 +462,7 @@ while( s[iStep] <= sR ) {
 #ifdef USE_POWER_LAW_RADIATIVE_LOSSES
         R = - pRadiation->GetPowerLawRad( log10( T[iStep] ), ne[iStep], nH[iStep] );
 #else // USE_POWER_LAW_RADIATIVE_LOSSES
-        R = - ( pRadiation->GetRadiation( log10( T[iStep] ), log10( nH[iStep] ) ) + pRadiation->GetFreeFreeRad( log10( T[iStep] ), log10( nH[iStep] ) ) );
+        R = - ( pRadiation->GetRadiation( log10( T[iStep] ), ne[iStep], nH[iStep] ) + pRadiation->GetFreeFreeRad( log10( T[iStep] ), ne[iStep], nH[iStep] ) );
 #endif // USE_POWER_LAW_RADIATIVE_LOSSES
 #endif // ISOTHERMAL
 
@@ -498,7 +498,7 @@ while( s[iStep] <= sR ) {
 #ifdef USE_POWER_LAW_RADIATIVE_LOSSES
         R = - pRadiation->GetPowerLawRad( log10( T2 ), ne2, nH2 );
 #else // USE_POWER_LAW_RADIATIVE_LOSSES
-        R = - ( pRadiation->GetRadiation( log10( T2 ), log10( nH2 ) ) + pRadiation->GetFreeFreeRad( log10( T2 ), log10( nH2 ) ) );
+        R = - ( pRadiation->GetRadiation( log10( T2 ), ne2, nH2 ) + pRadiation->GetFreeFreeRad( log10( T2 ), ne2, nH2 ) );
 #endif // USE_POWER_LAW_RADIATIVE_LOSSES
 #endif // ISOTHERMAL
 
