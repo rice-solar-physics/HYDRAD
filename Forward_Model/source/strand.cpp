@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 02/10/2017
+// * Date last modified: 11/16/2017
 // *
 // ****
 
@@ -16,6 +16,7 @@
 
 #include "strand.h"
 #include "../../HYDRAD/source/config.h"
+#include "../../Radiation_Model/source/config.h"
 #include "../../Resources/source/file.h"
 #include "../../Resources/source/constants.h"
 
@@ -66,14 +67,19 @@ pPHYFile = fopen( szPHYFilename, "r" );
 for( i=0; i<iNumCells; i++ )
 {
     // Retrieve data from the .amr file
-    ReadDouble( pAMRFile, &(pPHYData[i].fs) );
-    ReadDouble( pAMRFile, &(pPHYData[i].fds) );
-    ReadDouble( pAMRFile, &fBuffer );
-    ReadDouble( pAMRFile, &fBuffer );
-    ReadDouble( pAMRFile, &fBuffer );
-    ReadDouble( pAMRFile, &fBuffer );
+    ReadDouble( pAMRFile, &(pPHYData[i].fs) );	// Field-aligned coordinate
+    ReadDouble( pAMRFile, &(pPHYData[i].fds) );	// Grid cell width
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+    ReadDouble( pAMRFile, &fBuffer );		// Electron mass density
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
+    ReadDouble( pAMRFile, &fBuffer );		// Hydrogen mass density
+    ReadDouble( pAMRFile, &fBuffer );		// Momentum density
+    ReadDouble( pAMRFile, &fBuffer );		// Electron energy density
+    ReadDouble( pAMRFile, &fBuffer );		// Hydrogen energy density
     for( j=0; j<=MAX_REFINEMENT_LEVEL; j++ )
-        fscanf( pAMRFile, "%i", &iBuffer );
+        fscanf( pAMRFile, "%i", &iBuffer );	// Unique IDs associated with each refinement level
 
     // Retrieve data from the .phy file
     ReadDouble( pPHYFile, &fBuffer );           // Field-aligned coordinate
@@ -81,8 +87,8 @@ for( i=0; i<iNumCells; i++ )
     // Project the velocity onto the line-of-sight
     pPHYData[i].fvp = - pPHYData[i].fv * cos( fTemp * pPHYData[i].fs );
     ReadDouble( pPHYFile, &fBuffer );           // Sound speed
-    ReadDouble( pPHYFile, &(pPHYData[i].fn) );  // Electron density
-    ReadDouble( pPHYFile, &fBuffer );           // Hydrogen density
+    ReadDouble( pPHYFile, &(pPHYData[i].fne) ); // Electron density
+    ReadDouble( pPHYFile, &(pPHYData[i].fnH) ); // Hydrogen density
     ReadDouble( pPHYFile, &fBuffer );           // Electron pressure
     ReadDouble( pPHYFile, &fBuffer );           // Hydrogen pressure
     ReadDouble( pPHYFile, &(pPHYData[i].fTe) ); // Electron temperature

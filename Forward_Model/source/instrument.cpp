@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 02/14/2017
+// * Date last modified: 11/16/2017
 // *
 // ****
 
@@ -938,7 +938,7 @@ for( i=0; i<iNumStrands; i++ )
 		// Allocate sufficient space to store the equilibrium ion population fractions
 		pfEQ = (double*)malloc( sizeof(double) * (iZ+1) );
 #ifdef DENSITY_DEPENDENT_RATES
-		pNEQRadiation->GetEquilIonFrac( iZ, pfEQ, log10(PHYData.fTe), log10(PHYData.fn) );
+		pNEQRadiation->GetEquilIonFrac( iZ, pfEQ, log10(PHYData.fTe), log10(PHYData.fne) );
 #else // DENSITY_DEPENDENT_RATES
 		pNEQRadiation->GetEquilIonFrac( iZ, pfEQ, log10(PHYData.fTe) );
 #endif // DENSITY_DEPENDENT_RATES
@@ -948,15 +948,15 @@ for( i=0; i<iNumStrands; i++ )
                     // Get the ion population fraction
                     fNEQ = pLoop->GetNEQ( i, j, k, m );
                     // Get the ion emissivity
-                    fIonEmiss = GetIonEmission( iZ, m+1, log10(PHYData.fTe), log10(PHYData.fn) );
+                    fIonEmiss = GetIonEmission( iZ, m+1, log10(PHYData.fTe), log10(PHYData.fne) );
                     // Multiply the stored ion emissivity by the ion population fraction and sum
                     fEQElementEmiss += ( pfEQ[m] * fIonEmiss );
                     fNEQElementEmiss += ( fNEQ * fIonEmiss );
 		}
 
 		// Multiply by the element abundance relative to hydrogen and the column emission measure
-		fEQElementEmiss *= ( fAb * PHYData.fn * PHYData.fn );
-		fNEQElementEmiss *= ( fAb * PHYData.fn * PHYData.fn );
+		fEQElementEmiss *= ( fAb * PHYData.fne * PHYData.fnH );
+		fNEQElementEmiss *= ( fAb * PHYData.fne * PHYData.fnH );
 
 		// Record the specified counts [DN pixel^-1 s^-1] at the appropriate detector pixel, taking into account the line-of-sight depth
 		Detect( PHYData.fs, PHYData.fds, fSD, fLength, fEQElementEmiss, fNEQElementEmiss );
@@ -997,7 +997,7 @@ for( i=0; i<iNumStrands; i++ )
 		// Allocate sufficient space to store the equilibrium ion population fractions
 		pfEQ = (double*)malloc( sizeof(double) * (piZ[k]+1) );
 #ifdef DENSITY_DEPENDENT_RATES
-		pEQRadiation->GetEquilIonFrac( piZ[k], pfEQ, log10(PHYData.fTe), log10(PHYData.fn) );
+		pEQRadiation->GetEquilIonFrac( piZ[k], pfEQ, log10(PHYData.fTe), log10(PHYData.fne) );
 #else // DENSITY_DEPENDENT_RATES
 		pEQRadiation->GetEquilIonFrac( piZ[k], pfEQ, log10(PHYData.fTe) );
 #endif // DENSITY_DEPENDENT_RATES
@@ -1005,11 +1005,11 @@ for( i=0; i<iNumStrands; i++ )
 		for( m=0; m<=piZ[k]; m++ )
 		{
                     // Multiply the stored ion emissivity by the ion population fraction and sum
-                    fEQElementEmiss += ( pfEQ[m] * GetIonEmission( piZ[k], m+1, log10(PHYData.fTe), log10(PHYData.fn) ) );
+                    fEQElementEmiss += ( pfEQ[m] * GetIonEmission( piZ[k], m+1, log10(PHYData.fTe), log10(PHYData.fne) ) );
 		}
 
 		// Multiply by the element abundance relative to hydrogen and the column emission measure
-		fEQElementEmiss *= ( fAb * PHYData.fn * PHYData.fn );
+		fEQElementEmiss *= ( fAb * PHYData.fne * PHYData.fnH );
 
 		// Record the specified counts [DN pixel^-1 s^-1] at the appropriate detector pixel, taking into account the line-of-sight depth
 		Detect( PHYData.fs, PHYData.fds, fSD, fLength, fEQElementEmiss );
@@ -1100,13 +1100,13 @@ for( i=0; i<iNumStrands; i++ )
 		// Allocate sufficient space to store the equilibrium ion population fractions
 		pfEQ = (double*)malloc( sizeof(double) * (iZ+1) );
 #ifdef DENSITY_DEPENDENT_RATES
-		pNEQRadiation->GetEquilIonFrac( iZ, pfEQ, log10(PHYData.fTe), log10(PHYData.fn) );
+		pNEQRadiation->GetEquilIonFrac( iZ, pfEQ, log10(PHYData.fTe), log10(PHYData.fne) );
 #else // DENSITY_DEPENDENT_RATES
 		pNEQRadiation->GetEquilIonFrac( iZ, pfEQ, log10(PHYData.fTe) );
 #endif // DENSITY_DEPENDENT_RATES
 
                 // Calculate the multiplicative factor used to convert to [DN pixel^-1 s^-1]
-                fConst = fAb * PHYData.fn * PHYData.fn;
+                fConst = fAb * PHYData.fne * PHYData.fnH;
 
                 // Calculate the most probable ion speed (page 221, Dere, K. P., & Mason, H. E. 1993, Sol. Phys., 144, 217)
                 fvi_th = sqrt( (2.0*BOLTZMANN_CONSTANT*PHYData.fTi) / GetMass( iZ ) );
@@ -1138,7 +1138,7 @@ for( i=0; i<iNumStrands; i++ )
 			fSpectralProperties[3] = sqrt( 2.0 * fSpectralProperties[0] ) * PHYData.fvp;
                         
 			// Get the line emissivity
-                        fLineEmiss = GetLineEmission( iZ, m+1, pfLineList[n], log10(PHYData.fTe), log10(PHYData.fn) );
+                        fLineEmiss = GetLineEmission( iZ, m+1, pfLineList[n], log10(PHYData.fTe), log10(PHYData.fne) );
                         // Multiply the stored line emissivity by the equilibrium and non-equilibrium ion population fractions, the element abundance relative to hydrogen, and the density squared
                         fLineEmiss *= fConst;
                         Detect( PHYData, fSD, fLength, fLineEmiss*pfEQ[m], fLineEmiss*fNEQ, pfLineList[n], fSpectralProperties );
@@ -1180,13 +1180,13 @@ for( i=0; i<iNumStrands; i++ )
 		// Allocate sufficient space to store the equilibrium ion population fractions
 		pfEQ = (double*)malloc( sizeof(double) * (piZ[k]+1) );
 #ifdef DENSITY_DEPENDENT_RATES
-		pEQRadiation->GetEquilIonFrac( piZ[k], pfEQ, log10(PHYData.fTe), log10(PHYData.fn) );
+		pEQRadiation->GetEquilIonFrac( piZ[k], pfEQ, log10(PHYData.fTe), log10(PHYData.fne) );
 #else // DENSITY_DEPENDENT_RATES
 		pEQRadiation->GetEquilIonFrac( piZ[k], pfEQ, log10(PHYData.fTe) );
 #endif // DENSITY_DEPENDENT_RATES
 
                 // Calculate the multiplicative factor used to convert to [DN pixel^-1 s^-1]
-                fConst = fAb * PHYData.fn * PHYData.fn;
+                fConst = fAb * PHYData.fne * PHYData.fnH;
 
                 // Calculate the most probable ion speed (page 221, Dere, K. P., & Mason, H. E. 1993, Sol. Phys., 144, 217)
                 fvi_th = sqrt( (2.0*BOLTZMANN_CONSTANT*PHYData.fTi) / GetMass( piZ[k] ) );
@@ -1215,7 +1215,7 @@ for( i=0; i<iNumStrands; i++ )
 			fSpectralProperties[3] = sqrt( 2.0 * fSpectralProperties[0] ) * PHYData.fvp;
 
                         // Get the line emissivity
-                        fLineEmiss = GetLineEmission( piZ[k], m+1, pfLineList[n], log10(PHYData.fTe), log10(PHYData.fn) );
+                        fLineEmiss = GetLineEmission( piZ[k], m+1, pfLineList[n], log10(PHYData.fTe), log10(PHYData.fne) );
                         // Multiply the stored line emissivity by the equilibrium and non-equilibrium ion population fractions, the element abundance relative to hydrogen, and the density squared
                         fLineEmiss *= fConst;
                         Detect( PHYData, fSD, fLength, fLineEmiss*pfEQ[m], pfLineList[n], fSpectralProperties );

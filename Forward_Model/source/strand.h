@@ -15,7 +15,7 @@ struct SPHYData {
     double fs, fds;
 
     // The bulk velocity, number density, electron and ion temperatures
-    double fv, fn, fTe, fTi;
+    double fv, fne, fnH, fTe, fTi;
 
     // The bulk velocity projected onto the line-of-sight
     double fvp;
