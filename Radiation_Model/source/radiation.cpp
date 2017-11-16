@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/15/2017
+// * Date last modified: 11/16/2017
 // *
 // ****
 
@@ -304,9 +304,9 @@ for( i=0; i<=iZ; i++ )
     pni[i] = pni[i] / fTotal;
 }
 
-double CRadiation::GetRadiation( int iZ, int iIon, double flog_10T, double flog_10n )
+double CRadiation::GetRadiation( int iZ, int iIon, double flog_10T, double fne, double fnH )
 {
-double fEmiss, n;
+double fEmiss;
 int i;
 
 // Find the required element
@@ -315,20 +315,22 @@ for( i=0; i<NumElements; i++ )
 
 if( i == NumElements ) return 0.0;
 
-fEmiss = ppElements[i]->GetEmissivity( iIon, flog_10T, flog_10n );
+fEmiss = ppElements[i]->GetEmissivity( iIon, flog_10T, log10(fne) );
 
-if( flog_10n > MAX_OPTICALLY_THIN_DENSITY )
-    flog_10n = MAX_OPTICALLY_THIN_DENSITY;
+if( fne > MAX_OPTICALLY_THIN_DENSITY )
+{
+    fne = MAX_OPTICALLY_THIN_DENSITY;
+    if( fnH > fne )
+	fnH = fne;
+}
 
-n = pow( 10.0, flog_10n );
-
-return ( n * n ) * fEmiss;
+return ( fne * fnH ) * fEmiss;
 // NOTE: free-free radiation is NOT added here
 }
 
-double CRadiation::GetRadiation( int iZ, double flog_10T, double flog_10n )
+double CRadiation::GetRadiation( int iZ, double flog_10T, double fne, double fnH )
 {
-double fEmiss, n;
+double fEmiss;
 int i;
 
 // Find the required element
@@ -337,28 +339,22 @@ for( i=0; i<NumElements; i++ )
 
 if( i == NumElements ) return 0.0;
 
-fEmiss = ppElements[i]->GetEmissivity( flog_10T, flog_10n );
+fEmiss = ppElements[i]->GetEmissivity( flog_10T, log10(fne) );
 
-if( flog_10n > MAX_OPTICALLY_THIN_DENSITY )
-    flog_10n = MAX_OPTICALLY_THIN_DENSITY;
+if( fne > MAX_OPTICALLY_THIN_DENSITY )
+{
+    fne = MAX_OPTICALLY_THIN_DENSITY;
+    if( fnH > fne )
+	fnH = fne;
+}
 
-n = pow( 10.0, flog_10n );
-
-return ( n * n ) * fEmiss;
+return ( fne * fnH ) * fEmiss;
 // NOTE: free-free radiation is NOT added here
 }
 
-double CRadiation::GetRadiation( double flog_10T, double flog_10n )
+double CRadiation::GetRadiation( double flog_10T, double fne, double fnH )
 {
-/*
-double fEmiss = 0.0, n;
-int i;
-
-for( i=0; i<NumElements; i++ )
-    fEmiss += ppElements[i]->GetEmissivity( flog_10T, flog_10n );
-*/
-
-double x1[5], x2[5], **y, *pfTemp, result, error, n;
+double x1[5], x2[5], **y, *pfTemp, result, error, flog_10n = log10(fne);
 int j, k, l;
 
 // Select the four temperature values surrounding the desired one
@@ -404,7 +400,7 @@ x2[4] = pDen[k+1];
 // We are using the j-2, j-1, j and j+1 'th temperature values
 // We are using the k-2, k-1, k and k+1 'th density values
 
-// Select the sixteen phi( n, T ) values corresponding to the grid
+// Select the sixteen phi( ne, T ) values corresponding to the grid
 
 // Allocate an array of pointers to pointers for the values
 y = (double**)alloca( sizeof(double) * 5 );
@@ -415,10 +411,10 @@ for( l=1; l<=4; l++ )
 
 for( l=1; l<=4; l++ )
 {
-    // Point to the start of the phi( n, T ) values for the element
+    // Point to the start of the phi( ne, T ) values for the element
     pfTemp = pTotalPhi;
 
-    // Skip to the set corresponding to the l'th density value and get the values of total phi( n, T ) corresponding to the four temperature values
+    // Skip to the set corresponding to the l'th density value and get the values of total phi( ne, T ) corresponding to the four temperature values
     pfTemp += ( k + l - 3 ) * NumTemp;
 
     y[1][l] = *( pfTemp + ( j - 2 ) );
@@ -430,15 +426,17 @@ for( l=1; l<=4; l++ )
 // Perform the 2D polynomial interpolation
 FitPolynomial2D( x1, x2, y, 4, 4, flog_10T, flog_10n, &result, &error );
 
-// Check the value of phi( n, T ) is physically realistic
+// Check the value of phi( ne, T ) is physically realistic
 if( result < 0.0 ) result = 0.0;
 
-if( flog_10n > MAX_OPTICALLY_THIN_DENSITY )
-    flog_10n = MAX_OPTICALLY_THIN_DENSITY;
+if( fne > MAX_OPTICALLY_THIN_DENSITY )
+{
+    fne = MAX_OPTICALLY_THIN_DENSITY;
+    if( fnH > fne )
+	fnH = fne;
+}
 
-n = pow( 10.0, flog_10n );
-
-return ( n * n ) * result;
+return ( fne * fnH ) * result;
 // NOTE: free-free radiation is NOT added here
 }
 
@@ -473,9 +471,9 @@ for( i=0; i<NumElements; i++ )
 *pTimeScale = SmallestTimeScale;
 }
 
-double CRadiation::GetRadiation( int iZ, int iIon, double flog_10T, double flog_10n, double ni )
+double CRadiation::GetRadiation( int iZ, int iIon, double flog_10T, double fne, double fnH, double ni )
 {
-double fEmiss, n;
+double fEmiss;
 int i;
 
 // Find the required element
@@ -484,20 +482,22 @@ for( i=0; i<NumElements; i++ )
 
 if( i == NumElements ) return 0.0;
 
-fEmiss = ppElements[i]->GetEmissivity( iIon, flog_10T, flog_10n, ni );
+fEmiss = ppElements[i]->GetEmissivity( iIon, flog_10T, log10(fne), ni );
 
-if( flog_10n > MAX_OPTICALLY_THIN_DENSITY )
-    flog_10n = MAX_OPTICALLY_THIN_DENSITY;
+if( fne > MAX_OPTICALLY_THIN_DENSITY )
+{
+    fne = MAX_OPTICALLY_THIN_DENSITY;
+    if( fnH > fne )
+	fnH = fne;
+}
 
-n = pow( 10.0, flog_10n );
-
-return ( n * n ) * fEmiss;
+return ( fne * fnH ) * fEmiss;
 // NOTE: free-free radiation is NOT added here
 }
 
-double CRadiation::GetRadiation( int iZ, double flog_10T, double flog_10n, double *pni )
+double CRadiation::GetRadiation( int iZ, double flog_10T, double fne, double fnH, double *pni )
 {
-double fEmiss, n;
+double fEmiss;
 int i;
 
 // Find the required element
@@ -506,31 +506,35 @@ for( i=0; i<NumElements; i++ )
 
 if( i == NumElements ) return 0.0;
 
-fEmiss = ppElements[i]->GetEmissivity( flog_10T, flog_10n, pni );
+fEmiss = ppElements[i]->GetEmissivity( flog_10T, log10(fne), pni );
 
-if( flog_10n > MAX_OPTICALLY_THIN_DENSITY )
-    flog_10n = MAX_OPTICALLY_THIN_DENSITY;
+if( fne > MAX_OPTICALLY_THIN_DENSITY )
+{
+    fne = MAX_OPTICALLY_THIN_DENSITY;
+    if( fnH > fne )
+	fnH = fne;
+}
 
-n = pow( 10.0, flog_10n );
-
-return ( n * n ) * fEmiss;
+return ( fne * fnH ) * fEmiss;
 // NOTE: free-free radiation is NOT added here
 }
 
-double CRadiation::GetRadiation( double flog_10T, double flog_10n, double **ppni )
+double CRadiation::GetRadiation( double flog_10T, double fne, double fnH, double **ppni )
 {
-double fEmiss = 0.0, n;
+double fEmiss = 0.0;
 int i;
 
 for( i=0; i<NumElements; i++ )
-    fEmiss += ppElements[i]->GetEmissivity( flog_10T, flog_10n, ppni[i] );
+    fEmiss += ppElements[i]->GetEmissivity( flog_10T, log10(fne), ppni[i] );
 
-if( flog_10n > MAX_OPTICALLY_THIN_DENSITY )
-    flog_10n = MAX_OPTICALLY_THIN_DENSITY;
+if( fne > MAX_OPTICALLY_THIN_DENSITY )
+{
+    fne = MAX_OPTICALLY_THIN_DENSITY;
+    if( fnH > fne )
+	fnH = fne;
+}
 
-n = pow( 10.0, flog_10n );
-
-return ( n * n ) * fEmiss;
+return ( fne * fnH ) * fEmiss;
 // NOTE: free-free radiation is NOT added here
 }
 
@@ -588,20 +592,22 @@ if( fne > MAX_OPTICALLY_THIN_DENSITY )
 	fnH = fne;
 }
 
-return fne * fnH * fEmiss;
+return ( fne * fnH ) * fEmiss;
 // NOTE: free-free radiation is included in the parameter values for log_10 T > 7.63
 }
 
-double CRadiation::GetFreeFreeRad( double flog_10T, double flog_10n )
+double CRadiation::GetFreeFreeRad( double flog_10T, double fne, double fnH )
 {
-double SqrtT, n;
-
 // Calculate the free-free emission due to thermal bremsstralung for a low-density and fully ionised plasma
 // The previous formulation used here was taken from Mason & Monsignori Fossi (1994, Astron. Astrophys. Rev., 6, 123) where (1.96e-27) is replaced with (2.40e-27)
 // The current formulation is taken from the power-law fit for log_10 T > 7.63
 
-SqrtT = pow( 10.0, (0.5*flog_10T) );
-n = pow( 10.0, flog_10n );
+if( fne > MAX_OPTICALLY_THIN_DENSITY )
+{
+    fne = MAX_OPTICALLY_THIN_DENSITY;
+    if( fnH > fne )
+	fnH = fne;
+}
 
-return (1.96e-27) * SqrtT * n * n;
+return ( fne * fnH ) * (1.96e-27) * pow( 10.0, (0.5*flog_10T) );
 }

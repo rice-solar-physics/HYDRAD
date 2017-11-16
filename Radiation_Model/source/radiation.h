@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/15/2017
+// * Date last modified: 11/16/2017
 // *
 // ****
 
@@ -30,7 +30,7 @@ class CRadiation {
     int NumTemp, NumDen;
     double *pTemp, *pDen;
 		
-    // Pointer to the factor total phi( n, T ) for all of the elements
+    // Pointer to the factor total phi( ne, T ) for all of the elements
     double *pTotalPhi;
 
     // Function to initialise the radiation object with a set of elements
@@ -39,7 +39,7 @@ class CRadiation {
     // Function to open and read the ranges data file
     void OpenRangesFile( char *szRangesFilename );
 
-    // Function to calculate the factor total phi( n, T ), which is multiplied by n^2 to calculate the radiated energy
+    // Function to calculate the factor total phi( ne, T ), which is multiplied by ne x nH to calculate the radiated energy
     void CalculateTotalPhi( void );
 
     // Function to free all allocated memory
@@ -73,22 +73,22 @@ class CRadiation {
     void Normalise( int iZ, double *pni, double fTotal );
 
     // Functions to calculate the amount of energy radiated in equilibrium
-    double GetRadiation( int iZ, int iIon, double flog_10T, double flog_10n );
-    double GetRadiation( int iZ, double flog_10T, double flog_10n );
-    double GetRadiation( double flog_10T, double flog_10n );
+    double GetRadiation( int iZ, int iIon, double flog_10T, double fne, double fnH );
+    double GetRadiation( int iZ, double flog_10T, double fne, double fnH );
+    double GetRadiation( double flog_10T, double fne, double fnH );
 
     // Functions to calculate the rate of change with respect to time of the fractional populations of the ions and the characteristic time-scale
     void Getdnibydt( int iZ, double flog_10T, double flog_10n, double *pni0, double *pni1, double *pni2, double *pni3, double *pni4, double *s, double *s_pos, double *pv, double delta_s, double *pdnibydt, double *pTimeScale );
     void GetAlldnibydt( double flog_10T, double flog_10n, double **ppni0, double **ppni1, double **ppni2, double **ppni3, double **ppni4, double *s, double *s_pos, double *pv, double delta_s, double **ppdnibydt, double *pTimeScale );
 
     // Functions to calculate the amount of energy radiated in nonequilibrium
-    double GetRadiation( int iZ, int iIon, double flog_10T, double flog_10n, double ni );
-    double GetRadiation( int iZ, double flog_10T, double flog_10n, double *pni );
-    double GetRadiation( double flog_10T, double flog_10n, double **ppni );
+    double GetRadiation( int iZ, int iIon, double flog_10T, double fne, double fnH, double ni );
+    double GetRadiation( int iZ, double flog_10T, double fne, double fnH, double *pni );
+    double GetRadiation( double flog_10T, double fne, double fnH, double **ppni );
 	
     // Functions to calculate energy radiated based upon power-laws
     double GetPowerLawRad( double flog_10T, double fne, double fnH );
-    double GetFreeFreeRad( double flog_10T, double flog_10n );
+    double GetFreeFreeRad( double flog_10T, double fne, double fnH );
 
 };
 
