@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 02/14/2017
+// * Date last modified: 11/15/2017
 // *
 // ****
 
@@ -87,7 +87,7 @@ class CRadiation {
     double GetRadiation( double flog_10T, double flog_10n, double **ppni );
 	
     // Functions to calculate energy radiated based upon power-laws
-    double GetPowerLawRad( double flog_10T, double flog_10n );
+    double GetPowerLawRad( double flog_10T, double fne, double fnH );
     double GetFreeFreeRad( double flog_10T, double flog_10n );
 
 };
