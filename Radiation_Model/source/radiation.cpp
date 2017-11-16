@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 02/14/2017
+// * Date last modified: 11/15/2017
 // *
 // ****
 
@@ -534,9 +534,9 @@ return ( n * n ) * fEmiss;
 // NOTE: free-free radiation is NOT added here
 }
 
-double CRadiation::GetPowerLawRad( double flog_10T, double flog_10n )
+double CRadiation::GetPowerLawRad( double flog_10T, double fne, double fnH )
 {
-double chi, alpha, fEmiss, n;
+double chi, alpha, fEmiss;
 
 // The formulation used here is based on the calculations of John Raymond (1994, private communication) and twice the coronal abundances of Meyer (1985)
 
@@ -581,12 +581,14 @@ else
 
 fEmiss = chi * pow( 10.0, (alpha*flog_10T) );
 
-if( flog_10n > MAX_OPTICALLY_THIN_DENSITY )
-    flog_10n = MAX_OPTICALLY_THIN_DENSITY;
+if( fne > MAX_OPTICALLY_THIN_DENSITY )
+{
+    fne = MAX_OPTICALLY_THIN_DENSITY;
+    if( fnH > fne )
+	fnH = fne;
+}
 
-n = pow( 10.0, flog_10n );
-
-return n * n * fEmiss;
+return fne * fnH * fEmiss;
 // NOTE: free-free radiation is included in the parameter values for log_10 T > 7.63
 }
 

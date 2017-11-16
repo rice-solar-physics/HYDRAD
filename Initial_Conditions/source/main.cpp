@@ -5,7 +5,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 07/18/2017
+// * Date last modified: 11/15/2017
 // *
 // ****
 
@@ -115,7 +115,7 @@ return 0;
 double FindHeatingRange( double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, double *pfGravityCoefficients )
 {
 double ds, max_ds, sL, sR;
-double Fc, P2, Fc2, T2, nH2;
+double Fc, P2, Fc2, T2, ne2, nH2;
 double Log_10H0, H0, H, R;
 double dPbyds, dFcbyds, dTbyds;
 // **** NEW ****
@@ -162,7 +162,7 @@ for( Log_10H0=Params.Log_10H0[0]; Log_10H0<=Params.Log_10H0[1]; Log_10H0+=Params
             // Calculate the heat input and the radiation
             H = Eheat( s[iStep], H0, Params.sH0, Params.sH );
 #ifdef USE_POWER_LAW_RADIATIVE_LOSSES
-            R = - pRadiation->GetPowerLawRad( log10( T[iStep] ), log10( nH[iStep] ) );
+            R = - pRadiation->GetPowerLawRad( log10( T[iStep] ), ne[iStep], nH[iStep] );
 #else // USE_POWER_LAW_RADIATIVE_LOSSES
             R = - ( pRadiation->GetRadiation( log10( T[iStep] ), log10( nH[iStep] ) ) + pRadiation->GetFreeFreeRad( log10( T[iStep] ), log10( nH[iStep] ) ) );
 #endif // USE_POWER_LAW_RADIATIVE_LOSSES
@@ -177,6 +177,12 @@ for( Log_10H0=Params.Log_10H0[0]; Log_10H0<=Params.Log_10H0[1]; Log_10H0+=Params
             Fc2 = Fc + ( dFcbyds * (ds/2.0) );
             T2 = T[iStep] + ( dTbyds * (ds/2.0) );
             nH2 = P2 / ( 2.0 * BOLTZMANN_CONSTANT * T2 );
+#ifdef OPTICALLY_THICK_RADIATION
+    	    // 1.000144 = 1.0 + 1.44e-4
+    	    ne2 = 1.000144 * nH2;
+#else // OPTICALLY_THICK_RADIATION
+            ne2 = nH2;
+#endif // OPTICALLY_THICK_RADIATION
 
 // *****************************************************************************
 // *    STEP 2                                                                 *
@@ -188,7 +194,7 @@ for( Log_10H0=Params.Log_10H0[0]; Log_10H0<=Params.Log_10H0[1]; Log_10H0+=Params
             // Calculate the heat input and the radiation
             H = Eheat( (s[iStep]+(ds/2.0)), H0, Params.sH0, Params.sH );
 #ifdef USE_POWER_LAW_RADIATIVE_LOSSES
-            R = - pRadiation->GetPowerLawRad( log10( T2 ), log10( nH2 ) );
+            R = - pRadiation->GetPowerLawRad( log10( T2 ), ne2, nH2 );
 #else // USE_POWER_LAW_RADIATIVE_LOSSES
             R = - ( pRadiation->GetRadiation( log10( T2 ), log10( nH2 ) ) + pRadiation->GetFreeFreeRad( log10( T2 ), log10( nH2 ) ) );
 #endif // USE_POWER_LAW_RADIATIVE_LOSSES
@@ -250,7 +256,7 @@ return Log_10H0;
 double RefineSolution( double Log_10H0, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, double *pfGravityCoefficients )
 {
 double ds, max_ds, sL, sR;
-double Fc, P2, Fc2, T2, nH2;
+double Fc, P2, Fc2, T2, ne2, nH2;
 double H0, H, R;
 double dPbyds, dFcbyds, dTbyds;
 // **** NEW ****
@@ -306,7 +312,7 @@ for( H0=H0lower; H0<=H0upper; H0+=dH0 )
             // Calculate the heat input and the radiation
             H = Eheat( s[iStep], H0, Params.sH0, Params.sH );
 #ifdef USE_POWER_LAW_RADIATIVE_LOSSES
-            R = - pRadiation->GetPowerLawRad( log10( T[iStep] ), log10( nH[iStep] ) );
+            R = - pRadiation->GetPowerLawRad( log10( T[iStep] ), ne[iStep], nH[iStep] );
 #else // USE_POWER_LAW_RADIATIVE_LOSSES
             R = - ( pRadiation->GetRadiation( log10( T[iStep] ), log10( nH[iStep] ) ) + pRadiation->GetFreeFreeRad( log10( T[iStep] ), log10( nH[iStep] ) ) );
 #endif // USE_POWER_LAW_RADIATIVE_LOSSES
@@ -321,6 +327,12 @@ for( H0=H0lower; H0<=H0upper; H0+=dH0 )
             Fc2 = Fc + ( dFcbyds * (ds/2.0) );
             T2 = T[iStep] + ( dTbyds * (ds/2.0) );
             nH2 = P2 / ( 2.0 * BOLTZMANN_CONSTANT * T2 );
+#ifdef OPTICALLY_THICK_RADIATION
+    	    // 1.000144 = 1.0 + 1.44e-4
+    	    ne2 = 1.000144 * nH2;
+#else // OPTICALLY_THICK_RADIATION
+            ne2 = nH2;
+#endif // OPTICALLY_THICK_RADIATION
 
 // *****************************************************************************
 // *    STEP 2                                                                 *
@@ -332,7 +344,7 @@ for( H0=H0lower; H0<=H0upper; H0+=dH0 )
             // Calculate the heat input and the radiation
             H = Eheat( (s[iStep]+(ds/2.0)), H0, Params.sH0, Params.sH );
 #ifdef USE_POWER_LAW_RADIATIVE_LOSSES
-            R = - pRadiation->GetPowerLawRad( log10( T2 ), log10( nH2 ) );
+            R = - pRadiation->GetPowerLawRad( log10( T2 ), ne2, nH2 );
 #else // USE_POWER_LAW_RADIATIVE_LOSSES
             R = - ( pRadiation->GetRadiation( log10( T2 ), log10( nH2 ) ) + pRadiation->GetFreeFreeRad( log10( T2 ), log10( nH2 ) ) );
 #endif // USE_POWER_LAW_RADIATIVE_LOSSES
@@ -400,7 +412,7 @@ return finalH0;
 int CalculateSolution( double finalH0, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, double *pfGravityCoefficients )
 {
 double ds, max_ds, sL, sR;
-double Fc, P2, Fc2, T2, nH2;
+double Fc, P2, Fc2, T2, ne2, nH2;
 double H0, H, R;
 double dPbyds, dFcbyds, dTbyds;
 // **** NEW ****
@@ -448,7 +460,7 @@ while( s[iStep] <= sR ) {
 #else // ISOTHERMAL
         H = Eheat( s[iStep], H0, Params.sH0, Params.sH );
 #ifdef USE_POWER_LAW_RADIATIVE_LOSSES
-        R = - pRadiation->GetPowerLawRad( log10( T[iStep] ), log10( nH[iStep] ) );
+        R = - pRadiation->GetPowerLawRad( log10( T[iStep] ), ne[iStep], nH[iStep] );
 #else // USE_POWER_LAW_RADIATIVE_LOSSES
         R = - ( pRadiation->GetRadiation( log10( T[iStep] ), log10( nH[iStep] ) ) + pRadiation->GetFreeFreeRad( log10( T[iStep] ), log10( nH[iStep] ) ) );
 #endif // USE_POWER_LAW_RADIATIVE_LOSSES
@@ -464,6 +476,12 @@ while( s[iStep] <= sR ) {
         Fc2 = Fc + ( dFcbyds * (ds/2.0) );
         T2 = T[iStep] + ( dTbyds * (ds/2.0) );
         nH2 = P2 / ( 2.0 * BOLTZMANN_CONSTANT * T2 );
+#ifdef OPTICALLY_THICK_RADIATION
+    	// 1.000144 = 1.0 + 1.44e-4
+    	ne2 = 1.000144 * nH2;
+#else // OPTICALLY_THICK_RADIATION
+        ne2 = nH2;
+#endif // OPTICALLY_THICK_RADIATION
 
 // *****************************************************************************
 // *    STEP 2                                                                 *
@@ -478,7 +496,7 @@ while( s[iStep] <= sR ) {
 #else // ISOTHERMAL
         H = Eheat( (s[iStep]+(ds/2.0)), H0, Params.sH0, Params.sH );
 #ifdef USE_POWER_LAW_RADIATIVE_LOSSES
-        R = - pRadiation->GetPowerLawRad( log10( T2 ), log10( nH2 ) );
+        R = - pRadiation->GetPowerLawRad( log10( T2 ), ne2, nH2 );
 #else // USE_POWER_LAW_RADIATIVE_LOSSES
         R = - ( pRadiation->GetRadiation( log10( T2 ), log10( nH2 ) ) + pRadiation->GetFreeFreeRad( log10( T2 ), log10( nH2 ) ) );
 #endif // USE_POWER_LAW_RADIATIVE_LOSSES
@@ -538,7 +556,7 @@ int AddChromospheres( int iTRplusCoronaplusTRSteps, double *s, double *P, double
 double GetVALTemperature( double s, int iVALTemperatureDP, double **ppVALTemperature );
 
 double ds, max_ds;
-double P2, T2, nT, nH2, ne2;
+double P2, T2, nT, ne2, nH2;
 double dPbyds;
 double FracDiff;
 int i, iStep, iCHRSteps, iTotalSteps;
