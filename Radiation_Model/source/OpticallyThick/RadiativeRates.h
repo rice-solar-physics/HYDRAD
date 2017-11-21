@@ -4,9 +4,15 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/01/2017
+// * Date last modified: 11/20/2017
 // *
 // ****
+
+
+#define MAX_ITERATIONS			300
+#define CONVERGENCE_EPSILON		0.1
+#define CONVERGENCE_CONDITION		1E-6
+
 
 // **** RADIATIVE TRANSITION RATES CLASS ****
 
@@ -50,6 +56,15 @@ class CRadiativeRates {
     double *pTrt, *pnu0, *pTeZ_c, *pZ_c_LEFT, *pZ_c_RIGHT, *pMcZ_c_LEFT, *pMcZ_c_RIGHT;
     double *pterm1, *pterm2, *pH;
 
+    // Functions to calculate the singular value decomposition of a matrix A and back-substitute to solve a matrix equation A x = b
+    // (Used by SolveHIIFraction)
+        // Singular value decomposition of matrix A of size m x n
+	int svdcmp(double **a, int m, int n, double *w, double **v);
+	// Back substitution of the singular value decomposition to solve for vector x
+	void svbksb(double **u, double *w, double **v, int m, int n, double *b, double *x);
+	// Pythagorean distance
+	double pythag(double a, double b);
+
     void GetBBRates( char *pszBBRatesFile );
     void GetBFRates( char *pszBFRatesFile );
     void GetFBRates( char *pszFBRatesFile );
@@ -76,8 +91,7 @@ class CRadiativeRates {
     void GetCollisionalRatesRH( double *pfColl_ex_lu, double *pfColl_ex_ul, double *pfColl_ion, double *pfColl_rec, double flog10T, double fne );
     
     void SolveHIIFraction( double *pfHstate, double *pfColl_ex_lu, double *pfColl_ex_ul, double *pfColl_ion, double *pfColl_rec, double *pfBB_lu, double *pfBB_ul, double *pfBF, double *pfFB );
-    void SolveHIIFraction( double *pfHstate, double *pfGradients, double *pfColl_ex_lu, double *pfColl_ex_ul, double *pfColl_ion, double *pfColl_rec, double *pfBB_lu, double *pfBB_ul, double *pfBF, double *pfFB );
-    
+        
     void GetAllDel_Hstate_dot_v( double *pHstate0, double *pHstate1, double *pHstate2, double *pHstate3, double *pHstate4, double *s, double *s_pos, double *pv, double delta_s, double *pDel_Hstate_dot_v );
     void Normalize( double *pHstate );
 

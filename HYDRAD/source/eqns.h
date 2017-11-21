@@ -5,21 +5,12 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/03/2017
+// * Date last modified: 11/17/2017
 // *
 // ****
 
 
 #include "cell.h"
-
-
-#ifdef OPTICALLY_THICK_RADIATION
-#ifdef NLTE_CHROMOSPHERE
-	#define MAX_ITERATIONS			300
-	#define CONVERGENCE_EPSILON		0.1
-	#define CONVERGENCE_CONDITION		1E-6
-#endif // NLTE_CHROMOSPHERE
-#endif // OPTICALLY_THICK_RADIATION
 
 
 // **** EQUATIONS CLASS ****
