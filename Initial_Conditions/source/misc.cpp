@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 01/12/2016
+// * Date last modified: 11/17/2017
 // *
 // ****
 
@@ -189,7 +189,13 @@ for( j=0; j<MAX_REFINEMENT_LEVEL; j++ )
 
 sAMR = ds / 2.0;
 
+#if defined (OPTICALLY_THICK_RADIATION) && defined (NLTE_CHROMOSPHERE)
+char szAMRFilename[256];
+sprintf( szAMRFilename, "%s.orig", Params.szOutputFilename );
+pFile = fopen( szAMRFilename, "w" );
+#else // OPTICALLY_THICK_RADIATION && NLTE_CHROMOSPHERE
 pFile = fopen( Params.szOutputFilename, "w" );
+#endif // OPTICALLY_THICK_RADIATION && NLTE_CHROMOSPHERE
 // Write the header information into the .amr file
 fprintf( pFile, "0.0\n0\n%.16e\n%ld\n", Params.Lfull, iMAX_CELLS );
 i = 2;
@@ -275,7 +281,12 @@ int i;
 // In the hydrostatic case the velocity equals zero
 v = 0.0;
 
+#if defined (OPTICALLY_THICK_RADIATION) && defined (NLTE_CHROMOSPHERE)
+sprintf( szPHYFilename, "%s.orig.phy", Params.szOutputFilename );
+#else // OPTICALLY_THICK_RADIATION && NLTE_CHROMOSPHERE
 sprintf( szPHYFilename, "%s.phy", Params.szOutputFilename );
+#endif // OPTICALLY_THICK_RADIATION && NLTE_CHROMOSPHERE
+
 pFile = fopen( szPHYFilename, "w" );
 
 for( i=0; i<iTotalSteps; i++ )

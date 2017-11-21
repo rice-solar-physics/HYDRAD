@@ -5,7 +5,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/16/2017
+// * Date last modified: 11/20/2017
 // *
 // ****
 
@@ -21,6 +21,13 @@
 #include "../../Radiation_Model/source/radiation.h"
 #ifdef OPTICALLY_THICK_RADIATION
 #include "../../Radiation_Model/source/OpticallyThick/OpticallyThickIon.h"
+#ifdef NLTE_CHROMOSPHERE
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include "../../Radiation_Model/source/OpticallyThick/RadiativeRates.h"
+using namespace std;
+#endif // NLTE_CHROMOSPHERE
 #include  "../../Resources/source/fitpoly.h"
 #endif // OPTICALLY_THICK_RADIATION
 #include "../../Resources/source/file.h"
@@ -34,6 +41,13 @@ double FindHeatingRange( double *s, double *P, double *T, double *nH, double *ne
 double RefineSolution( double Log_10H0, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, double *pfGravityCoefficients );
 int CalculateSolution( double finalH0, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, double *pfGravityCoefficients );
 int AddChromospheres( int iTRplusCoronaplusTRSteps, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, double *pfGravityCoefficients );
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+void RecalculateElectronDensity( PARAMETERS Params );
+int AMR2PHY( PARAMETERS Params );
+void RecalculateChromosphericHeating( PARAMETERS Params, int number_of_lines );
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
 
 PARAMETERS Params;
 PRADIATION pRadiation;
@@ -106,6 +120,17 @@ free( pfGravityCoefficients );
 
 // Close the radiative losses
 delete pRadiation;
+
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+// Recalculate the electron density using the model 6-level hydrogen atom and output a new .amr file
+RecalculateElectronDensity( Params );
+// Output a new .phy file
+iTotalSteps = AMR2PHY( Params );
+// Recalculate the chromospheric heating as a function of column mass because the optically-thick radiation will have changed due to the new electron density profile
+RecalculateChromosphericHeating( Params, iTotalSteps );
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
 
 printf( "Done!\n\n" );
 
@@ -936,4 +961,681 @@ iTotalSteps = iStep + 1;
 
 return iTotalSteps;
 }
+#endif // OPTICALLY_THICK_RADIATION
+
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+void RecalculateElectronDensity( PARAMETERS Params )
+{
+    void CalculateColumnMass( double fL, int iEntries, double *ps, double *prho, double *pMc );
+    void GetZ_c( double TeZ_c, double *Z_c, int iEntries, double *ps, double *pTe );
+    void GetMcZ_c( double *Z_c, double *McZ_c, int iEntries, double *ps, double *pMc );
+
+    FILE *pAMRFile, *pTRANSFile, *pTERMSFile;
+    FILE *pOUTPUTFile;
+    char szAMRFilename[256], szBuffer[256];
+    double *ps, *pds, *prho, *pne, *pnH, *pT, *pMc;
+    double fEH;
+    double *pTrt, *pnu0, *pTeZ_c, *pZ_c_LEFT, *pZ_c_RIGHT, *pMcZ_c_LEFT, *pMcZ_c_RIGHT;
+    double *pterm1, *pterm2, *pH;
+    double **ppTrad;
+    double fL, Z_c[2], McZ_c[2], fA;
+    double fPreviousIteration, fBuffer;
+    int iEntries, iNBBT, iNBFT;
+    int i, j;
+    int iBuffer;
+    
+    PRADIATION pRadiationEQ, pRadiationNEQ;
+    PRADIATIVERATES pRadiativeRates;
+    double fBB_lu[6], fBB_ul[6], fBF[4], fFB[4], fColl_ex_lu[10], fColl_ex_ul[10], fColl_ion[5], fColl_rec[5];
+    double fradT[10];
+    double fZ[31];
+    double fSum, fElement;
+    double fY[6];
+    int *piA, iNumElements, h, iIteration;
+
+    printf( "Recalculating the chromospheric electron density\n\n" );
+
+    // Open the .amr file
+    sprintf( szAMRFilename, "%s.orig", Params.szOutputFilename );
+    pAMRFile = fopen( szAMRFilename, "r");
+    
+	ReadDouble( pAMRFile, &fBuffer );		// Timestamp
+	fscanf( pAMRFile, "%i", &iBuffer );		// File number
+	ReadDouble( pAMRFile, &fL );			// Loop length
+	fscanf( pAMRFile, "%i", &iEntries );		// Number of grid cells
+
+	// Allocate memory to hold the position, hydrogen number density, and electron temperature profiles
+	ps = (double*)malloc( sizeof(double) * iEntries );
+	pds = (double*)malloc( sizeof(double) * iEntries );
+	prho = (double*)malloc( sizeof(double) * iEntries );
+	pne = (double*)malloc( sizeof(double) * iEntries );
+	pnH = (double*)malloc( sizeof(double) * iEntries );
+	pT = (double*)malloc( sizeof(double) * iEntries );
+	pMc = (double*)malloc( sizeof(double) * iEntries );
+
+	for( i=0; i<iEntries; i++ )
+	{
+	    // .amr file
+	    ReadDouble( pAMRFile, &(ps[i]) );		// Position
+	    ReadDouble( pAMRFile, &(pds[i]) );		// Cell width
+	    ReadDouble( pAMRFile, &(prho[i]) );		// Mass density
+	    ReadDouble( pAMRFile, &fBuffer );		// Momentum density
+	    ReadDouble( pAMRFile, &fBuffer );		// Electron energy density
+	    ReadDouble( pAMRFile, &fEH );		// Hydrogen energy density
+
+	    fscanf( pAMRFile, "%i", &iBuffer );		// Refinement level
+	    for( j=0; j<MAX_REFINEMENT_LEVEL; j++ )
+		ReadDouble( pAMRFile, &fBuffer );	// Unique cell identifier
+
+	    pnH[i] = prho[i] / AVERAGE_PARTICLE_MASS;
+	    pne[i] = pnH[i];
+	    pT[i] = fEH / ( 1.5 * BOLTZMANN_CONSTANT * pnH[i] );
+	}
+
+    fclose( pAMRFile );
+
+    // Calculate the column mass density along the loop from the apex to each foot-point
+    CalculateColumnMass( fL, iEntries, ps, prho, pMc );
+
+    // Get the information about the transitions
+    pTRANSFile = fopen( "Radiation_Model/atomic_data/OpticallyThick/radiative_rates/transitions.txt", "r" );
+
+	fscanf( pTRANSFile, "%i", &iNBBT );		// Number of bound-bound transitions
+	fscanf( pTRANSFile, "%i", &iNBFT );		// Number of bound-free transitions
+
+	// Allocate memory for the transition data
+	pTrt = (double*)malloc( sizeof(double) * (iNBBT+iNBFT) );
+	pnu0 = (double*)malloc( sizeof(double) * (iNBBT+iNBFT) );
+	pTeZ_c  = (double*)malloc( sizeof(double) * (iNBBT+iNBFT) );
+	pZ_c_LEFT = (double*)malloc( sizeof(double) * (iNBBT+iNBFT) );
+	pZ_c_RIGHT = (double*)malloc( sizeof(double) * (iNBBT+iNBFT) );
+	pMcZ_c_LEFT = (double*)malloc( sizeof(double) * (iNBBT+iNBFT) );
+	pMcZ_c_RIGHT = (double*)malloc( sizeof(double) * (iNBBT+iNBFT) );
+
+	// Column labels
+	fscanf( pTRANSFile, "%s", szBuffer );
+	fscanf( pTRANSFile, "%s", szBuffer );
+	fscanf( pTRANSFile, "%s", szBuffer );
+	fscanf( pTRANSFile, "%s", szBuffer );
+	fscanf( pTRANSFile, "%s", szBuffer );
+
+	for( i=0; i<iNBBT+iNBFT; i++ )
+	{
+	    fscanf( pTRANSFile, "%i", &iBuffer );	// i
+	    fscanf( pTRANSFile, "%i", &iBuffer );	// j
+	    ReadDouble( pTRANSFile, &(pTrt[i]) );	// T_rad^top
+	    ReadDouble( pTRANSFile, &(pnu0[i]) );	// Transition rest frequency (wavelength)
+	    ReadDouble( pTRANSFile, &(pTeZ_c[i]) );	// Temperature at Z_c
+	}
+
+    fclose( pTRANSFile );
+
+    // Get the equation terms needed to calculate T_rad for each transition as a function of 's'
+    pTERMSFile = fopen( "Radiation_Model/atomic_data/OpticallyThick/radiative_rates/terms.txt", "r" );
+
+	fscanf( pTERMSFile, "%i", &iNBBT );		// Number of bound-bound transitions
+	fscanf( pTERMSFile, "%i", &iNBFT );		// Number of bound-free transitions
+
+	// Allocate memory for the transition data
+	pterm1 = (double*)malloc( sizeof(double) * (iNBBT+iNBFT) );
+	pterm2 = (double*)malloc( sizeof(double) * (iNBBT+iNBFT) );
+	pH = (double*)malloc( sizeof(double) * (iNBBT+iNBFT) );
+
+	// Column labels
+	fscanf( pTERMSFile, "%s", szBuffer );
+	fscanf( pTERMSFile, "%s", szBuffer );
+	fscanf( pTERMSFile, "%s", szBuffer );
+
+	for( i=0; i<iNBBT+iNBFT; i++ )
+	{
+	    ReadDouble( pTERMSFile, &(pterm1[i]) );
+	    ReadDouble( pTERMSFile, &(pterm2[i]) );
+	    ReadDouble( pTERMSFile, &(pH[i]) );
+	}
+
+    fclose( pTERMSFile );
+
+    // Calculate Z_c for each of the transitions
+    for( i=0; i<iNBBT+iNBFT; i++ )
+    {
+    	GetZ_c( pTeZ_c[i], Z_c, iEntries, ps, pT );
+        pZ_c_LEFT[i] = Z_c[0];
+        pZ_c_RIGHT[i] = Z_c[1];
+    }
+
+    // Calculate Mc(Z_c) for each of the transitions
+    for( i=0; i<iNBBT+iNBFT; i++ )
+    {
+        Z_c[0] = pZ_c_LEFT[i];
+        Z_c[1] = pZ_c_RIGHT[i];
+        GetMcZ_c( Z_c, McZ_c, iEntries, ps, pMc );
+        pMcZ_c_LEFT[i] = McZ_c[0];
+        pMcZ_c_RIGHT[i] = McZ_c[1];
+    }
+
+    // Calculate Trad for each transition in each grid cell
+    // Allocate a 2D array of size ( # transitions ) x ( # grid cells )
+    ppTrad = (double**)malloc( sizeof(double*) * (iNBBT+iNBFT) );
+    for( i=0; i<iNBBT+iNBFT; i++ )
+        ppTrad[i] = (double*)malloc( sizeof(double) * iEntries );
+
+    for( i=0; i<iNBBT+iNBFT; i++ )
+        for( j=0; j<iEntries; j++ )
+        {
+            if( ps[j] <= fL/2.0 )
+            {
+                if( ps[j] < pZ_c_LEFT[i] )
+                    ppTrad[i][j] = pT[j];
+                else
+                {
+                    fA = pterm1[i] + ( pterm2[i] * pow( (pMc[j]/pMcZ_c_LEFT[i]), pH[i] ) );
+                    ppTrad[i][j] = ( (4.7979e-11) * pnu0[i] ) / log( (1.0/fA) + 1.0 );
+                }
+            }
+            else
+            {
+                if( ps[j] > pZ_c_RIGHT[i] )
+                    ppTrad[i][j] = pT[j];
+                else
+                {
+                    fA = pterm1[i] + ( pterm2[i] * pow( (pMc[j]/pMcZ_c_RIGHT[i]), pH[i] ) );
+                    ppTrad[i][j] = ( (4.7979e-11) * pnu0[i] ) / log( (1.0/fA) + 1.0 );
+                }
+            }
+        }
+
+    // Update the electron density profile
+
+    pRadiationEQ = new CRadiation( (char *)"Radiation_Model/config/elements_eq.cfg" );
+    pRadiationNEQ = new CRadiation( (char *)"Radiation_Model/config/elements_neq.cfg" );
+    pRadiativeRates = new CRadiativeRates( (char *)"Radiation_Model/atomic_data/OpticallyThick/radiative_rates/rates_files.txt" );
+
+    for( j=0; j<iEntries; j++ )
+    {
+	if( !(j%1000) )
+		printf( "%.3g%%\n", 100.0*((double)j/(double)iEntries) );
+
+        // Calculate the contribution to the electron density from elements other than hydrogen:
+        fSum = 0.0;
+        
+	// Elements treated in equilibrium (except hydrogen)
+	piA = pRadiationEQ->pGetAtomicNumbers( &iNumElements );
+	for( i=0; i<iNumElements; i++ )
+    	{
+	    // Don't double count hydrogen
+	    if( piA[i] > 1 )
+	    {
+	        fElement = 0.0;
+			
+	        pRadiationEQ->GetEquilIonFrac( piA[i], fZ, log10(pT[j]) );
+	        for( h=1; h<piA[i]+1; h++ )
+		    fElement += ((double)h) * fZ[h];
+
+                fElement *= pRadiationEQ->GetAbundance( piA[i] );
+
+                fSum += fElement;
+	    }
+        }
+
+	// Elements treated out-of-equilibrium (except hydrogen)
+	piA = pRadiationNEQ->pGetAtomicNumbers( &iNumElements );
+	for( i=0; i<iNumElements; i++ )
+    	{
+	    // Don't double count hydrogen
+	    if( piA[i] > 1 )
+	    {
+	        fElement = 0.0;
+			
+	        pRadiationNEQ->GetEquilIonFrac( piA[i], fZ, log10(pT[j]) );
+	        for( h=1; h<piA[i]+1; h++ )
+		    fElement += ((double)h) * fZ[h];
+
+                fElement *= pRadiationNEQ->GetAbundance( piA[i] );
+
+                fSum += fElement;
+	    }
+        }
+
+	// Convert the radiation temperatures for each transition to log values
+	for( i=0; i<iNBBT+iNBFT; i++ )
+                fradT[i] = log10( ppTrad[i][j] );
+
+        // Iterate until the solution converges
+        for( iIteration=0; iIteration<=MAX_ITERATIONS; iIteration++ )
+        {
+	    fPreviousIteration = pne[j];
+
+            pRadiativeRates->GetBoundBoundRates( fBB_lu, fBB_ul, &(fradT[0]) );
+            pRadiativeRates->GetBoundFreeRates( fBF, &(fradT[6]) );
+            pRadiativeRates->GetFreeBoundRates( fFB, &(fradT[6]), log10( pT[j] ), pne[j] );
+            pRadiativeRates->GetCollisionalRatesRH( fColl_ex_lu, fColl_ex_ul, fColl_ion, fColl_rec, log10( pT[j] ), pne[j] );
+    
+            pRadiativeRates->SolveHIIFraction( fY, fColl_ex_lu, fColl_ex_ul, fColl_ion, fColl_rec, fBB_lu, fBB_ul, fBF, fFB );
+                
+            // Recalculate the electron density. To improve stability, iterate gradually to the converged solution rather than taking large steps
+            pne[j] = pne[j] - CONVERGENCE_EPSILON * ( pne[j] - ( pnH[j] * ( fY[5] + fSum ) ) );
+	    
+	    // Check for convergence and exit the loop if the condition is met
+            if( iIteration && (fabs(fPreviousIteration-pne[j])/pne[j]) < CONVERGENCE_CONDITION ) break;
+        }
+    }
+    
+    printf( "\nWriting new .amr file\n\n" );
+
+    // Update the .amr file. The new .amr file contains a new column corresponding to the electron mass density
+    // Open the .amr and .phy files
+    pAMRFile = fopen( szAMRFilename, "r");
+    pOUTPUTFile = fopen( Params.szOutputFilename, "w" );
+    
+	ReadDouble( pAMRFile, &fBuffer );	fprintf( pOUTPUTFile, "%g\r\n", fBuffer );		// Timestamp
+	fscanf( pAMRFile, "%i", &iBuffer );	fprintf( pOUTPUTFile, "%i\r\n", iBuffer );		// File number
+	ReadDouble( pAMRFile, &fL );		fprintf( pOUTPUTFile, "%g\r\n", fL );			// Loop length
+	fscanf( pAMRFile, "%i", &iEntries );	fprintf( pOUTPUTFile, "%i\r\n", iEntries );		// Number of grid cells
+
+	for( i=0; i<iEntries; i++ )
+	{
+	    // .amr file
+	    ReadDouble( pAMRFile, &(ps[i]) );	fprintf( pOUTPUTFile, "%.16e\t", ps[i] );					// Position
+	    ReadDouble( pAMRFile, &(pds[i]) );	fprintf( pOUTPUTFile, "%.16e\t", pds[i] );					// Cell width
+
+	    ReadDouble( pAMRFile, &(prho[i]) );	fprintf( pOUTPUTFile, "%.16e\t", ELECTRON_MASS * pne[i] );			// Electron mass density
+						fprintf( pOUTPUTFile, "%.16e\t", prho[i] );					// Hydrogen mass density
+
+	    ReadDouble( pAMRFile, &fBuffer );	fprintf( pOUTPUTFile, "%.16e\t", fBuffer );					// Momentum density
+
+	    ReadDouble( pAMRFile, &fBuffer );	fprintf( pOUTPUTFile, "%.16e\t", 1.5 * BOLTZMANN_CONSTANT * pne[i] * pT[i] );	// Electron energy density
+	    ReadDouble( pAMRFile, &fBuffer );	fprintf( pOUTPUTFile, "%.16e\t", fBuffer );					// Hydrogen energy density
+
+	    fscanf( pAMRFile, "%i", &iBuffer );	fprintf( pOUTPUTFile, "%i", iBuffer );			// Refinement level
+	    for( j=0; j<MAX_REFINEMENT_LEVEL; j++ )
+	    {
+		ReadDouble( pAMRFile, &fBuffer ); fprintf( pOUTPUTFile, "\t%i", (int)fBuffer );		// Unique cell identifier
+	    }
+	    fprintf( pOUTPUTFile, "\r\n" );
+	}
+
+    fclose( pOUTPUTFile );
+    fclose( pAMRFile );
+    
+    delete pRadiativeRates;
+    delete pRadiationNEQ;
+    delete pRadiationEQ;
+
+    // Free the allocated memory
+    for( i=0; i<iNBBT+iNBFT; i++ )
+        free( ppTrad[i] );
+    free( ppTrad );
+
+    free( pH );
+    free( pterm2 );
+    free( pterm1 );
+
+    free( pMcZ_c_RIGHT );
+    free( pMcZ_c_LEFT );
+    free( pZ_c_RIGHT );
+    free( pZ_c_LEFT );
+    free( pTeZ_c );
+    free( pnu0 );
+    free( pTrt );
+
+    free( pMc );
+    free( pT );
+    free( pnH );
+    free( pne );
+    free( prho );
+    free( pds );
+    free( ps );
+}
+
+void CalculateColumnMass( double fL, int iEntries, double *ps, double *prho, double *pMc )
+{
+    int iApex, i;
+
+    for( i=0; i<iEntries; i++ )
+        if( ps[i] >= fL/2.0 ) break;
+
+    // Note that this is the column mass density, but a ratio of column masses appears in the calculation and so the area factor cancels
+    iApex = i;
+    pMc[iApex] = prho[iApex] * (ps[iApex] - ps[iApex-1]);
+
+    
+    // Left-hand leg
+    for( i=iApex-1; i>=0; i-- )
+        pMc[i] = pMc[i+1] + ( prho[i] * (ps[i+1] - ps[i]) );
+
+    
+    // Right-hand leg
+    for( i=iApex+1; i<iEntries; i++ )
+        pMc[i] = pMc[i-1] + ( prho[i] * (ps[i] - ps[i-1]) );
+
+}
+
+void GetZ_c( double TeZ_c, double *Z_c, int iEntries, double *ps, double *pTe )
+{
+    int i;
+    double x[3], y[3];
+
+    // Left-hand chromosphere
+    for( i=0; i<iEntries-1; i++ )
+        if( ( TeZ_c <= pTe[i] && TeZ_c >= pTe[i+1] ) || ( TeZ_c >= pTe[i] && TeZ_c <= pTe[i+1] ) )
+            break;
+
+    x[1] = pTe[i];
+    x[2] = pTe[i+1];
+    y[1] = ps[i];
+    y[2] = ps[i+1];
+    LinearFit( x, y, TeZ_c, &(Z_c[0]) );
+
+    // Right-hand chromosphere
+    for( i=iEntries-2; i>=0; i-- )
+        if( ( TeZ_c <= pTe[i] && TeZ_c >= pTe[i+1] ) || ( TeZ_c >= pTe[i] && TeZ_c <= pTe[i+1] ) )
+            break;
+
+    x[1] = pTe[i];
+    x[2] = pTe[i+1];
+    y[1] = ps[i];
+    y[2] = ps[i+1];
+    LinearFit( x, y, TeZ_c, &(Z_c[1]) );
+}
+
+void GetMcZ_c( double *Z_c, double *McZ_c, int iEntries, double *ps, double *pMc )
+{
+    int i;
+    double x[3], y[3];
+
+    // Left-hand chromosphere
+    for( i=0; i<iEntries-1; i++ )
+        if( Z_c[0] >= ps[i] && Z_c[0] <= ps[i+1] )
+            break;
+
+    x[1] = ps[i];
+    x[2] = ps[i+1];
+    y[1] = pMc[i];
+    y[2] = pMc[i+1];
+    LinearFit( x, y, Z_c[0], &(McZ_c[0]) );
+
+    // Right-hand chromosphere
+    for( i=iEntries-2; i>=0; i-- )
+        if( Z_c[1] >= ps[i] && Z_c[1] <= ps[i+1] )
+            break;
+
+    x[1] = ps[i];
+    x[2] = ps[i+1];
+    y[1] = pMc[i];
+    y[2] = pMc[i+1];
+    LinearFit( x, y, Z_c[1], &(McZ_c[1]) );
+}
+
+int AMR2PHY( PARAMETERS Params )
+{
+    FILE *pAMRFile, *pPHYFile;
+    char szPHYFilename[256];
+    double *pfs, *pfds, frho_e, frho_H, frhov, fE_e, fE_H;
+    double *pfv, *pfCs, *pfne, *pfnH, *pfPe, *pfPH, *pfTe, *pfTH, *pfF_ce, *pfF_cH;
+    double flast_s, flast_ne, flast_nH, flast_Te;
+    double fDiff_ne[2], fDiff_nH[2], fDiff_Te[2], fMAX_DS = Params.Lfull / MIN_CELLS;
+    double delta = MAX_VARIATION - 1.0, kappa, s[2], T[2], x[4], y[4];
+    double fBuffer;
+    int iEntries, iTotalSteps;
+    int i, j, iBuffer;
+    
+    printf( "Writing new .phy file\n\n" );
+
+    // Open the .amr file
+    pAMRFile = fopen( Params.szOutputFilename, "r");
+    
+	ReadDouble( pAMRFile, &fBuffer );		// Timestamp
+	fscanf( pAMRFile, "%i", &iBuffer );		// File number
+	ReadDouble( pAMRFile, &fBuffer );		// Loop length
+	fscanf( pAMRFile, "%i", &iEntries );		// Number of grid cells
+
+	// Allocate memory to hold the quantities to store in the .phy file
+	pfs = (double*)malloc( sizeof(double) * iEntries );
+	pfds = (double*)malloc( sizeof(double) * iEntries );
+	pfv = (double*)malloc( sizeof(double) * iEntries );
+	pfCs = (double*)malloc( sizeof(double) * iEntries );
+	pfne = (double*)malloc( sizeof(double) * iEntries );
+	pfnH = (double*)malloc( sizeof(double) * iEntries );
+	pfPe = (double*)malloc( sizeof(double) * iEntries );
+	pfPH = (double*)malloc( sizeof(double) * iEntries );
+	pfTe = (double*)malloc( sizeof(double) * iEntries );
+	pfTH = (double*)malloc( sizeof(double) * iEntries );
+	pfF_ce = (double*)malloc( sizeof(double) * iEntries );
+	pfF_cH = (double*)malloc( sizeof(double) * iEntries );
+
+	for( i=0; i<iEntries; i++ )
+	{
+	    // .amr file
+	    ReadDouble( pAMRFile, &(pfs[i]) );		// Position
+	    ReadDouble( pAMRFile, &(pfds[i]) );		// Cell width
+	    ReadDouble( pAMRFile, &frho_e );		// Electron mass density
+	    ReadDouble( pAMRFile, &frho_H );		// Hydrogen mass density
+	    ReadDouble( pAMRFile, &frhov );		// Momentum density
+	    ReadDouble( pAMRFile, &fE_e );		// Electron energy density
+	    ReadDouble( pAMRFile, &fE_H );		// Hydrogen energy density
+
+	    fscanf( pAMRFile, "%i", &iBuffer );		// Refinement level
+	    for( j=0; j<MAX_REFINEMENT_LEVEL; j++ )
+		ReadDouble( pAMRFile, &fBuffer );	// Unique cell identifier
+
+	    // Calculate the quantities to store in the .phy file
+	    pfv[i] = frhov / frho_H;            
+	    pfne[i] = frho_e / ELECTRON_MASS;
+	    pfnH[i] = frho_H / AVERAGE_PARTICLE_MASS;
+	    pfTe[i] = fE_e / ( 1.5 * BOLTZMANN_CONSTANT * pfne[i] );
+	    pfTH[i] = ( fE_H - ( 0.5 * frhov * pfv[i] ) ) / ( 1.5 * BOLTZMANN_CONSTANT * pfnH[i] );
+	    pfPe[i] = BOLTZMANN_CONSTANT * pfne[i] * pfTe[i];
+    	    pfPH[i] = BOLTZMANN_CONSTANT * pfnH[i] * pfTH[i];
+	    pfCs[i] = sqrt( ( GAMMA * ( pfPe[i] + pfPH[i] ) ) / frho_H );
+	    pfF_ce[i] = 0.0;
+	    pfF_cH[i] = 0.0;
+	}
+
+    fclose( pAMRFile );
+
+    // Open the .phy file
+    sprintf( szPHYFilename, "%s.phy", Params.szOutputFilename );
+    pPHYFile = fopen( szPHYFilename, "w");
+    
+	i = 0; fprintf( pPHYFile, "%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\n", pfs[i], pfv[i], pfCs[i], pfne[i], pfnH[i], pfPe[i], pfPH[i], pfTe[i], pfTH[i], pfF_ce[i], pfF_cH[i] );
+	i = 1; fprintf( pPHYFile, "%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\n", pfs[i], pfv[i], pfCs[i], pfne[i], pfnH[i], pfPe[i], pfPH[i], pfTe[i], pfTH[i], pfF_ce[i], pfF_cH[i] );
+		flast_s = pfs[i]; flast_ne = pfne[i]; flast_nH = pfnH[i]; flast_Te = pfTe[i];
+
+	iTotalSteps = 2;
+
+        for( i=2; i<iEntries-2; i++ )
+	{
+
+	    fDiff_ne[0] = fabs( pfne[i] - flast_ne ) / flast_ne;
+	    fDiff_ne[1] = fDiff_ne[0] * ( flast_ne / pfne[i] );
+	    fDiff_nH[0] = fabs( pfnH[i] - flast_nH ) / flast_nH;
+	    fDiff_nH[1] = fDiff_nH[0] * ( flast_nH / pfnH[i] );
+	    fDiff_Te[0] = fabs( pfTe[i] - flast_Te ) / flast_Te;
+	    fDiff_Te[1] = fDiff_Te[0] * ( flast_Te / pfTe[i] );
+
+	    if( fDiff_ne[0] > delta || fDiff_ne[1] > delta || fDiff_nH[0] > delta || fDiff_nH[1] > delta || fDiff_Te[0] > delta || fDiff_Te[1] > delta || ( pfs[i] - flast_s ) >= fMAX_DS )
+	    {
+	        // Electron thermal conduction
+	        kappa = SPITZER_ELECTRON_CONDUCTIVITY * pow( pfTe[i], 2.5 );
+	        x[1] = pfs[i-1]; x[2] = pfs[i]; x[3] = pfs[i+1];
+	        y[1] = pfTe[i-1]; y[2] = pfTe[i]; y[3] = pfTe[i+1];
+	        s[0] = pfs[i] - ( 0.5 * pfds[i] ); s[1] = s[0] + pfds[i];
+	        LinearFit( x, y, s[0], &(T[0]) );
+	        LinearFit( &(x[1]), &(y[1]), s[1], &(T[1]) );
+	        pfF_ce[i] = - kappa * ( ( T[1] - T[0] ) / pfds[i] );
+
+	        // Hydrogen thermal conduction
+	        kappa = SPITZER_ION_CONDUCTIVITY * pow( pfTH[i], 2.5 );
+	        y[1] = pfTH[i-1]; y[2] = pfTH[i]; y[3] = pfTH[i+1];
+	        LinearFit( x, y, s[0], &(T[0]) );
+	        LinearFit( &(x[1]), &(y[1]), s[1], &(T[1]) );
+	        pfF_cH[i] = - kappa * ( ( T[1] - T[0] ) / pfds[i] );
+
+	        fprintf( pPHYFile, "%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\n", pfs[i], pfv[i], pfCs[i], pfne[i], pfnH[i], pfPe[i], pfPH[i], pfTe[i], pfTH[i], pfF_ce[i], pfF_cH[i] );
+			flast_s = pfs[i]; flast_ne = pfne[i]; flast_nH = pfnH[i]; flast_Te = pfTe[i];
+
+		iTotalSteps++;
+	    }
+	}
+	
+	i = iEntries - 2; fprintf( pPHYFile, "%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\n", pfs[i], pfv[i], pfCs[i], pfne[i], pfnH[i], pfPe[i], pfPH[i], pfTe[i], pfTH[i], pfF_ce[i], pfF_cH[i] );
+	i = iEntries - 1; fprintf( pPHYFile, "%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\n", pfs[i], pfv[i], pfCs[i], pfne[i], pfnH[i], pfPe[i], pfPH[i], pfTe[i], pfTH[i], pfF_ce[i], pfF_cH[i] );
+
+	iTotalSteps += 2;
+
+    fclose( pPHYFile );
+
+    // Free the allocated memory
+    free( pfF_cH );
+    free( pfF_ce );
+    free( pfTH );
+    free( pfTe );
+    free( pfPH );
+    free( pfPe );
+    free( pfnH );
+    free( pfne );
+    free( pfCs );
+    free( pfv );
+    free( pfds );
+    free( pfs );
+
+    return iTotalSteps;
+}
+
+void RecalculateChromosphericHeating( PARAMETERS Params, int number_of_lines )
+{
+    char szPHYFilename[256];
+    double s, v, Cs, n_e, n_H, P_e, P_H, T_e, T_H, Fce, FcH;
+    double frho_c = 0., fHI_c =0., previous_s = Params.Lfull/2., cell_width_cos_theta = 0., fDensityDifference = 0., fRadiation=0.;
+    double fSum, fElement, fZ[31];
+    int *piA, iNumElements;
+    int num_elements = 0;
+    int i, j, k;
+
+    PRADIATION pRadiation_EQ;
+    pRadiation_EQ = new CRadiation( "Radiation_Model/config/elements_eq.cfg" );
+#if defined (DECOUPLE_IONISATION_STATE_SOLVER) || defined (NON_EQUILIBRIUM_RADIATION)
+    PRADIATION pRadiation_NEQ;
+    pRadiation_NEQ = new CRadiation( "Radiation_Model/config/elements_neq.cfg" );
+#endif // DECOUPLE_IONISATION_STATE_SOLVER || NON_EQUILIBRIUM_RADIATION
+
+    COpticallyThickIon *pHI, *pMgII,*pCaII;   
+    pHI = new COpticallyThickIon( 1, (char *)"h_1", (char *)"Radiation_Model/atomic_data/abundances/asplund.ab" );
+    pMgII = new COpticallyThickIon( 12, (char *)"mg_2", (char *)"Radiation_Model/atomic_data/abundances/asplund.ab" );
+    pCaII = new COpticallyThickIon( 20, (char *)"ca_2", (char *)"Radiation_Model/atomic_data/abundances/asplund.ab" );
+    
+    // Create vectors to store the log of radiation and column density
+    vector<double> fRad;
+    vector<double> fRho;
+
+    printf( "Recalculating the chromospheric heating\n\n" );
+
+    // Reserve space for the maximum size of the arrays
+    fRad.reserve(number_of_lines/2);
+    fRho.reserve(number_of_lines/2);
+
+    sprintf( szPHYFilename, "%s.phy", Params.szOutputFilename );    
+    ifstream phy_infile( szPHYFilename );
+
+    for( k=0;k<number_of_lines;++k )
+    {
+        // Read in the line and values on the line
+        phy_infile >> s >> v >> Cs >> n_e >> n_H >> P_e >> P_H >> T_e >> T_H >> Fce >> FcH;
+        
+        // For positions in the second half of the loop, calculate the column densities
+        if( k > number_of_lines/2 )
+        {
+            
+            if( T_e < OPTICALLY_THICK_TEMPERATURE )
+            {
+                cell_width_cos_theta = fabs(s - previous_s) * fabs( cos( ( _PI_ * s ) / Params.Lfull ) );
+                
+                frho_c += n_H * AVERAGE_PARTICLE_MASS * cell_width_cos_theta;
+
+#ifdef NLTE_CHROMOSPHERE
+		fSum = 0.0;
+		piA = pRadiation_EQ->pGetAtomicNumbers( &iNumElements );
+		for( i=0; i<iNumElements; i++ )
+		{
+			// Don't double count hydrogen
+			if( piA[i] > 1 )
+			{
+				fElement = 0.0;
+			
+				pRadiation_EQ->GetEquilIonFrac( piA[i], fZ, log10(T_e) );
+				for( j=1; j<piA[i]+1; j++ )
+					fElement += ((double)j) * fZ[j];
+
+				fElement *= pRadiation_EQ->GetAbundance( piA[i] );
+
+				fSum += fElement;
+			}
+		}
+#if defined (DECOUPLE_IONISATION_STATE_SOLVER) || defined (NON_EQUILIBRIUM_RADIATION)
+		piA = pRadiation_NEQ->pGetAtomicNumbers( &iNumElements );
+		for( i=0; i<iNumElements; i++ )
+		{
+			// Don't double count hydrogen
+			if( piA[i] > 1 )
+			{
+				fElement = 0.0;
+			
+				pRadiation_NEQ->GetEquilIonFrac( piA[i], fZ, log10(T_e) );
+				for( j=1; j<piA[i]+1; j++ )
+					fElement += ((double)j) * fZ[j];
+
+				fElement *= pRadiation_NEQ->GetAbundance( piA[i] );
+
+				fSum += fElement;
+			}
+		}
+#endif // DECOUPLE_IONISATION_STATE_SOLVER || NON_EQUILIBRIUM_RADIATION
+
+		fHI_c += ( n_H * ( 1.0 + fSum ) - n_e ) * cell_width_cos_theta;
+#else // NLTE_CHROMOSPHERE
+                // Calculate the neutral hydrogen column number density
+                fDensityDifference = n_H - ( n_e / 1.000144 );
+                if ( fabs(fDensityDifference)  < 1.0 )
+                    fHI_c += 0.0;
+                else
+                    fHI_c += ( n_H - ( n_e / 1.000144 ) ) * cell_width_cos_theta;
+#endif // NLTE_CHROMOSPHERE
+                
+                fRho.push_back(log10(frho_c));
+                
+                fRadiation = pHI->GetVolumetricLossRate( log10(T_e), log10((4e-14)*fHI_c), n_e * n_H * AVERAGE_PARTICLE_MASS) + pMgII->GetVolumetricLossRate( log10(T_e), log10(frho_c), n_e * n_H * AVERAGE_PARTICLE_MASS) + pCaII->GetVolumetricLossRate( log10(T_e), log10(frho_c), n_e * n_H * AVERAGE_PARTICLE_MASS);
+             
+                fRad.push_back(log10(fRadiation));
+                
+                ++num_elements;         
+            }
+        }
+        
+        previous_s = s;
+    }
+    
+    phy_infile.close();
+
+    delete pHI;
+    delete pMgII;
+    delete pCaII;
+
+#if defined (DECOUPLE_IONISATION_STATE_SOLVER) || defined (NON_EQUILIBRIUM_RADIATION)
+    delete pRadiation_NEQ;
+#endif // DECOUPLE_IONISATION_STATE_SOLVER || NON_EQUILIBRIUM_RADIATION
+    delete pRadiation_EQ;
+
+    // Output the volumetric heating rate vs. column density
+    ofstream outfile("Radiation_Model/atomic_data/OpticallyThick/VAL_atmospheres/VAL.heat");
+    outfile << num_elements << endl;
+    outfile.precision(10);
+    for( i=0; i<num_elements; ++i)
+    {
+        if( fRho[i] >= 0.0 ) fRad[i] = -300.0;
+        outfile << fRho[i] << "\t" << fRad[i] << endl;
+    }
+    outfile.close();
+}
+#endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
