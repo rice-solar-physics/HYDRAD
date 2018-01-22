@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/16/2017
+// * Date last modified: 01/22/2018
 // *
 // ****
 
@@ -406,11 +406,11 @@ while( pNextActiveCell )
     pActiveCell = pNextActiveCell;
     pActiveCell->GetCellProperties( &CellProperties );
 
-#ifdef OPTICALLY_THICK_RADIATION
+#if defined (OPTICALLY_THICK_RADIATION) || defined(BEAM_HEATING)
     // Locate the apex cell from which the column densities will be calculated along each leg
     if( CellProperties.s[1] <= Params.L / 2.0 )
         pCentreOfCurrentRow = pActiveCell;
-#endif // OPTICALLY_THICK_RADIATION
+#endif // OPTICALLY_THICK_RADIATION || BEAM_HEATING
 
 // ******************************************************************************
 // *                                                                            *
@@ -1306,8 +1306,10 @@ while( pNextActiveCell->pGetPointer( RIGHT ) )
 
 #if defined(OPTICALLY_THICK_RADIATION) || defined(BEAM_HEATING)
 // Left-hand leg of the loop
+#ifdef OPTICALLY_THICK_RADIATION
 fHI_c = 0.0;
 frho_c = 0.0;
+#endif // OPTICALLY_THICK_RADIATION
 #ifdef BEAM_HEATING
 	fColumnDensity = 0.0;
 	fColumnDensitystar = 0.0;
@@ -1326,7 +1328,7 @@ while( pNextActiveCell )
 	CellProperties.nH_c = fColumnDensity;
 	CellProperties.nH_star_c = fColumnDensitystar;
 #endif // BEAM_HEATING
-
+        
 #ifdef OPTICALLY_THICK_RADIATION
     if( CellProperties.T[ELECTRON] < OPTICALLY_THICK_TEMPERATURE )
     {
@@ -1338,23 +1340,19 @@ while( pNextActiveCell )
 
         CellProperties.HI_c = fHI_c;
         CellProperties.rho_c = frho_c;
-
-#ifndef BEAM_HEATING
-        pActiveCell->UpdateCellProperties( &CellProperties );
-#endif // BEAM_HEATING
     }
 #endif // OPTICALLY_THICK_RADIATION
 
-#ifdef BEAM_HEATING
     pActiveCell->UpdateCellProperties( &CellProperties );
-#endif // BEAM_HEATING
 
     pNextActiveCell = pActiveCell->pGetPointer( LEFT );
 }
 
 // Right-hand leg of the loop
+#ifdef OPTICALLY_THICK_RADIATION
 fHI_c = 0.0;
 frho_c = 0.0;
+#endif // OPTICALLY_THICK_RADIATION
 #ifdef BEAM_HEATING
 	fColumnDensity = 0.0;
 	fColumnDensitystar = 0.0;
@@ -1385,16 +1383,10 @@ while( pNextActiveCell )
 
         CellProperties.HI_c = fHI_c;
         CellProperties.rho_c = frho_c;
-
-#ifndef BEAM_HEATING
-        pActiveCell->UpdateCellProperties( &CellProperties );
-#endif // BEAM_HEATING
     }
 #endif // OPTICALLY_THICK_RADIATION
 
-#ifdef BEAM_HEATING
     pActiveCell->UpdateCellProperties( &CellProperties );
-#endif // BEAM_HEATING
 
     pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
 }
