@@ -1,1 +1,1 @@
-g++ -m64 -Ofast -flto -march=native -funroll-loops -Wall ../source/main.cpp ../../../source/file.cpp -o ../extractSpatialAverages.exe
+g++ -O3 -msse4.2 -Wall ../source/main.cpp ../../../source/file.cpp -o ../extractSpatialAverages.exe

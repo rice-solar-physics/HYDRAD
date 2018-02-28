@@ -5,7 +5,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/20/2017
+// * Date last modified: 02/28/2018
 // *
 // ****
 
@@ -1438,8 +1438,8 @@ int AMR2PHY( PARAMETERS Params )
     sprintf( szPHYFilename, "%s.phy", Params.szOutputFilename );
     pPHYFile = fopen( szPHYFilename, "w");
     
-	i = 0; fprintf( pPHYFile, "%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\n", pfs[i], pfv[i], pfCs[i], pfne[i], pfnH[i], pfPe[i], pfPH[i], pfTe[i], pfTH[i], pfF_ce[i], pfF_cH[i] );
-	i = 1; fprintf( pPHYFile, "%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\n", pfs[i], pfv[i], pfCs[i], pfne[i], pfnH[i], pfPe[i], pfPH[i], pfTe[i], pfTH[i], pfF_ce[i], pfF_cH[i] );
+	i = 0; fprintf( pPHYFile, "%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\n", pfs[i], pfv[i], pfCs[i], pfne[i], pfnH[i], pfPe[i], pfPH[i], pfTe[i], pfTH[i], pfF_ce[i], pfF_cH[i] );
+	i = 1; fprintf( pPHYFile, "%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\n", pfs[i], pfv[i], pfCs[i], pfne[i], pfnH[i], pfPe[i], pfPH[i], pfTe[i], pfTH[i], pfF_ce[i], pfF_cH[i] );
 		flast_s = pfs[i]; flast_ne = pfne[i]; flast_nH = pfnH[i]; flast_Te = pfTe[i];
 
 	iTotalSteps = 2;
@@ -1472,15 +1472,15 @@ int AMR2PHY( PARAMETERS Params )
 	        LinearFit( &(x[1]), &(y[1]), s[1], &(T[1]) );
 	        pfF_cH[i] = - kappa * ( ( T[1] - T[0] ) / pfds[i] );
 
-	        fprintf( pPHYFile, "%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\n", pfs[i], pfv[i], pfCs[i], pfne[i], pfnH[i], pfPe[i], pfPH[i], pfTe[i], pfTH[i], pfF_ce[i], pfF_cH[i] );
+	        fprintf( pPHYFile, "%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\n", pfs[i], pfv[i], pfCs[i], pfne[i], pfnH[i], pfPe[i], pfPH[i], pfTe[i], pfTH[i], pfF_ce[i], pfF_cH[i] );
 			flast_s = pfs[i]; flast_ne = pfne[i]; flast_nH = pfnH[i]; flast_Te = pfTe[i];
 
 		iTotalSteps++;
 	    }
 	}
 	
-	i = iEntries - 2; fprintf( pPHYFile, "%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\n", pfs[i], pfv[i], pfCs[i], pfne[i], pfnH[i], pfPe[i], pfPH[i], pfTe[i], pfTH[i], pfF_ce[i], pfF_cH[i] );
-	i = iEntries - 1; fprintf( pPHYFile, "%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\n", pfs[i], pfv[i], pfCs[i], pfne[i], pfnH[i], pfPe[i], pfPH[i], pfTe[i], pfTH[i], pfF_ce[i], pfF_cH[i] );
+	i = iEntries - 2; fprintf( pPHYFile, "%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\n", pfs[i], pfv[i], pfCs[i], pfne[i], pfnH[i], pfPe[i], pfPH[i], pfTe[i], pfTH[i], pfF_ce[i], pfF_cH[i] );
+	i = iEntries - 1; fprintf( pPHYFile, "%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\n", pfs[i], pfv[i], pfCs[i], pfne[i], pfnH[i], pfPe[i], pfPH[i], pfTe[i], pfTH[i], pfF_ce[i], pfF_cH[i] );
 
 	iTotalSteps += 2;
 
