@@ -4,10 +4,14 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/20/2017
+// * Date last modified: 03/19/2018
 // *
 // ****
 
+#include "../config.h"
+
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
 
 #define MAX_ITERATIONS			300
 #define CONVERGENCE_EPSILON		0.1
@@ -114,3 +118,6 @@ class CRadiativeRates {
 
 // Define a type for the radiative transition rates class
 typedef CRadiativeRates* PRADIATIVERATES;
+
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION

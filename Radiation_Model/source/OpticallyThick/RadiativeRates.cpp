@@ -4,9 +4,14 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/20/2017
+// * Date last modified: 03/19/2018
 // *
 // ****
+
+#include "RadiativeRates.h"
+
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
 
 // **** RADIATIVE TRANSITION RATES CLASS ****
 
@@ -16,7 +21,6 @@
 #include <alloca.h>
 #include <math.h>
 
-#include "RadiativeRates.h"
 #include "../../../Resources/source/fitpoly.h"
 #include "../../../Resources/source/file.h"
 // #include "../../../Resources/source/svd.h"
@@ -756,7 +760,11 @@ void CRadiativeRates::GetFreeBoundRates( double *pfFB, double *pflog10radT, doub
 double x1[3], x2[3], y1[3], y2[3];
 int h, i, j;
 
-// The first task is the locate the temperature range within which to perform the interpolation of the rate for each transition
+// Set the minimum density limit to ensure well-behaved solutions at low densities (e.g. in the solar corona)
+if( fne < MIN_DENSITY_LIMIT )
+	fne = MIN_DENSITY_LIMIT;
+
+// The first task is to locate the temperature range within which to perform the interpolation of the rate for each transition
 // Catch out-of-range values
 if( flog10eT < pfFB_logeT[0] ) flog10eT = pfFB_logeT[0];
 else if( flog10eT > pfFB_logeT[iFB_eTvals-1] ) flog10eT = pfFB_logeT[iFB_eTvals-1];
@@ -797,27 +805,30 @@ for( j=0; j<iFB_TRvals; j++ )
 
 void CRadiativeRates::GetFreeBoundRatesRH( double *pfFB, double *pflog10radT, double flog10eT, double fne, double *pfLevel_Ratio )
 {
-    double x1[3], x2[3], y1[3], y2[3];
-    int h, i, j;
-    double fgij[] = {8.0,18.0,32.0,50.0};    // Ratio of statistical weights of levels i to j (j>i) for the transitions
-    double fdE[] = {39464.221,17536.454,9867.2552,6311.0119};   // = h * nu / k_B for the each transition (K)
+double x1[3], x2[3], y1[3], y2[3];
+int h, i, j;
+double fgij[] = {8.0,18.0,32.0,50.0};    // Ratio of statistical weights of levels i to j (j>i) for the transitions
+double fdE[] = {39464.221,17536.454,9867.2552,6311.0119};   // = h * nu / k_B for the each transition (K)
 
+// Set the minimum density limit to ensure well-behaved solutions at low densities (e.g. in the solar corona)
+if( fne < MIN_DENSITY_LIMIT )
+	fne = MIN_DENSITY_LIMIT;
+
+// The first task is to locate the temperature range within which to perform the interpolation of the rate for each transition
+// Catch out-of-range values
+if( flog10eT < pfFB_logeT[0] ) flog10eT = pfFB_logeT[0];
+else if( flog10eT > pfFB_logeT[iFB_eTvals-1] ) flog10eT = pfFB_logeT[iFB_eTvals-1];
+// Find the temperature range
+for( h=0; h<iFB_eTvals-1; h++ )
+	if( flog10eT >= pfFB_logeT[h] && flog10eT <= pfFB_logeT[h+1] )
+        	break;
     
-    // The first task is the locate the temperature range within which to perform the interpolation of the rate for each transition
-    // Catch out-of-range values
-    if( flog10eT < pfFB_logeT[0] ) flog10eT = pfFB_logeT[0];
-    else if( flog10eT > pfFB_logeT[iFB_eTvals-1] ) flog10eT = pfFB_logeT[iFB_eTvals-1];
-    // Find the temperature range
-    for( h=0; h<iFB_eTvals-1; h++ )
-        if( flog10eT >= pfFB_logeT[h] && flog10eT <= pfFB_logeT[h+1] )
-            break;
+x2[1] = pfFB_logeT[h];
+x2[2] = pfFB_logeT[h+1];
     
-    x2[1] = pfFB_logeT[h];
-    x2[2] = pfFB_logeT[h+1];
-    
-    for( j=0; j<iFB_TRvals; j++ )
-    {
-        // The first task is the locate the temperature range within which to perform the interpolation of the rate for each transition
+for( j=0; j<iFB_TRvals; j++ )
+{
+	// The first task is the locate the temperature range within which to perform the interpolation of the rate for each transition
         // Catch out-of-range values
         if( pflog10radT[j] < pfFB_logradT[0] ) pflog10radT[j] = pfFB_logradT[0];
         else if( pflog10radT[j] > pfFB_logradT[iFB_radTvals-1] ) pflog10radT[j] = pfFB_logradT[iFB_radTvals-1];
@@ -842,15 +853,15 @@ void CRadiativeRates::GetFreeBoundRatesRH( double *pfFB, double *pflog10radT, do
         
         if( !(pfLevel_Ratio[j+11] == 0.0) )
         {
-            // 4.829e15 = 1 / 2.071e-16
-            // 2.071e-16 = 1/2 * (2 pi m_e k_b / h^2 )^(-1.5)
-            // Divide by the LTE population ratio
-            pfFB[j] *= (4.829e15 * exp( -fdE[j]/pow10(flog10eT) ) * pow( pow10(flog10eT), 1.5 ) ) / ( fgij[j] * fne ) ;
+        	// 4.829e15 = 1 / 2.071e-16
+        	// 2.071e-16 = 1/2 * (2 pi m_e k_b / h^2 )^(-1.5)
+        	// Divide by the LTE population ratio
+        	pfFB[j] *= (4.829e15 * exp( -fdE[j]/pow10(flog10eT) ) * pow( pow10(flog10eT), 1.5 ) ) / ( fgij[j] * fne ) ;
         
-            // Multiply by the NLTE ratio:
-            pfFB[j] /= pfLevel_Ratio[j+11];
+        	// Multiply by the NLTE ratio:
+        	pfFB[j] /= pfLevel_Ratio[j+11];
         }
-    }
+}
 }
 
 void CRadiativeRates::GetCollisionalRates( double *pfColl_ex_lu, double *pfColl_ex_ul, double *pfColl_ion, double *pfColl_rec, double flog10T, double fne )
@@ -858,7 +869,11 @@ void CRadiativeRates::GetCollisionalRates( double *pfColl_ex_lu, double *pfColl_
 double x[3], y[3];
 int i, j;
 
-// The first task is the locate the temperature range within which to perform the interpolation of the rate for each transition
+// Set the minimum density limit to ensure well-behaved solutions at low densities (e.g. in the solar corona)
+if( fne < MIN_DENSITY_LIMIT )
+	fne = MIN_DENSITY_LIMIT;
+
+// The first task is to locate the temperature range within which to perform the interpolation of the rate for each transition
 // Catch out-of-range values
 if( flog10T < pfColl_logT[0] ) flog10T = pfColl_logT[0];
 else if( flog10T > pfColl_logT[iColl_Tvals-1] ) flog10T = pfColl_logT[iColl_Tvals-1];
@@ -881,7 +896,6 @@ for( j=0; j<iColl_exTRvals; j++ )
 	y[2] = log10( ppfColl_ex_ul[j][i+1] );
 	LinearFit( x, y, flog10T, &(pfColl_ex_ul[j]) );
 	pfColl_ex_ul[j] = fne * pow10( pfColl_ex_ul[j] );   
-//    printf("Original j %i lu %.2e ul %.2e\n",j,pfColl_ex_ul[j],pfColl_ex_lu[j]);
 }
 // Collisional ionization
 for( j=0; j<iColl_ionTRvals; j++ )
@@ -895,58 +909,55 @@ for( j=0; j<iColl_ionTRvals; j++ )
 	y[2] = log10( ppfColl_rec[j][i+1] );
 	LinearFit( x, y, flog10T, &(pfColl_rec[j]) );
 	pfColl_rec[j] = fne * fne * pow10( pfColl_rec[j] );
-//    printf("Original j %i ion %.2e rec %.2e\n",j,pfColl_ion[j],pfColl_rec[j]);
-
 }
 }
-
 
 void CRadiativeRates::GetCollisionalRatesRH( double *pfColl_ex_lu, double *pfColl_ex_ul, double *pfColl_ion, double *pfColl_rec, double flog10T, double fne )
 {
-    double x[3], y[3];
-    double fgij[] = {0.25,0.11111111,0.0625,0.04,0.44444444,0.25,0.16,0.5625,0.36,0.64,2.0,8.0,18.0,32.0,50.0};    // Ratio of statistical weights of levels i to j (j>i) for the transitions
-    double fdE[] = {118301.48,140234.04,147864.85,151464.29,21918.168,29587.368,33148.41,
-                    7673.9985,11225.443,3551.444,157895.28,39464.221,17536.454,9867.2552,6311.0119};   // = h * nu / k_B for the each transition (K)
-    int i, j;
+double x[3], y[3];
+double fgij[] = {0.25,0.11111111,0.0625,0.04,0.44444444,0.25,0.16,0.5625,0.36,0.64,2.0,8.0,18.0,32.0,50.0};    // Ratio of statistical weights of levels i to j (j>i) for the transitions
+double fdE[] = {118301.48,140234.04,147864.85,151464.29,21918.168,29587.368,33148.41,
+                7673.9985,11225.443,3551.444,157895.28,39464.221,17536.454,9867.2552,6311.0119};   // = h * nu / k_B for the each transition (K)
+int i, j;
     
-    // The first task is the locate the temperature range within which to perform the interpolation of the rate for each transition
-    // Catch out-of-range values
-    if( flog10T < pfColl_logT[0] ) flog10T = pfColl_logT[0];
-    else if( flog10T > pfColl_logT[iColl_Tvals-1] ) flog10T = pfColl_logT[iColl_Tvals-1];
-    // Find the temperature range
-    for( i=0; i<iColl_Tvals-1; i++ )
-        if( flog10T >= pfColl_logT[i] && flog10T <= pfColl_logT[i+1] )
-            break;
-    
-    x[1] = pfColl_logT[i];
-    x[2] = pfColl_logT[i+1];
+// Set the minimum density limit to ensure well-behaved solutions at low densities (e.g. in the solar corona)
+if( fne < MIN_DENSITY_LIMIT )
+	fne = MIN_DENSITY_LIMIT;
 
-    // Collisional excitation
-    for( j=0; j<iColl_exTRvals; j++ )
-    {
+// The first task is the locate the temperature range within which to perform the interpolation of the rate for each transition
+// Catch out-of-range values
+if( flog10T < pfColl_logT[0] ) flog10T = pfColl_logT[0];
+else if( flog10T > pfColl_logT[iColl_Tvals-1] ) flog10T = pfColl_logT[iColl_Tvals-1];
+// Find the temperature range
+for( i=0; i<iColl_Tvals-1; i++ )
+	if( flog10T >= pfColl_logT[i] && flog10T <= pfColl_logT[i+1] )
+        	break;
+    
+x[1] = pfColl_logT[i];
+x[2] = pfColl_logT[i+1];
+
+// Collisional excitation
+for( j=0; j<iColl_exTRvals; j++ )
+{
         y[1] = log10( ppfColl_ex_ul[j][i] );
         y[2] = log10( ppfColl_ex_ul[j][i+1] );
         LinearFit( x, y, flog10T, &(pfColl_ex_ul[j]) );
         
         pfColl_ex_ul[j] = fne * fgij[j] * sqrt( pow10( flog10T ) ) * pow10( pfColl_ex_ul[j] ) * 1.e6;
-        
         pfColl_ex_lu[j] = (pfColl_ex_ul[j] * exp( -fdE[j] / pow10(flog10T) ) ) / fgij[j] ;
-    }
-    // Collisional ionization
-    for( j=0; j<iColl_ionTRvals; j++ )
-    {
-        y[1] = log10( ppfColl_ion[j][i] );
+}
+// Collisional ionization
+for( j=0; j<iColl_ionTRvals; j++ )
+{
+	y[1] = log10( ppfColl_ion[j][i] );
         y[2] = log10( ppfColl_ion[j][i+1] );
         LinearFit( x, y, flog10T, &(pfColl_ion[j]) );
         
         pfColl_ion[j] = fne * sqrt( pow10( flog10T ) ) * pow10( pfColl_ion[j] ) * exp( -fdE[j+iColl_exTRvals] / pow10(flog10T) ) * 1.e6;
-
 	// 2.071e-16 = 1/2 * (2 pi m_e k_b / h^2 )^(-1.5)
         pfColl_rec[j] = 2.071e-16 * pfColl_ion[j] * fne * fgij[j+iColl_exTRvals] * exp( fdE[j+iColl_exTRvals] / pow10(flog10T) ) * pow( pow10(flog10T), -1.5 );        
-    }
-    
 }
-
+}
 
 void CRadiativeRates::SolveHIIFraction( double *pfHstate, double *pfColl_ex_lu, double *pfColl_ex_ul, double *pfColl_ion, double *pfColl_rec, double *pfBB_lu, double *pfBB_ul, double *pfBF, double *pfFB )
 {
@@ -1095,7 +1106,6 @@ void CRadiativeRates::SolveHIIFraction( double *pfHstate, double *pfColl_ex_lu, 
         x[i] /= fSum;
     
     memcpy( pfHstate, x, sizeof(double)*6 );
-
 /*
     // Free memory
     for( i=0; i<7; i++ )
@@ -1109,7 +1119,6 @@ void CRadiativeRates::SolveHIIFraction( double *pfHstate, double *pfColl_ex_lu, 
     free( b );
 */
 }
-
 
 void CRadiativeRates::GetAllDel_Hstate_dot_v( double *pHstate0, double *pHstate1, double *pHstate2, double *pHstate3, double *pHstate4, double *s, double *s_pos, double *pv, double delta_s, double *pDel_Hstate_dot_v )
 {
@@ -1356,3 +1365,6 @@ void CRadiativeRates::SetMcZ_c_RIGHT( int i, double McZ_c )
 {
     pMcZ_c_RIGHT[i] = McZ_c;
 }
+
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
