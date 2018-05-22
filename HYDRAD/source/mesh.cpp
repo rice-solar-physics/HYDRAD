@@ -1510,8 +1510,7 @@ while( mesh_time <= Params.Duration )
 #ifdef ADAPT
 	iAdaptiveStepCount++;
 	bAdapt = false;
-	// if( iAdaptiveStepCount == ADAPT_EVERY_N_TIME_STEPS )
-	if( iAdaptiveStepCount == 10 )
+	if( iAdaptiveStepCount == ADAPT_EVERY_N_TIME_STEPS )
 	{
 		bAdapt = true;
 		iAdaptiveStepCount = 0;
