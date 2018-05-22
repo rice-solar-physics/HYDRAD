@@ -1482,31 +1482,45 @@ CreateIndexedCellList();
 
 void CAdaptiveMesh::Solve( void )
 {
-int iOutputStepCount = 0;
+clock_t timer[3];
 double fNextOutputTime;
-clock_t timer[2];
+int iOutputStepCount = 0;
+#ifdef ADAPT
+	int iAdaptiveStepCount = 0;
+	bool bAdapt;
+#endif // ADAPT
 
 printf( "\nSolving...\n\n" );
 
 fNextOutputTime = mesh_time + Params.OutputPeriod;
 
 // Now time-step the mesh
-run_time = 0.0;
-timer[0] = clock();
+timer[0] = timer[1] = clock();
 while( mesh_time <= Params.Duration )
 {
     iOutputStepCount++;
-
     if( iOutputStepCount == OUTPUT_EVERY_N_TIME_STEPS )
     {
-		timer[1] =clock();
-		ShowProgress( timer );	// The run time is updated in this function
+		timer[2] =clock();
+		ShowProgress( timer );
 		iOutputStepCount = 0;
-		timer[0] = clock();
+		timer[1] = clock();
     }
 
-    Integrate();
-
+#ifdef ADAPT
+	iAdaptiveStepCount++;
+	bAdapt = false;
+	// if( iAdaptiveStepCount == ADAPT_EVERY_N_TIME_STEPS )
+	if( iAdaptiveStepCount == 10 )
+	{
+		bAdapt = true;
+		iAdaptiveStepCount = 0;
+	}
+	Integrate( bAdapt );
+#else // ADAPT
+	Integrate();
+#endif // ADAPT
+	
     // If the output period has elapsed since the last output then write the profiles to a file
     if( mesh_time >= fNextOutputTime )
     {
@@ -1518,7 +1532,11 @@ while( mesh_time <= Params.Duration )
 printf( "\nDone!\n\n" );
 }
 
+#ifdef ADAPT
+void CAdaptiveMesh::Integrate( bool bAdapt )
+#else // ADAPT
 void CAdaptiveMesh::Integrate( void )
+#endif // ADAPT
 {
 PCELL pNextActiveCell, pPreviousCell = NULL, pNewCell;
 CELLPROPERTIES CellProperties, NewCellProperties;
@@ -1607,7 +1625,8 @@ while( pNextActiveCell )
 
 #ifdef ADAPT
 // Adapt the mesh
-Adapt();
+if( bAdapt )
+	Adapt();
 #endif // ADAPT
 
 // Calculate the physical quantities
@@ -1692,16 +1711,15 @@ void CAdaptiveMesh::ShowProgress( clock_t *ptimer )
 	int iUnits[4], i;
 	char cUnitLabel[6] = {'s','m','h','d','w','y'};
 	
-	fTime[0] =  ((double)(ptimer[1]-ptimer[0])) / CLOCKS_PER_SEC;
-	run_time += fTime[0];
-	fTime[1] = run_time;
-	fTime[2] = run_time / mesh_time;
+	fTime[0] =  ((double)(ptimer[2]-ptimer[1])) / CLOCKS_PER_SEC;
+	fTime[1] = ((double)(clock() - ptimer[0])) / CLOCKS_PER_SEC;
+	fTime[2] = fTime[1] / mesh_time;
 	fTime[3] = ( Params.Duration - mesh_time ) * fTime[2];
 	// Convert the times into convenient units given their magnitudes
 	for( i=0; i<4; i++ )
 		FindTemporalUnits( &(fTime[i]), &(iUnits[i]) );
 
-	printf( "model-time = %.4e s; wall-time = %.4e %c\n", mesh_time, fTime[1], cUnitLabel[iUnits[1]] );
+	printf( "model-time elapsed = %.4e s; wall-time elapsed = %.4e %c\n", mesh_time, fTime[1], cUnitLabel[iUnits[1]] );
 	printf( "\tdt = %.4e s; refinement level = %i/%i; total grid cells = %i;\n", mesh_delta_t, MAX_REFINEMENT_LEVEL, GetMaxRL(), GetNumCells() );
     	printf( "\twall-time/%i steps = %.4e %c; ",  OUTPUT_EVERY_N_TIME_STEPS, fTime[0], cUnitLabel[iUnits[0]] );
 	printf( "wall-time/second = %.4e %c; ", fTime[2], cUnitLabel[iUnits[2]] );

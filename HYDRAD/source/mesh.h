@@ -19,9 +19,9 @@
 class CAdaptiveMesh : private CEquations {
 
     private:
-	
-	// The run (wall) and mesh (model) time elapsed, and the current time-step
-    double run_time, mesh_time, mesh_delta_t;
+
+	// The mesh (model) time elapsed and the current time-step
+    double mesh_time, mesh_delta_t;
 
     // The file number for the next set of output profiles
     int iFileNumber;
@@ -36,8 +36,11 @@ class CAdaptiveMesh : private CEquations {
     void FreePreviousRow( void );
 
     void Solve( void );
+#ifdef ADAPT
+    void Integrate( bool bAdapt );
+#else // ADAPT
     void Integrate( void );
-
+#endif // ADAPT
 	void ShowProgress( clock_t *ptimer );
     void WriteToFile( void );
 
