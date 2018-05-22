@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 01/22/2018
+// * Date last modified: 05/22/2018
 // *
 // ****
 
@@ -188,12 +188,15 @@ double term1, term2;
 int iNumElements, *piA;
 int i, j;
 
+iMaxRL = 0; iNumCells = 0;
 pNextActiveCell = pStartOfCurrentRow;
-
 while( pNextActiveCell )
 {
     pActiveCell = pNextActiveCell;
     pActiveCell->GetCellProperties( &CellProperties );
+
+	if( iMaxRL < CellProperties.iRefinementLevel ) iMaxRL = CellProperties.iRefinementLevel;
+	iNumCells++;
 
     // Locate the apex cell from which the column densities will be calculated along each leg
     if( CellProperties.s[1] <= Params.L / 2.0 )
@@ -399,12 +402,15 @@ int i;
 #endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
 
+iMaxRL = 0; iNumCells = 0;
 pNextActiveCell = pStartOfCurrentRow;
-
 while( pNextActiveCell )
 {
     pActiveCell = pNextActiveCell;
     pActiveCell->GetCellProperties( &CellProperties );
+
+	if( iMaxRL < CellProperties.iRefinementLevel ) iMaxRL = CellProperties.iRefinementLevel;
+	iNumCells++;
 
 #if defined (OPTICALLY_THICK_RADIATION) || defined(BEAM_HEATING)
     // Locate the apex cell from which the column densities will be calculated along each leg

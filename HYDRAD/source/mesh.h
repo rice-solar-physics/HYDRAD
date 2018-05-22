@@ -4,10 +4,11 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 05/11/2012
+// * Date last modified: 05/22/2018
 // *
 // ****
 
+#include <time.h>
 
 #include "eqns.h"
 
@@ -19,8 +20,8 @@ class CAdaptiveMesh : private CEquations {
 
     private:
 	
-    // The mesh time elapsed and the time-step taken
-    double mesh_time, mesh_delta_t;
+	// The run (wall) and mesh (model) time elapsed, and the current time-step
+    double run_time, mesh_time, mesh_delta_t;
 
     // The file number for the next set of output profiles
     int iFileNumber;
@@ -37,6 +38,7 @@ class CAdaptiveMesh : private CEquations {
     void Solve( void );
     void Integrate( void );
 
+	void ShowProgress( clock_t *ptimer );
     void WriteToFile( void );
 
     public:

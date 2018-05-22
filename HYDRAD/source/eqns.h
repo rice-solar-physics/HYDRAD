@@ -5,7 +5,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 01/22/2018
+// * Date last modified: 05/22/2018
 // *
 // ****
 
@@ -44,9 +44,10 @@ class CEquations {
     // Function for finding the smallest time-scale
     void GetSmallestTimeScale( double *delta_t, int iFirstStep );
 
-#ifdef USE_KINETIC_MODEL
-    int iNumCells;
+	// The maximum current refinement level and the number of grid cells
+    int iMaxRL, iNumCells;
 
+#ifdef USE_KINETIC_MODEL
     // Functions for the Spitzer-Harm part of the solution
     // Tabulated values from tables I and II (for Z = 1) in Spitzer & Harm, 1953, Phys. Rev., 89, 977
     double SH_Table[51][3];
@@ -115,6 +116,9 @@ class CEquations {
     // the system of equations
     void Half_Time_Step( PCELLPROPERTIES pNewCellProperties, double delta_t );
     void Full_Time_Step( PCELLPROPERTIES CellProperties, double delta_t );
+
+	int GetMaxRL( void ) { return iMaxRL; }
+	int GetNumCells( void ) { return iNumCells; }
 
 #ifdef USE_KINETIC_MODEL
     // Pointer to an indexed list of cells

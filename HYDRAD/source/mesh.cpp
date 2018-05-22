@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/03/2017
+// * Date last modified: 05/22/2018
 // *
 // ****
 
@@ -1484,21 +1484,25 @@ void CAdaptiveMesh::Solve( void )
 {
 int iOutputStepCount = 0;
 double fNextOutputTime;
+clock_t timer[2];
 
 printf( "\nSolving...\n\n" );
 
 fNextOutputTime = mesh_time + Params.OutputPeriod;
 
 // Now time-step the mesh
-
+run_time = 0.0;
+timer[0] = clock();
 while( mesh_time <= Params.Duration )
 {
     iOutputStepCount++;
 
     if( iOutputStepCount == OUTPUT_EVERY_N_TIME_STEPS )
     {
-        printf( "Timestep = %.8e seconds : Time elapsed = %.4e seconds\n", mesh_delta_t, mesh_time );
-	iOutputStepCount = 0;
+		timer[1] =clock();
+		ShowProgress( timer );	// The run time is updated in this function
+		iOutputStepCount = 0;
+		timer[0] = clock();
     }
 
     Integrate();
@@ -1507,7 +1511,7 @@ while( mesh_time <= Params.Duration )
     if( mesh_time >= fNextOutputTime )
     {
         WriteToFile();
-	fNextOutputTime += Params.OutputPeriod;
+		fNextOutputTime += Params.OutputPeriod;
     }
 }
 
@@ -1629,27 +1633,26 @@ FreePreviousRow();
 
 void CAdaptiveMesh::FreeCurrentRow( void )
 {
-CELLPROPERTIES CellProperties;
-
+#if defined(NON_EQUILIBRIUM_RADIATION) || defined(USE_KINETIC_MODEL)
+	CELLPROPERTIES CellProperties;
+#endif // NON_EQUILIBRIUM_RADIATION || USE_KINETIC_MODEL
 PCELL pNextActiveCell;
 
-// Delete all of the cells by traversing the mesh from the left-most cell at the current time
 pNextActiveCell = pStartOfCurrentRow;
-
-// This part deletes all of the cells along s at constant t
 while( pNextActiveCell )
 {
     pActiveCell = pNextActiveCell;
-    pActiveCell->GetCellProperties( &CellProperties );
     pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
 
+#if defined(NON_EQUILIBRIUM_RADIATION) || defined(USE_KINETIC_MODEL)
+	pActiveCell->GetCellProperties( &CellProperties );
 #ifdef NON_EQUILIBRIUM_RADIATION
-    delete CellProperties.pIonFrac;
+	delete CellProperties.pIonFrac;
 #endif // NON_EQUILIBRIUM_RADIATION
-
 #ifdef USE_KINETIC_MODEL
     delete CellProperties.pKinetic;
 #endif // USE_KINETIC_MODEL
+#endif // NON_EQUILIBRIUM_RADIATION || USE_KINETIC_MODEL
 
     delete pActiveCell;
 }
@@ -1657,29 +1660,84 @@ while( pNextActiveCell )
 
 void CAdaptiveMesh::FreePreviousRow( void )
 {
-CELLPROPERTIES CellProperties;
-
+#if defined(NON_EQUILIBRIUM_RADIATION) || defined(USE_KINETIC_MODEL)
+	CELLPROPERTIES CellProperties;
+#endif // NON_EQUILIBRIUM_RADIATION || USE_KINETIC_MODEL
 PCELL pNextActiveCell;
 
 pNextActiveCell = pStartOfPreviousRow;
-
 while( pNextActiveCell )
 {
     pActiveCell = pNextActiveCell;
-    pActiveCell->GetCellProperties( &CellProperties );
     pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
 
+#if defined(NON_EQUILIBRIUM_RADIATION) || defined(USE_KINETIC_MODEL)
+	pActiveCell->GetCellProperties( &CellProperties );
 #ifdef NON_EQUILIBRIUM_RADIATION
-    delete CellProperties.pIonFrac;
+	delete CellProperties.pIonFrac;
 #endif // NON_EQUILIBRIUM_RADIATION
-
 #ifdef USE_KINETIC_MODEL
     delete CellProperties.pKinetic;
 #endif // USE_KINETIC_MODEL
+#endif // NON_EQUILIBRIUM_RADIATION || USE_KINETIC_MODEL
 
     delete pActiveCell;
 }
 }
+
+void CAdaptiveMesh::ShowProgress( clock_t *ptimer )
+{
+	void FindTemporalUnits( double *pfTime, int *piUnits );
+	double fTime[4];
+	int iUnits[4], i;
+	char cUnitLabel[6] = {'s','m','h','d','w','y'};
+	
+	fTime[0] =  ((double)(ptimer[1]-ptimer[0])) / CLOCKS_PER_SEC;
+	run_time += fTime[0];
+	fTime[1] = run_time;
+	fTime[2] = run_time / mesh_time;
+	fTime[3] = ( Params.Duration - mesh_time ) * fTime[2];
+	// Convert the times into convenient units given their magnitudes
+	for( i=0; i<4; i++ )
+		FindTemporalUnits( &(fTime[i]), &(iUnits[i]) );
+
+	printf( "model-time = %.4e s; wall-time = %.4e %c\n", mesh_time, fTime[1], cUnitLabel[iUnits[1]] );
+	printf( "\tdt = %.4e s; refinement level = %i/%i; total grid cells = %i;\n", mesh_delta_t, MAX_REFINEMENT_LEVEL, GetMaxRL(), GetNumCells() );
+    	printf( "\twall-time/%i steps = %.4e %c; ",  OUTPUT_EVERY_N_TIME_STEPS, fTime[0], cUnitLabel[iUnits[0]] );
+	printf( "wall-time/second = %.4e %c; ", fTime[2], cUnitLabel[iUnits[2]] );
+	printf( "~ wall-time remaining = %.4e %c\n\n", fTime[3], cUnitLabel[iUnits[3]] );
+}
+		void FindTemporalUnits( double *pfTime, int *piUnits )
+		{
+			// The time is initally in units of seconds
+			*piUnits = 0;	// seconds
+			if( *pfTime < 60.0 ) return;
+
+			// Convert the time into minutes
+			*piUnits = 1;	// minutes
+			*pfTime = *pfTime / 60.0;
+			if( *pfTime < 60.0 ) return;
+			
+			// Convert the time into hours
+			*piUnits = 2; // hours
+			*pfTime = *pfTime / 60.0;
+			if( *pfTime < 24.0 ) return;
+			
+			// Convert the time into days
+			*piUnits = 3;	// days
+			*pfTime = *pfTime / 24.0;
+			if( *pfTime < 7.0 ) return;
+			
+			// Convert the time into weeks
+			*piUnits = 4;	// weeks
+			*pfTime = *pfTime / 7.0;
+			if( *pfTime < 52.0 ) return;
+			
+			// Convert the time into years
+			*piUnits = 5;	// years
+			*pfTime = *pfTime / 52.0;
+			return;
+		}
 
 void CAdaptiveMesh::WriteToFile( void )
 {
@@ -1731,7 +1789,7 @@ pHStateFile = fopen( szHStateFilename, "w" );
 PCELL pNextActiveCell;
 CELLPROPERTIES CellProperties;
 
-int iNumberOfCells = 0, j;
+int j;
 
 // Write data into the files
 
@@ -1739,8 +1797,6 @@ pNextActiveCell = pStartOfCurrentRow;
 
 while( pNextActiveCell )
 {
-    iNumberOfCells++;
-
     pActiveCell = pNextActiveCell;
     pActiveCell->GetCellProperties( &CellProperties );
 
@@ -1855,7 +1911,7 @@ sprintf( szAMRFilename, "Results/profile%i.amr", iFileNumber );
 
 pAMRFile = fopen( szAMRFilename, "w" );
 
-fprintf( pAMRFile, "%g\n%i\n%.16e\n%i\n", mesh_time, iFileNumber, Params.L, iNumberOfCells );
+fprintf( pAMRFile, "%g\n%i\n%.16e\n%i\n", mesh_time, iFileNumber, Params.L, GetNumCells() );
 
 pNextActiveCell = pStartOfCurrentRow;
 
