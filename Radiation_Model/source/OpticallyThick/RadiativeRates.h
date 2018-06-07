@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 03/19/2018
+// * Date last modified: 06/06/2018
 // *
 // ****
 
@@ -14,7 +14,8 @@
 #ifdef NLTE_CHROMOSPHERE
 
 #define MAX_ITERATIONS			300
-#define CONVERGENCE_EPSILON		0.1
+// #define CONVERGENCE_EPSILON		0.10		// Original
+#define CONVERGENCE_EPSILON		0.25
 #define CONVERGENCE_CONDITION		1E-6
 
 
