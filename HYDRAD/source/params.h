@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 10/31/2017
+// * Date last modified: 06/08/2018
 // *
 // ****
 
@@ -41,12 +41,13 @@ struct Parameters {
     // Loop length
     double L;
 
-    // Gravity look-up table filename
+    // Gravitational acceleration polynomial-fit coefficients filename
     char GravityFilename[256];
 
-#ifdef USE_TABULATED_CROSS_SECTION
-    char CrossSectionFilename[256];
-#endif // USE_TABULATED_CROSS_SECTION
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+	// Magnetic field polynomial-fit coefficients filename
+    char MagneticFieldFilename[256];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
     // Duration and profile output period
     double Duration, OutputPeriod;

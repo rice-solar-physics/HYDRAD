@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/17/2017
+// * Date last modified: 06/08/2018
 // *
 // ****
 
@@ -52,8 +52,8 @@ ReadDouble( pFile, &(pParams->Hintervals) );
 fclose( pFile );
 }
 
-#ifdef USE_TABULATED_GRAVITY
-#else // USE_TABULATED_GRAVITY
+#ifdef USE_POLY_FIT_TO_GRAVITY
+#else // USE_POLY_FIT_TO_GRAVITY
 void GenerateSemiCircularLoop( PARAMETERS Params )
 {
 double CalcSolarGravity( double s, double Lfull, double Inc );
@@ -135,7 +135,7 @@ bfunc[i] = 1.0;
 for( i=2; i<=ma; i++ )
 	bfunc[i] = bfunc[i-1] * x;	
 }
-#endif // USE_TABULATED_GRAVITY
+#endif // USE_POLY_FIT_TO_GRAVITY
 
 void WriteAMRFile( int iTotalSteps, double *s, double *T, double *nH, double *ne, PARAMETERS Params )
 {
