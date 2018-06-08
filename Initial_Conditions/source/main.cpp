@@ -5,7 +5,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 02/28/2018
+// * Date last modified: 06/08/2018
 // *
 // ****
 
@@ -53,10 +53,10 @@ PARAMETERS Params;
 PRADIATION pRadiation;
 
 FILE *pFile;
-#ifdef USE_TABULATED_GRAVITY
-#else // USE_TABULATED_GRAVITY
+#ifdef USE_POLY_FIT_TO_GRAVITY
+#else // USE_POLY_FIT_TO_GRAVITY
 char szGravityFilename[256];
-#endif // USE_TABULATED_GRAVITY
+#endif // USE_POLY_FIT_TO_GRAVITY
 double *pfGravityCoefficients;
 int i;
 
@@ -74,13 +74,13 @@ GetConfigurationParameters( &Params );
 pRadiation = new CRadiation( (char *)"Radiation_Model/config/elements_eq.cfg" );
 
 // Initialise the gravitational geometry
-#ifdef USE_TABULATED_GRAVITY
-pFile = fopen( TABULATED_GRAVITY_FILE, "r" );
-#else // USE_TABULATED_GRAVITY
+#ifdef USE_POLY_FIT_TO_GRAVITY
+pFile = fopen( POLY_FIT_TO_GRAVITY_FILE, "r" );
+#else // USE_POLY_FIT_TO_GRAVITY
 GenerateSemiCircularLoop( Params );
 sprintf( szGravityFilename, "%s.gravity", Params.szOutputFilename );
 pFile = fopen( szGravityFilename, "r" );
-#endif // USE_TABULATED_GRAVITY
+#endif // USE_POLY_FIT_TO_GRAVITY
 pfGravityCoefficients = (double*)malloc( sizeof(double) * (POLY_ORDER+1) );
 for( i=0; i<POLY_ORDER+1; i++ )
     ReadDouble( pFile, &(pfGravityCoefficients[i]) );

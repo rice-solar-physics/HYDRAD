@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 05/22/2018
+// * Date last modified: 06/08/2018
 // *
 // ****
 
@@ -83,12 +83,12 @@ ppCellList = NULL;
 pFile = fopen( "HYDRAD/config/HYDRAD.cfg", "r" );
 // Get the initial profiles
 fscanf( pFile, "%s", Params.Profiles );
-// Get the gravity look-up table filename
+// Get the gravity polynomial-fit coefficients filename
 fscanf( pFile, "%s", Params.GravityFilename );
-#ifdef USE_TABULATED_CROSS_SECTION
-// Get the cross-section look-up table filename
-fscanf( pFile, "%s", Params.CrossSectionFilename );
-#endif // USE_TABULATED_CROSS_SECTION
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+// Get the magnetic field polynomial-fit coefficients filename
+fscanf( pFile, "%s", Params.MagneticFieldFilename );
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 // Get the duration
 ReadDouble( pFile, &Params.Duration );
 // Get the output period
@@ -107,21 +107,21 @@ fclose( pFile );
 Get_SH_Table();
 #endif // USE_KINETIC_MODEL
 
-// Initialise the field-aligned gravitational acceleration profile
+// Initialise the gravitational acceleration profile in the field-aligned direction
 pFile = fopen( Params.GravityFilename, "r" );
 pfGravityCoefficients = (double*)malloc( (POLY_ORDER+1) * sizeof(double) );
 for( i=0; i<(POLY_ORDER+1); i++ )
     ReadDouble( pFile, &(pfGravityCoefficients[i]) );
 fclose( pFile );
 
-#ifdef USE_TABULATED_CROSS_SECTION
-// Initialise the cross-section profile in the field-aligned direction
-pFile = fopen( Params.CrossSectionFilename, "r" );
-pfCrossSectionCoefficients = (double*)malloc( (POLY_ORDER+1) * sizeof(double) );
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+// Initialise the magnetic field profile in the field-aligned direction
+pFile = fopen( Params.MagneticFieldFilename, "r" );
+pfMagneticFieldCoefficients = (double*)malloc( (POLY_ORDER+1) * sizeof(double) );
 for( i=0; i<(POLY_ORDER+1); i++ )
-    ReadDouble( pFile, &(pfCrossSectionCoefficients[i]) );
+    ReadDouble( pFile, &(pfMagneticFieldCoefficients[i]) );
 fclose( pFile );
-#endif // USE_TABULATED_CROSS_SECTION
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
 // Create the heating object
 pHeat = new CHeat();
@@ -148,12 +148,12 @@ void CEquations::FreeAll( void )
 free( ppCellList );
 #endif // USE_KINETIC_MODEL
 
-#ifdef USE_TABULATED_CROSS_SECTION
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
 // Free the memory allocated to the cross-section profile in the field-aligned direction
-free( pfCrossSectionCoefficients );
-#endif // USE_TABULATED_CROSS_SECTION
+free( pfMagneticFieldCoefficients );
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
-// Free the memory allocated to the field-aligned gravitational acceleration profile
+// Free the memory allocated to the gravitational acceleration profile in the field-aligned direction
 free( pfGravityCoefficients );
 
 // Delete the heating object
@@ -202,11 +202,11 @@ while( pNextActiveCell )
     if( CellProperties.s[1] <= Params.L / 2.0 )
         pCentreOfCurrentRow = pActiveCell;
 
-// ******************************************************************************
-// *                                                                            *
-// *    CALCULATE THE PHYSICAL QUANTITIES                                       *
-// *                                                                            *
-// ******************************************************************************
+// *****************************************************************************
+// *                                                                            																							*
+// *    CALCULATE THE PHYSICAL QUANTITIES                                       														*
+// *                                                                           																							*
+// *****************************************************************************
 
     CellProperties.n[HYDROGEN] = CellProperties.rho[1] / AVERAGE_PARTICLE_MASS;
     CellProperties.v[1] = CellProperties.rho_v[1] / CellProperties.rho[1];
@@ -322,15 +322,15 @@ while( pNextActiveCell )
     CellProperties.Cs = pow( term1, 0.5 );
     CellProperties.M = fabs( CellProperties.v[1] / CellProperties.Cs );
 
-// ******************************************************************************
-// *                                                                            *
-// *    CALCULATE THE TIMESCALES                                                *
-// *                                                                            *
-// ******************************************************************************
+// *****************************************************************************
+// *                                                                            																							*
+// *    CALCULATE THE TIMESCALES                                                																*
+// *                                                                            																							*
+// *****************************************************************************
 
-// ******************************************************************************
-// *    COLLISIONS                                                              *
-// ******************************************************************************
+// *****************************************************************************
+// *    COLLISIONS                                                              																				*
+// *****************************************************************************
 
 #ifdef FORCE_SINGLE_FLUID
     CellProperties.nu_ie = 1.0 / MINIMUM_COLLISIONAL_COUPLING_TIME_SCALE;
@@ -343,31 +343,31 @@ while( pNextActiveCell )
     // Calculated in EvaluateTerms when the collisional term is known
     CellProperties.collision_delta_t = Params.Duration;
 
-// ******************************************************************************
-// *    ADVECTION                                                               *
-// ******************************************************************************
+// *****************************************************************************
+// *    ADVECTION                                                               																				*
+// *****************************************************************************
 
     // The time-step is calculated by the CFL condition
     CellProperties.advection_delta_t = SAFETY_ADVECTION * ( CellProperties.cell_width / ( fabs( CellProperties.v[1] ) + CellProperties.Cs ) );
 
-// ******************************************************************************
-// *    THERMAL CONDUCTION                                                      *
-// ******************************************************************************
+// *****************************************************************************
+// *    THERMAL CONDUCTION                                                      																*
+// *****************************************************************************
 
     // Calculated in EvaluateTerms when the thermal conduction terms are known
     for( j=0; j<SPECIES; j++ )
 	CellProperties.conduction_delta_t[j] = Params.Duration;
 
-// ******************************************************************************
-// *    RADIATION                                                               *
-// ******************************************************************************
+// *****************************************************************************
+// *    RADIATION                                                               																				*
+// *****************************************************************************
 
     // Calculated in EvaluateTerms when the radiative term is known
     CellProperties.radiation_delta_t = Params.Duration;
 
-// ******************************************************************************
-// *    DYNAMIC VISCOSITY                                                       *
-// ******************************************************************************
+// *****************************************************************************
+// *    DYNAMIC VISCOSITY                                                       																		*
+// *****************************************************************************
 
     // Calculated in EvaluateTerms when the dynamic viscosity term is known
     CellProperties.viscosity_delta_t = Params.Duration;
@@ -418,11 +418,11 @@ while( pNextActiveCell )
         pCentreOfCurrentRow = pActiveCell;
 #endif // OPTICALLY_THICK_RADIATION || BEAM_HEATING
 
-// ******************************************************************************
-// *                                                                            *
-// *    CALCULATE THE PHYSICAL QUANTITIES                                       *
-// *                                                                            *
-// ******************************************************************************
+// *****************************************************************************
+// *                                                                            																							*
+// *    CALCULATE THE PHYSICAL QUANTITIES                                       														*
+// *                                                                            																							*
+// *****************************************************************************
 
     CellProperties.n[HYDROGEN] = CellProperties.rho[1] / AVERAGE_PARTICLE_MASS;
     CellProperties.v[1] = CellProperties.rho_v[1] / CellProperties.rho[1];
@@ -435,9 +435,9 @@ while( pNextActiveCell )
 #ifdef OPTICALLY_THICK_RADIATION
 #ifdef NLTE_CHROMOSPHERE
 
-    ////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////
     // Calculate the electron density for the NLTE chromosphere   //
-    ////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////
 
     CellProperties.n[ELECTRON] = CellProperties.rho_e / ELECTRON_MASS;
 
@@ -540,9 +540,9 @@ while( pNextActiveCell )
     CellProperties.TE_KE[1][ELECTRON] = (2.07e-16) * CellProperties.n[ELECTRON] * CellProperties.T[ELECTRON];
 #else // NLTE_CHROMOSPHERE
 
-    ///////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////
     // Calculate the electron density for the LTE chromosphere   //
-    ///////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////
 
     // NOTE: We can't use the non-equilibrium population here because it's based on a completely different set of rates.
     //       If you try to use it (or the RadiationModel object to get an equilibrium population) for CellProperties.HI
@@ -604,15 +604,15 @@ while( pNextActiveCell )
     CellProperties.Cs = pow( term1, 0.5 );
     CellProperties.M = fabs( CellProperties.v[1] / CellProperties.Cs );
 
-// ******************************************************************************
-// *                                                                            *
-// *    CALCULATE THE TIMESCALES                                                *
-// *                                                                            *
-// ******************************************************************************
+// *****************************************************************************
+// *                                                                            																							*
+// *    CALCULATE THE TIMESCALES                                                																*
+// *                                                                            																							*
+// *****************************************************************************
 
-// ******************************************************************************
-// *    COLLISIONS                                                              *
-// ******************************************************************************
+// *****************************************************************************
+// *    COLLISIONS                                                              																				*
+// *****************************************************************************
 
 #ifdef FORCE_SINGLE_FLUID
     CellProperties.nu_ie = 1.0 / MINIMUM_COLLISIONAL_COUPLING_TIME_SCALE;
@@ -625,31 +625,31 @@ while( pNextActiveCell )
     // Calculated in EvaluateTerms when the collisional term is known
     CellProperties.collision_delta_t = Params.Duration;
 
-// ******************************************************************************
-// *    ADVECTION                                                               *
-// ******************************************************************************
+// *****************************************************************************
+// *    ADVECTION                                                               																				*
+// *****************************************************************************
 
     // The time-step is calculated by the CFL condition
     CellProperties.advection_delta_t = SAFETY_ADVECTION * ( CellProperties.cell_width / ( fabs( CellProperties.v[1] ) + CellProperties.Cs ) );
 
-// ******************************************************************************
-// *    THERMAL CONDUCTION                                                      *
-// ******************************************************************************
+// *****************************************************************************
+// *    THERMAL CONDUCTION                                                      																*
+// *****************************************************************************
 
     // Calculated in EvaluateTerms when the thermal conduction terms are known
     for( j=0; j<SPECIES; j++ )
 	CellProperties.conduction_delta_t[j] = Params.Duration;
 
-// ******************************************************************************
-// *    RADIATION                                                               *
-// ******************************************************************************
+// *****************************************************************************
+// *    RADIATION                                                               																				*
+// *****************************************************************************
 
     // Calculated in EvaluateTerms when the radiative term is known
     CellProperties.radiation_delta_t = Params.Duration;
 
-// ******************************************************************************
-// *    DYNAMIC VISCOSITY                                                       *
-// ******************************************************************************
+// *****************************************************************************
+// *    DYNAMIC VISCOSITY                                                       																		*
+// *****************************************************************************
 
     // Calculated in EvaluateTerms when the dynamic viscosity term is known
     CellProperties.viscosity_delta_t = Params.Duration;
@@ -691,10 +691,10 @@ for(i=0; i<pRadiativeRates->GetNumberOfTransitions(); i++)
 {
 	TeZ_c = pRadiativeRates->GetTeZ_c( i );
             
-        ////////////////////////////////////
-        // STEP 1:                        //
+        ///////////////////////////////////
+        // STEP 1:                        				//
         // Find Z_c for each transition   //
-        ////////////////////////////////////
+        ///////////////////////////////////
 
 	for( j=0; j<iVALDataPoints-1; j++ )
 		if( ( TeZ_c <= ppVALAtmosphere[1][j] && TeZ_c >= ppVALAtmosphere[1][j+1] ) || ( TeZ_c >= ppVALAtmosphere[1][j] && TeZ_c <= ppVALAtmosphere[1][j+1] ) )
@@ -709,10 +709,10 @@ for(i=0; i<pRadiativeRates->GetNumberOfTransitions(); i++)
 	pRadiativeRates->SetZ_c_LEFT( i, fZ_c );
 	pRadiativeRates->SetZ_c_RIGHT( i, Params.L - fZ_c );
 
-        //////////////////////////////////////
-        // STEP 2:                          //
-        // Find McZ_c for each transition   //
-        //////////////////////////////////////
+        ////////////////////////////////////////
+        // STEP 2:                          						//
+        // Find McZ_c for each transition 		//
+        ///////////////////////////////////////
 
 	// Find the centre of the grid (corresponds approximately to the apex of the loop)
 	pNextActiveCell = pStartOfCurrentRow;
@@ -858,15 +858,15 @@ int j;
 CalculateKineticModel( iFirstStep );
 #endif // USE_KINETIC_MODEL
 
-#ifdef USE_TABULATED_CROSS_SECTION
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
 double fCrossSection[3], fCellVolume;
-#endif // USE_TABULATED_CROSS_SECTION
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
-// ******************************************************************************
-// *                                                                            *
-// *    CALCULATE THE CELL-INTERFACE TERMS                                      *
-// *                                                                            *
-// ******************************************************************************
+// *****************************************************************************
+// *                                                                            																							*
+// *    CALCULATE THE CELL-INTERFACE TERMS                                      													*
+// *                                                                            																							*
+// *****************************************************************************
 
 pNextActiveCell = pStartOfCurrentRow->pGetPointer( RIGHT )->pGetPointer( RIGHT );
 
@@ -884,9 +884,9 @@ while( pNextActiveCell->pGetPointer( RIGHT ) )
     pFarLeftCell = pLeftCell->pGetPointer( LEFT );
     pFarLeftCell->GetCellProperties( &FarLeftCellProperties );
 
-// ******************************************************************************
-// *    ADVECTIVE FLUX TRANSPORT ALGORITHM                                      *
-// ******************************************************************************
+// *****************************************************************************
+// *    ADVECTIVE FLUX TRANSPORT ALGORITHM                                      												*
+// *****************************************************************************
 
     x[1] = LeftCellProperties.s[1];
     x[2] = CellProperties.s[1];
@@ -1116,9 +1116,9 @@ while( pNextActiveCell->pGetPointer( RIGHT ) )
 	}
     }
 
-// ******************************************************************************
-// *    THERMAL FLUX TRANSPORT ALGORITHM                                        *
-// ******************************************************************************
+// *****************************************************************************
+// *    THERMAL FLUX TRANSPORT ALGORITHM                                        												*
+// *****************************************************************************
 
     x[1] = FarLeftCellProperties.s[1];
     x[2] = LeftCellProperties.s[1];
@@ -1214,9 +1214,9 @@ while( pNextActiveCell->pGetPointer( RIGHT ) )
                 LeftCellProperties.Fc[1][j] = 0.5 * ( LeftCellProperties.Fc[0][j] + LeftCellProperties.Fc[2][j] );
 	}
 
-// ******************************************************************************
-// *    VISCOUS FLUX TRANSPORT ALGORITHM                                        *
-// ******************************************************************************
+// *****************************************************************************
+// *    VISCOUS FLUX TRANSPORT ALGORITHM                                       						 							*
+// *****************************************************************************
 
 	j = HYDROGEN;
 	y[1] = FarLeftCellProperties.v[1];
@@ -1261,9 +1261,9 @@ while( pNextActiveCell->pGetPointer( RIGHT ) )
 	if( pLeftCell->pGetPointer( LEFT )->pGetPointer( LEFT ) )
             LeftCellProperties.Feta[1] = 0.5 * ( LeftCellProperties.Feta[0] + LeftCellProperties.Feta[2] );
 
-// ******************************************************************************
-// *    NUMERICAL VISCOSITY                                                     *
-// ******************************************************************************
+// *****************************************************************************
+// *    NUMERICAL VISCOSITY                                                     																	*
+// *****************************************************************************
 
 #ifdef NUMERICAL_VISCOSITY
 	y[1] = FarLeftCellProperties.rho_v[1];
@@ -1280,9 +1280,9 @@ while( pNextActiveCell->pGetPointer( RIGHT ) )
 #endif // NUMERICAL_VISCOSITY
     }
 
-// ******************************************************************************
-// *    CELL BOUNDARY PRESSURES                                                 *
-// ******************************************************************************
+// *****************************************************************************
+// *    CELL BOUNDARY PRESSURES                                                 																*
+// *****************************************************************************
 
     for( j=0; j<SPECIES; j++ )
     {
@@ -1300,15 +1300,15 @@ while( pNextActiveCell->pGetPointer( RIGHT ) )
     pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
 }
 
-// ******************************************************************************
-// *                                                                            *
-// *    CALCULATE THE CELL-CENTERED TERMS                                       *
-// *                                                                            *
-// ******************************************************************************
+// *****************************************************************************
+// *                                                                            																							*
+// *    CALCULATE THE CELL-CENTERED TERMS                                       													*
+// *                                                                            																							*
+// *****************************************************************************
 
-// ******************************************************************************
-// *    COLUMN NUMBER AND MASS DENSITIES                                        *
-// ******************************************************************************
+// *****************************************************************************
+// *    COLUMN NUMBER AND MASS DENSITIES                                        												*
+// *****************************************************************************
 
 #if defined(OPTICALLY_THICK_RADIATION) || defined(BEAM_HEATING)
 // Left-hand leg of the loop
@@ -1398,9 +1398,9 @@ while( pNextActiveCell )
 }
 #endif // OPTICALLY_THICK_RADIATION || BEAM_HEATING
 
-// ******************************************************************************
-// *    TERMS OF THE CONVERSATION EQUATIONS                                     *
-// ******************************************************************************
+// *****************************************************************************
+// *    TERMS OF THE CONVERSATION EQUATIONS                                     												*
+// *****************************************************************************
 
 pNextActiveCell = pStartOfCurrentRow->pGetPointer( RIGHT )->pGetPointer( RIGHT );
 
@@ -1423,173 +1423,173 @@ while( pNextActiveCell->pGetPointer( RIGHT )->pGetPointer( RIGHT ) )
     pFarRightCell->GetCellProperties( &FarRightCellProperties );
 #endif // NON_EQUILIBRIUM_RADIATION || ( OPTICALLY_THICK_RADIATION && NLTE_CHROMOSPHERE )
 
-#ifdef USE_TABULATED_CROSS_SECTION
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
     fCrossSection[0] = CalculateCrossSection( CellProperties.s[0]/Params.L );
     fCrossSection[1] = CalculateCrossSection( CellProperties.s[1]/Params.L );
     fCrossSection[2] = CalculateCrossSection( CellProperties.s[2]/Params.L );
     fCellVolume = fCrossSection[1] * CellProperties.cell_width;
-#endif // USE_TABULATED_CROSS_SECTION
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
-// ******************************************************************************
-// *                                                                            *
-// *    MASS CONSERVATION                                                       *
-// *                                                                            *
-// ******************************************************************************
+// *****************************************************************************
+// *                                                                            																							*
+// *    MASS CONSERVATION                                                       																	*
+// *                                                                            																							*
+// *****************************************************************************
 
-// ******************************************************************************
-// *    ADVECTION                                                               *
-// ******************************************************************************
+// *****************************************************************************
+// *    ADVECTION                                                               																				*
+// *****************************************************************************
 
-#ifdef USE_TABULATED_CROSS_SECTION
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
     LowerValue = CellProperties.rho[0] * CellProperties.v[0] * fCrossSection[0];
     UpperValue = CellProperties.rho[2] * CellProperties.v[2] * fCrossSection[2];
     CellProperties.rho_term[0] = - ( UpperValue - LowerValue ) / fCellVolume;
-#else // USE_TABULATED_CROSS_SECTION
+#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
     LowerValue = CellProperties.rho[0] * CellProperties.v[0];
     UpperValue = CellProperties.rho[2] * CellProperties.v[2];
     CellProperties.rho_term[0] = - ( UpperValue - LowerValue ) / CellProperties.cell_width;
-#endif // USE_TABULATED_CROSS_SECTION
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
     CellProperties.drhobydt = CellProperties.rho_term[0];
 
-// ******************************************************************************
-// *                                                                            *
-// *    MOMENTUM CONSERVATION                                                   *
-// *                                                                            *
-// ******************************************************************************
+// *****************************************************************************
+// *                                                                            																							*
+// *    MOMENTUM CONSERVATION                                                   															*
+// *                                                                            																							*
+// *****************************************************************************
 
-// ******************************************************************************
-// *    ADVECTION                                                               *
-// ******************************************************************************
+// *****************************************************************************
+// *    ADVECTION                                                               																				*
+// *****************************************************************************
 
-#ifdef USE_TABULATED_CROSS_SECTION
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
     LowerValue = CellProperties.rho_v[0] * CellProperties.v[0] * fCrossSection[0];
     UpperValue = CellProperties.rho_v[2] * CellProperties.v[2] * fCrossSection[2];
     CellProperties.rho_v_term[0] = - ( UpperValue - LowerValue ) / fCellVolume;
-#else // USE_TABULATED_CROSS_SECTION
+#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
     LowerValue = CellProperties.rho_v[0] * CellProperties.v[0];
     UpperValue = CellProperties.rho_v[2] * CellProperties.v[2];
     CellProperties.rho_v_term[0] = - ( UpperValue - LowerValue ) / CellProperties.cell_width;
-#endif // USE_TABULATED_CROSS_SECTION
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
-// ******************************************************************************
-// *    PRESSURE GRADIENT                                                       *
-// ******************************************************************************
+// *****************************************************************************
+// *    PRESSURE GRADIENT                                                       																		*
+// *****************************************************************************
 
     UpperValue = CellProperties.P[2][ELECTRON] + CellProperties.P[2][HYDROGEN];
     LowerValue = CellProperties.P[0][ELECTRON] + CellProperties.P[0][HYDROGEN];
     CellProperties.rho_v_term[1] = - ( UpperValue - LowerValue ) / CellProperties.cell_width;
 
-// ******************************************************************************
-// *    GRAVITY                                                                 *
-// ******************************************************************************
+// *****************************************************************************
+// *    GRAVITY                                                                 																					*
+// *****************************************************************************
 
     CellProperties.rho_v_term[2] = CellProperties.rho[1] * CalculateGravity( CellProperties.s[1]/Params.L );
 
     // Terms that must be integrated to first order in time only, otherwise they're unconditionally unstable
     if( iFirstStep )
     {
-// ******************************************************************************
-// *    VISCOUS STRESS                                                          *
-// ******************************************************************************
+// *****************************************************************************
+// *    VISCOUS STRESS                                                          																			*
+// *****************************************************************************
 
-#ifdef USE_TABULATED_CROSS_SECTION
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
 	CellProperties.rho_v_term[3] = ( ( CellProperties.Feta[2] * fCrossSection[2] ) - ( CellProperties.Feta[0] * fCrossSection[0] ) ) / fCellVolume;
-#else // USE_TABULATED_CROSS_SECTION
+#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
 	CellProperties.rho_v_term[3] = ( CellProperties.Feta[2] - CellProperties.Feta[0] ) / CellProperties.cell_width;
-#endif // USE_TABULATED_CROSS_SECTION
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
-// ******************************************************************************
-// *    NUMERICAL VISCOSITY                                                     *
-// ******************************************************************************
+// *****************************************************************************
+// *    NUMERICAL VISCOSITY                                                     																	*
+// *****************************************************************************
 
 #ifdef NUMERICAL_VISCOSITY
 	// Numerical viscosity is used to stabilise the solutions as in the Lax scheme
-#ifdef USE_TABULATED_CROSS_SECTION
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
 	CellProperties.rho_v_term[4] = ( ( CellProperties.Fnumerical[2] * fCrossSection[2] ) - ( CellProperties.Fnumerical[0] * fCrossSection[0] ) ) / fCellVolume;
-#else // USE_TABULATED_CROSS_SECTION
+#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
 	CellProperties.rho_v_term[4] = ( CellProperties.Fnumerical[2] - CellProperties.Fnumerical[0] ) / CellProperties.cell_width;
-#endif // USE_TABULATED_CROSS_SECTION
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 #endif // NUMERICAL_VISCOSITY
     }
 
     CellProperties.drho_vbydt = CellProperties.rho_v_term[0] + CellProperties.rho_v_term[1] + CellProperties.rho_v_term[2] + CellProperties.rho_v_term[3] + CellProperties.rho_v_term[4];
 
-// ******************************************************************************
-// *                                                                            *
-// *    ENERGY CONSERVATION                                                     *
-// *                                                                            *
-// ******************************************************************************
+// *****************************************************************************
+// *                                                                            																							*
+// *    ENERGY CONSERVATION                                                     																	*
+// *                                                                            																							*
+// *****************************************************************************
 
-// ******************************************************************************
-// *    ADVECTION                                                               *
-// ******************************************************************************
+// *****************************************************************************
+// *    ADVECTION                                                               																				*
+// *****************************************************************************
 
-#ifdef USE_TABULATED_CROSS_SECTION
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
     for( j=0; j<SPECIES; j++ )
     {
 	LowerValue = CellProperties.TE_KE_P[0][j] * CellProperties.v[0] * fCrossSection[0];
 	UpperValue = CellProperties.TE_KE_P[2][j] * CellProperties.v[2] * fCrossSection[2];
 	CellProperties.TE_KE_term[0][j] = - ( UpperValue - LowerValue ) / fCellVolume;
     }
-#else // USE_TABULATED_CROSS_SECTION
+#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
     for( j=0; j<SPECIES; j++ )
     {
 	LowerValue = CellProperties.TE_KE_P[0][j] * CellProperties.v[0];
 	UpperValue = CellProperties.TE_KE_P[2][j] * CellProperties.v[2];
 	CellProperties.TE_KE_term[0][j] = - ( UpperValue - LowerValue ) / CellProperties.cell_width;
     }
-#endif // USE_TABULATED_CROSS_SECTION
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
     // Terms that must be integrated to first order in time only, otherwise they're unconditionally unstable
     if( iFirstStep )
     {
-// ******************************************************************************
-// *    THERMAL CONDUCTION                                                      *
-// ******************************************************************************
+// *****************************************************************************
+// *    THERMAL CONDUCTION                                                      																*
+// *****************************************************************************
 
-#ifdef USE_TABULATED_CROSS_SECTION
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
 	for( j=0; j<SPECIES; j++ )
             CellProperties.TE_KE_term[1][j] = - ( ( CellProperties.Fc[2][j] * fCrossSection[2] ) - ( CellProperties.Fc[0][j] * fCrossSection[0] ) ) / fCellVolume;
-#else // USE_TABULATED_CROSS_SECTION
+#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
 	for( j=0; j<SPECIES; j++ )
             CellProperties.TE_KE_term[1][j] = - ( CellProperties.Fc[2][j] - CellProperties.Fc[0][j] ) / CellProperties.cell_width;
-#endif // USE_TABULATED_CROSS_SECTION
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
-// ******************************************************************************
-// *    VISCOUS STRESS                                                          *
-// ******************************************************************************
+// *****************************************************************************
+// *    VISCOUS STRESS                                                          																			*
+// *****************************************************************************
 
         // Heating due to the viscous stress and work done on (by) the flow by (on) the viscous stress
-#ifdef USE_TABULATED_CROSS_SECTION
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
 	CellProperties.TE_KE_term[7][HYDROGEN] = ( ( CellProperties.Feta[2] * CellProperties.v[2] * fCrossSection[2] ) - ( CellProperties.Feta[0] * CellProperties.v[0] * fCrossSection[0] ) ) / fCellVolume;
-#else // USE_TABULATED_CROSS_SECTION
+#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
 	CellProperties.TE_KE_term[7][HYDROGEN] = ( ( CellProperties.Feta[2] * CellProperties.v[2] ) - ( CellProperties.Feta[0] * CellProperties.v[0] ) ) / CellProperties.cell_width;
-#endif // USE_TABULATED_CROSS_SECTION
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
-// ******************************************************************************
-// *    NUMERICAL VISCOSITY                                                     *
-// ******************************************************************************
+// *****************************************************************************
+// *    NUMERICAL VISCOSITY                                                     																	*
+// *****************************************************************************
 
 #ifdef NUMERICAL_VISCOSITY
 	// Numerical viscosity is used to stabilise the solutions as in the Lax scheme
-#ifdef USE_TABULATED_CROSS_SECTION
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
 	CellProperties.TE_KE_term[8][HYDROGEN] = ( ( CellProperties.Fnumerical[2] * CellProperties.v[2] * fCrossSection[2] ) - ( CellProperties.Fnumerical[0] * CellProperties.v[0] * fCrossSection[0] ) ) / fCellVolume;
-#else // USE_TABULATED_CROSS_SECTION
+#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
 	CellProperties.TE_KE_term[8][HYDROGEN] = ( ( CellProperties.Fnumerical[2] * CellProperties.v[2] ) - ( CellProperties.Fnumerical[0] * CellProperties.v[0] ) ) / CellProperties.cell_width;
-#endif // USE_TABULATED_CROSS_SECTION
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 #endif // NUMERICAL_VISCOSITY
     }
 
-// ******************************************************************************
-// *    GRAVITY                                                                 *
-// ******************************************************************************
+// *****************************************************************************
+// *    GRAVITY                                                                 																					*
+// *****************************************************************************
 
     CellProperties.TE_KE_term[2][HYDROGEN] = CellProperties.rho_v_term[2] * CellProperties.v[1];
 
-// ******************************************************************************
-// *    COLLISIONS                                                              *
-// ******************************************************************************
+// *****************************************************************************
+// *    COLLISIONS                                                              																				*
+// *****************************************************************************
 
     // The collision frequency is calculated using n_e, therefore the collisional coupling depends on (n_e)(n_H)
     CellProperties.TE_KE_term[3][ELECTRON] = (2.07e-16) * CellProperties.n[HYDROGEN] * CellProperties.nu_ie * ( CellProperties.T[HYDROGEN] - CellProperties.T[ELECTRON] );
@@ -1604,9 +1604,9 @@ while( pNextActiveCell->pGetPointer( RIGHT )->pGetPointer( RIGHT ) )
 
     CellProperties.TE_KE_term[3][HYDROGEN] = - CellProperties.TE_KE_term[3][ELECTRON];
 
-// ******************************************************************************
-// *    HEATING                                                                 *
-// ******************************************************************************
+// *****************************************************************************
+// *    HEATING                                                                 																					*
+// *****************************************************************************
 
 #ifdef BEAM_HEATING
     CellProperties.TE_KE_term[4][ELECTRON] = pHeat->CalculateBeamHeating( current_time, BeamParams, CellProperties.nH_c, CellProperties.nH_star_c, CellProperties.n[ELECTRON], CellProperties.n[HYDROGEN], (1.0-CellProperties.HI) );
@@ -1616,9 +1616,9 @@ while( pNextActiveCell->pGetPointer( RIGHT )->pGetPointer( RIGHT ) )
     CellProperties.TE_KE_term[4][HEATED_SPECIES] = pHeat->CalculateHeating( CellProperties.s[1], current_time );
 #endif // BEAM_HEATING
    
-// ******************************************************************************
-// *    RADIATION                                                               *
-// ******************************************************************************
+// *****************************************************************************
+// *    RADIATION                                                               																				*
+// *****************************************************************************
 
 CellProperties.TE_KE_term[5][ELECTRON] = - SMALLEST_DOUBLE;
 #ifdef OPTICALLY_THICK_RADIATION
@@ -1629,8 +1629,7 @@ CellProperties.TE_KE_term[5][ELECTRON] = - SMALLEST_DOUBLE;
         CellProperties.TE_KE_term[5][ELECTRON] -= pMgII->GetVolumetricLossRate( log10(CellProperties.T[ELECTRON]), log10(CellProperties.rho_c), CellProperties.n[ELECTRON] * CellProperties.rho[1] );
         CellProperties.TE_KE_term[5][ELECTRON] -= pCaII->GetVolumetricLossRate( log10(CellProperties.T[ELECTRON]), log10(CellProperties.rho_c), CellProperties.n[ELECTRON] * CellProperties.rho[1] );
 // **** RADIATION TIME STEP ****
-        CellProperties.radiation_delta_t = ( SAFETY_RADIATION * CellProperties.TE_KE[1][ELECTRON] ) / fabs( CellProperties.TE_KE_term[5][ELECTRON] )
-;
+        CellProperties.radiation_delta_t = ( SAFETY_RADIATION * CellProperties.TE_KE[1][ELECTRON] ) / fabs( CellProperties.TE_KE_term[5][ELECTRON] );
 // **** RADIATION TIME STEP ****
     }
     else
@@ -1680,9 +1679,9 @@ CellProperties.TE_KE_term[5][ELECTRON] = - SMALLEST_DOUBLE;
 // **** RADIATION TIME STEP ****
     }
 
-// ******************************************************************************
-// *    SMALL-SCALE ELECTRIC FIELDS                                             *
-// ******************************************************************************
+// *****************************************************************************
+// *    SMALL-SCALE ELECTRIC FIELDS                                             																*
+// *****************************************************************************
 
     // Derived from qnEv = v dP/ds
     // The term added to the electron energy equation is (e)nEv = v dPe/ds
@@ -1693,11 +1692,11 @@ CellProperties.TE_KE_term[5][ELECTRON] = - SMALLEST_DOUBLE;
     for( j=0; j<SPECIES; j++ )
         CellProperties.dTE_KEbydt[j] = CellProperties.TE_KE_term[0][j] + CellProperties.TE_KE_term[1][j] + CellProperties.TE_KE_term[2][j] + CellProperties.TE_KE_term[3][j] + CellProperties.TE_KE_term[4][j] + CellProperties.TE_KE_term[5][j] + CellProperties.TE_KE_term[6][j] + CellProperties.TE_KE_term[7][j] + CellProperties.TE_KE_term[8][j];
 
-// ******************************************************************************
-// *                                                                            *
-// *    TIME-DEPENDENT IONISATION                                               *
-// *                                                                            *
-// ******************************************************************************
+// *****************************************************************************
+// *                                                                            																							*
+// *    TIME-DEPENDENT IONISATION                                               															*
+// *                                                                            																							*
+// *****************************************************************************
 
 #if defined (NON_EQUILIBRIUM_RADIATION) || ( defined(OPTICALLY_THICK_RADIATION) && defined (NLTE_CHROMOSPHERE) )
     ps[0] = FarLeftCellProperties.s[1];
@@ -1753,20 +1752,34 @@ for( i=1; i<(POLY_ORDER+1); i++ ) {
 return sum;
 }
 
-#ifdef USE_TABULATED_CROSS_SECTION
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+double CEquations::CalculateMagneticField( double s )
+{
+double sum = 0.0;
+int i;
+
+sum += ( 1.0 * pfMagneticFieldCoefficients[0] );
+for( i=1; i<(POLY_ORDER+1); i++ ) {
+	sum += ( pow(s,i) * pfMagneticFieldCoefficients[i] );
+}
+
+return sum;
+}
+
 double CEquations::CalculateCrossSection( double s )
 {
 double sum = 0.0;
 int i;
 
-sum += ( 1.0 * pfCrossSectionCoefficients[0] );
+sum += ( 1.0 * pfMagneticFieldCoefficients[0] );
 for( i=1; i<(POLY_ORDER+1); i++ ) {
-	sum += ( pow(s,i) * pfCrossSectionCoefficients[i] );
+	sum += ( pow(s,i) * pfMagneticFieldCoefficients[i] );
 }
 
-return sum;
+// The cross-section area varies inversely with the magnetic field strength
+return ( 1.0 / sum );
 }
-#endif // USE_TABULATED_CROSS_SECTION
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
 void CEquations::GetSmallestTimeScale( double *delta_t, int iFirstStep )
 {
@@ -1878,11 +1891,11 @@ pCellProperties->rho_e = BottomCellProperties.rho_e + ( fdne * ELECTRON_MASS );
 #endif // OPTICALLY_THICK_RADIATION
 }
 
-// ******************************************************************************
-// *                                                                            *
-// *    KINETIC COMPONENT FOR DISTRIBUTION FUNCTION CALCULATIONS                *
-// *                                                                            *
-// ******************************************************************************
+// *****************************************************************************
+// *                                                                            																							*
+// *    KINETIC COMPONENT FOR DISTRIBUTION FUNCTION CALCULATIONS                						*
+// *                                                                            																							*
+// *****************************************************************************
 
 #ifdef USE_KINETIC_MODEL
 // Index labels for each column of the table in Spitzer & Harm, 1953, Phys. Rev., 89, 977
@@ -2008,9 +2021,9 @@ double u_th, u_n;
 double fScaleLength, E, lambda_ei, x_e, x_t, fp;
 double x[6], y[6], fLowerValue, fUpperValue, fError;
 
-// ******************************************************************************
-// *    INITIALISE THE BOUNDARY CONDITIONS                                      *
-// ******************************************************************************
+// *****************************************************************************
+// *    INITIALISE THE BOUNDARY CONDITIONS                                      													*
+// *****************************************************************************
 
 iIndex = 0;
 pActiveCell = ppCellList[iIndex];
@@ -2044,9 +2057,9 @@ pNonMaxDFN = CellProperties.pKinetic->Get_pNonMaxDFN();
 for( i=0; i<DISTRIBUTION_DATA_POINTS; i++ )
     pNonMaxDFN[i] = pMaxDFN_ee[i];
 
-// ******************************************************************************
-// *    BGK PART OF THE SOLUTION                                                *
-// ******************************************************************************
+// *****************************************************************************
+// *    BGK PART OF THE SOLUTION                                                																*
+// *****************************************************************************
 
 // Solve for positive velocities
 
@@ -2114,9 +2127,9 @@ for( iIndex=iNumCells-3; iIndex>=0; iIndex-- )
     }
 }
 
-// ******************************************************************************
-// *    SPITZER PART OF THE SOLUTION                                            *
-// ******************************************************************************
+// *****************************************************************************
+// *    SPITZER PART OF THE SOLUTION                                            															*
+// *****************************************************************************
 
 for( iIndex=2; iIndex<iNumCells-2; iIndex++ )
 {

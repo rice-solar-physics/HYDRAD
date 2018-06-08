@@ -5,7 +5,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 05/22/2018
+// * Date last modified: 06/08/2018
 // *
 // ****
 
@@ -20,26 +20,28 @@ class CEquations {
 
     private:
 
-    // Coefficients for the polynomial describing the field-aligned gravitational acceleration profile
+    // Coefficients for the polynomial fit to the gravitational acceleration in the field-aligned direction
     double *pfGravityCoefficients;
 
-#ifdef USE_TABULATED_CROSS_SECTION
-    // Coefficients for the polynomial describing the cross-section in the field-aligned direction
-    double *pfCrossSectionCoefficients;
-#endif // USE_TABULATED_CROSS_SECTION
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+    // Coefficients for the polynomial fit to the magnetic field in the field-aligned direction
+    double *pfMagneticFieldCoefficients;
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
     double lower_radiation_temperature_boundary;
 
     void Initialise( void );
     void FreeAll( void );
 
-    // Function for finding the gravitational acceleration from the look-up table
+    // Function for finding the gravitational acceleration from the polynomial fit
     double CalculateGravity( double s );
 
-#ifdef USE_TABULATED_CROSS_SECTION
-    // Function for finding the cross-section from the look-up table
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+	// Function for finding the magnetic field from the polynomial fit
+    double CalculateMagneticField( double s );
+    // Function for finding the cross-section from the polynomial fit
     double CalculateCrossSection( double s );
-#endif // USE_TABULATED_CROSS_SECTION
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
     // Function for finding the smallest time-scale
     void GetSmallestTimeScale( double *delta_t, int iFirstStep );
