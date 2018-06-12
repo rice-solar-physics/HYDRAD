@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *     
-// * Date last modified: 02/10/2017
+// * Date last modified: 06/12/2018
 // *
 // ****
 
@@ -306,8 +306,8 @@ else if( iBeamHeatingDP == 1 ) {
 	if( t < pfBeamTime[0] || t > pfBeamTime[iBeamHeatingDP-1] ) return;
 
 	// Find the time interval for the interpolation of the parameter values
-	for( i=0; i<iBeamHeatingDP; i++ )
-		if( t > pfBeamTime[i] ) break;
+	for( i=0; i<iBeamHeatingDP-1; i++ )
+		if( t < pfBeamTime[i+1] ) break;
 	x[1] = pfBeamTime[i];
 	x[2] = pfBeamTime[i+1];
 
