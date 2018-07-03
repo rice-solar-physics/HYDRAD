@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 03/19/2018
+// * Date last modified: 07/02/2018
 // *
 // ****
 
@@ -710,7 +710,8 @@ for( j=0; j<iBB_TRvals; j++ )
 	else if( pflog10T[j] > pfBB_logT[iBB_Tvals-1] ) pflog10T[j] = pfBB_logT[iBB_Tvals-1];
 	// Find the temperature range
 	for( i=0; i<iBB_Tvals-1; i++ )
-		if( pflog10T[j] >= pfBB_logT[i] && pflog10T[j] <= pfBB_logT[i+1] )
+		// if( pflog10T[j] >= pfBB_logT[i] && pflog10T[j] <= pfBB_logT[i+1] )
+		if( pflog10T[j] <= pfBB_logT[i+1] )
 			break;
 
 	x[1] = pfBB_logT[i];
@@ -743,7 +744,8 @@ for( j=0; j<iBF_TRvals; j++ )
 	else if( pflog10T[j] > pfBF_logT[iBF_Tvals-1] ) pflog10T[j] = pfBF_logT[iBF_Tvals-1];
 	// Find the temperature range
 	for( i=0; i<iBF_Tvals-1; i++ )
-		if( pflog10T[j] >= pfBF_logT[i] && pflog10T[j] <= pfBF_logT[i+1] )
+		// if( pflog10T[j] >= pfBF_logT[i] && pflog10T[j] <= pfBF_logT[i+1] )
+		if( pflog10T[j] <= pfBF_logT[i+1] )
 			break;
 
 	x[1] = pfBF_logT[i];
@@ -770,7 +772,8 @@ if( flog10eT < pfFB_logeT[0] ) flog10eT = pfFB_logeT[0];
 else if( flog10eT > pfFB_logeT[iFB_eTvals-1] ) flog10eT = pfFB_logeT[iFB_eTvals-1];
 // Find the temperature range
 for( h=0; h<iFB_eTvals-1; h++ )
-	if( flog10eT >= pfFB_logeT[h] && flog10eT <= pfFB_logeT[h+1] )
+	// if( flog10eT >= pfFB_logeT[h] && flog10eT <= pfFB_logeT[h+1] )
+	if( flog10eT <= pfFB_logeT[h+1] )
 		break;
 
 x2[1] = pfFB_logeT[h];
@@ -784,7 +787,8 @@ for( j=0; j<iFB_TRvals; j++ )
 	else if( pflog10radT[j] > pfFB_logradT[iFB_radTvals-1] ) pflog10radT[j] = pfFB_logradT[iFB_radTvals-1];
 	// Find the temperature range
 	for( i=0; i<iFB_radTvals-1; i++ )
-		if( pflog10radT[j] >= pfFB_logradT[i] && pflog10radT[j] <= pfFB_logradT[i+1] )
+		// if( pflog10radT[j] >= pfFB_logradT[i] && pflog10radT[j] <= pfFB_logradT[i+1] )
+		if( pflog10radT[j] <= pfFB_logradT[i+1] )
 			break;
 
 	x1[1] = pfFB_logradT[i];
@@ -820,7 +824,8 @@ if( flog10eT < pfFB_logeT[0] ) flog10eT = pfFB_logeT[0];
 else if( flog10eT > pfFB_logeT[iFB_eTvals-1] ) flog10eT = pfFB_logeT[iFB_eTvals-1];
 // Find the temperature range
 for( h=0; h<iFB_eTvals-1; h++ )
-	if( flog10eT >= pfFB_logeT[h] && flog10eT <= pfFB_logeT[h+1] )
+	// if( flog10eT >= pfFB_logeT[h] && flog10eT <= pfFB_logeT[h+1] )
+	if( flog10eT <= pfFB_logeT[h+1] )
         	break;
     
 x2[1] = pfFB_logeT[h];
@@ -834,7 +839,8 @@ for( j=0; j<iFB_TRvals; j++ )
         else if( pflog10radT[j] > pfFB_logradT[iFB_radTvals-1] ) pflog10radT[j] = pfFB_logradT[iFB_radTvals-1];
         // Find the temperature range
         for( i=0; i<iFB_radTvals-1; i++ )
-            if( pflog10radT[j] >= pfFB_logradT[i] && pflog10radT[j] <= pfFB_logradT[i+1] )
+            // if( pflog10radT[j] >= pfFB_logradT[i] && pflog10radT[j] <= pfFB_logradT[i+1] )
+	    if( pflog10radT[j] <= pfFB_logradT[i+1] )
                 break;
         
         x1[1] = pfFB_logradT[i];
@@ -879,7 +885,8 @@ if( flog10T < pfColl_logT[0] ) flog10T = pfColl_logT[0];
 else if( flog10T > pfColl_logT[iColl_Tvals-1] ) flog10T = pfColl_logT[iColl_Tvals-1];
 // Find the temperature range
 for( i=0; i<iColl_Tvals-1; i++ )
-	if( flog10T >= pfColl_logT[i] && flog10T <= pfColl_logT[i+1] )
+	// if( flog10T >= pfColl_logT[i] && flog10T <= pfColl_logT[i+1] )
+	if( flog10T <= pfColl_logT[i+1] )
 		break;
 
 x[1] = pfColl_logT[i];
@@ -930,7 +937,8 @@ if( flog10T < pfColl_logT[0] ) flog10T = pfColl_logT[0];
 else if( flog10T > pfColl_logT[iColl_Tvals-1] ) flog10T = pfColl_logT[iColl_Tvals-1];
 // Find the temperature range
 for( i=0; i<iColl_Tvals-1; i++ )
-	if( flog10T >= pfColl_logT[i] && flog10T <= pfColl_logT[i+1] )
+	// if( flog10T >= pfColl_logT[i] && flog10T <= pfColl_logT[i+1] )
+	if( flog10T <= pfColl_logT[i+1] )
         	break;
     
 x[1] = pfColl_logT[i];

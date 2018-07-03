@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 05/22/2018
+// * Date last modified: 07/03/2018
 // *
 // ****
 
@@ -1718,11 +1718,17 @@ void CAdaptiveMesh::ShowProgress( clock_t *ptimer )
 	for( i=0; i<4; i++ )
 		FindTemporalUnits( &(fTime[i]), &(iUnits[i]) );
 
+	printf( "model-time elapsed = %.4e s; dt = %.4e s\n", mesh_time, mesh_delta_t );	
+	printf( "wall-time elapsed = %.4e %c; ~ wall-time remaining = %.4e %c\n", fTime[1], cUnitLabel[iUnits[1]], fTime[3], cUnitLabel[iUnits[3]] );
+	printf( "\twall-time/%i steps = %.4e %c; wall-time/second = %.4e %c\n",  OUTPUT_EVERY_N_TIME_STEPS, fTime[0], cUnitLabel[iUnits[0]], fTime[2], cUnitLabel[iUnits[2]] );
+	printf( "\trefinement level = %i/%i; total grid cells = %i\n\n", GetMaxRL(), MAX_REFINEMENT_LEVEL, GetNumCells() );
+	/*
 	printf( "model-time elapsed = %.4e s; wall-time elapsed = %.4e %c\n", mesh_time, fTime[1], cUnitLabel[iUnits[1]] );
 	printf( "\tdt = %.4e s; refinement level = %i/%i; total grid cells = %i;\n", mesh_delta_t, GetMaxRL(), MAX_REFINEMENT_LEVEL, GetNumCells() );
     	printf( "\twall-time/%i steps = %.4e %c; ",  OUTPUT_EVERY_N_TIME_STEPS, fTime[0], cUnitLabel[iUnits[0]] );
 	printf( "wall-time/second = %.4e %c; ", fTime[2], cUnitLabel[iUnits[2]] );
 	printf( "~ wall-time remaining = %.4e %c\n\n", fTime[3], cUnitLabel[iUnits[3]] );
+	*/
 }
 		void FindTemporalUnits( double *pfTime, int *piUnits )
 		{
