@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 06/08/2018
+// * Date last modified: 07/11/2018
 // *
 // ****
 
@@ -35,11 +35,14 @@
 // Define the parameters structure
 struct Parameters {
 
-    // Initial (t=0) loop density, momentum density and energy density profiles
+    // Mass density, momentum density and energy density profiles
     char Profiles[256];
 
     // Loop length
     double L;
+
+	// Number of grid cells
+	int iNumberOfCells;
 
     // Gravitational acceleration polynomial-fit coefficients filename
     char GravityFilename[256];

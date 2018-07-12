@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 06/08/2018
+// * Date last modified: 07/11/2018
 // *
 // ****
 
@@ -21,6 +21,11 @@
 #include "../../Resources/source/file.h"
 #include "../../Resources/source/fitpoly.h"
 #include "../../Resources/Utils/regPoly/regpoly.h"
+
+#ifdef OPENMP
+	#include <omp.h>
+	#define CHUNK_SIZE	10
+#endif // OPENMP
 
 
 double fLogLambda_ei( double Te, double Ti, double n )
@@ -75,9 +80,9 @@ FILE *pFile;
 double fTemp;
 int i, iTemp;
 
-#ifdef USE_KINETIC_MODEL
+#if defined (OPENMP) || defined (USE_KINETIC_MODEL)
 ppCellList = NULL;
-#endif // USE_KINETIC_MODEL
+#endif // OPENMP || USE_KINETIC_MODEL
 
 // Get the HYDRAD initial conditions
 pFile = fopen( "HYDRAD/config/HYDRAD.cfg", "r" );
@@ -144,9 +149,9 @@ pRadiativeRates = new CRadiativeRates( (char *)"Radiation_Model/atomic_data/Opti
 
 void CEquations::FreeAll( void )
 {
-#ifdef USE_KINETIC_MODEL
+#if defined (OPENMP) || defined (USE_KINETIC_MODEL)
 free( ppCellList );
-#endif // USE_KINETIC_MODEL
+#endif // OPENMP || USE_KINETIC_MODEL
 
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
 // Free the memory allocated to the cross-section profile in the field-aligned direction
@@ -188,7 +193,8 @@ double term1, term2;
 int iNumElements, *piA;
 int i, j;
 
-iMaxRL = 0; iNumCells = 0;
+iMaxRL = 0;
+
 pNextActiveCell = pStartOfCurrentRow;
 while( pNextActiveCell )
 {
@@ -196,7 +202,6 @@ while( pNextActiveCell )
     pActiveCell->GetCellProperties( &CellProperties );
 
 	if( iMaxRL < CellProperties.iRefinementLevel ) iMaxRL = CellProperties.iRefinementLevel;
-	iNumCells++;
 
     // Locate the apex cell from which the column densities will be calculated along each leg
     if( CellProperties.s[1] <= Params.L / 2.0 )
@@ -382,7 +387,9 @@ while( pNextActiveCell )
 
 void CEquations::CalculatePhysicalQuantities( void )
 {
-PCELL pNextActiveCell;
+#ifndef OPENMP
+	PCELL pNextActiveCell;
+#endif // OPENMP
 CELLPROPERTIES CellProperties;
 
 // General variables
@@ -390,32 +397,71 @@ double term1, term2;
 int j;
 
 #ifdef OPTICALLY_THICK_RADIATION
-#ifdef NLTE_CHROMOSPHERE
-double fH, fnu, fMcZ_c, fA, fZ[31];
-#ifdef NON_EQUILIBRIUM_RADIATION
-double *pfZ;
-#endif // NON_EQUILIBRIUM_RADIATION
-double fElement, fSum, flog10_Trad[10], fPreviousIteration;
-double fBB_lu[6], fBB_ul[6], fBF[4], fFB[4], fColl_ex_lu[10], fColl_ex_ul[10], fColl_ion[5], fColl_rec[5];
-int iNumElements, *piA;
-int i;
-#endif // NLTE_CHROMOSPHERE
+	#ifdef NLTE_CHROMOSPHERE
+		double fH, fnu, fMcZ_c, fA, fZ[31];
+		double fElement, fSum, flog10_Trad[10], fPreviousIteration;
+		double fBB_lu[6], fBB_ul[6], fBF[4], fFB[4], fColl_ex_lu[10], fColl_ex_ul[10], fColl_ion[5], fColl_rec[5];
+		int iNumElements, *piA;
+		int i;
+	#endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
 
-iMaxRL = 0; iNumCells = 0;
+#ifdef OPENMP
+	PCELL pLocalActiveCell;
+	int iCounter, iLocalNumberOfCells = Params.iNumberOfCells;
+	#if defined (OPTICALLY_THICK_RADIATION) || defined (BEAM_HEATING)
+    		int indexCentre=0;
+		#define REDUCTION_VAR reduction(max: iMaxRL, indexCentre)
+	#else // OPTICALLY_THICK_RADIATION || BEAM_HEATING
+		#define REDUCTION_VAR
+	#endif // OPTICALLY_THICK_RADIATION || BEAM_HEATING
+	#ifdef NLTE_CHROMOSPHERE
+		#define NLTE_VARS fH, fnu, fMcZ_c, fA, fZ, fElement, fSum, flog10_Trad, fPreviousIteration, fBB_lu, fBB_ul, fBF, fFB, fColl_ex_lu, fColl_ex_ul, fColl_ion, fColl_rec, iNumElements, piA, i,
+	#else // NLTE_CHROMOSPHERE
+		#define NLTE_VARS
+	#endif //NLTE_CHROMOSPHERE
+	
+#pragma omp parallel shared( ppCellList, iLocalNumberOfCells )	\
+                     private( iCounter, term1, term2, j, NLTE_VARS CellProperties )
+{
+#endif // OPENMP
+
+#ifdef OPTICALLY_THICK_RADIATION
+	#ifdef NLTE_CHROMOSPHERE
+		#ifdef NON_EQUILIBRIUM_RADIATION
+			double *pfZ;
+		#endif // NON_EQUILIBRIUM_RADIATION
+	#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
+
+iMaxRL = 0;
+
+#ifdef OPENMP
+#pragma omp for schedule(dynamic, CHUNK_SIZE)		\
+                lastprivate(pLocalActiveCell)								\
+                REDUCTION_VAR
+for( iCounter=0; iCounter<iLocalNumberOfCells; iCounter++ )
+{
+	pLocalActiveCell = ppCellList[iCounter];
+	pLocalActiveCell->GetCellProperties( &CellProperties );
+#else // OPENMP
 pNextActiveCell = pStartOfCurrentRow;
 while( pNextActiveCell )
 {
-    pActiveCell = pNextActiveCell;
+	pActiveCell = pNextActiveCell;
     pActiveCell->GetCellProperties( &CellProperties );
+#endif // OPENMP
 
 	if( iMaxRL < CellProperties.iRefinementLevel ) iMaxRL = CellProperties.iRefinementLevel;
-	iNumCells++;
 
 #if defined (OPTICALLY_THICK_RADIATION) || defined(BEAM_HEATING)
     // Locate the apex cell from which the column densities will be calculated along each leg
     if( CellProperties.s[1] <= Params.L / 2.0 )
+	#ifdef OPENMP
+		indexCentre = iCounter;
+	#else // OPENMP
         pCentreOfCurrentRow = pActiveCell;
+	#endif // OPENMP
 #endif // OPTICALLY_THICK_RADIATION || BEAM_HEATING
 
 // *****************************************************************************
@@ -654,10 +700,21 @@ while( pNextActiveCell )
     // Calculated in EvaluateTerms when the dynamic viscosity term is known
     CellProperties.viscosity_delta_t = Params.Duration;
 
-    pActiveCell->UpdateCellProperties( &CellProperties );
-
-    pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
+#ifdef OPENMP
+	pLocalActiveCell->UpdateCellProperties( &CellProperties );
 }
+#else // OPENMP
+    pActiveCell->UpdateCellProperties( &CellProperties );
+	pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
+#endif // OPENMP
+}
+
+#ifdef OPENMP
+	// pActiveCell = pLocalActiveCell;
+	#if defined (OPTICALLY_THICK_RADIATION) || defined (BEAM_HEATING)
+		pCentreOfCurrentRow = ppCellList[indexCentre];
+	#endif // OPTICALLY_THICK_RADIATION || BEAM_HEATING
+#endif // OPENMP
 }
 
 #ifdef OPTICALLY_THICK_RADIATION
@@ -1407,7 +1464,7 @@ pNextActiveCell = pStartOfCurrentRow->pGetPointer( RIGHT )->pGetPointer( RIGHT )
 while( pNextActiveCell->pGetPointer( RIGHT )->pGetPointer( RIGHT ) )
 {
     pActiveCell = pNextActiveCell;
-    pActiveCell->GetCellProperties( &CellProperties );
+	pActiveCell->GetCellProperties( &CellProperties );
 
     pLeftCell = pActiveCell->pGetPointer( LEFT );
     pLeftCell->GetCellProperties( &LeftCellProperties );
@@ -1731,8 +1788,8 @@ CellProperties.TE_KE_term[5][ELECTRON] = - SMALLEST_DOUBLE;
 #endif // NON_EQUILIBRIUM_RADIATION || ( OPTICALLY_THICK_RADIATION && NLTE_CHROMOSPHERE )
 
     pActiveCell->UpdateCellProperties( &CellProperties );
-
-    pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
+    
+	pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
 }
 
 // Find the smallest characteristic time-scale
@@ -1891,6 +1948,33 @@ pCellProperties->rho_e = BottomCellProperties.rho_e + ( fdne * ELECTRON_MASS );
 #endif // OPTICALLY_THICK_RADIATION
 }
 
+#if defined (OPENMP) || defined (USE_KINETIC_MODEL)
+void CEquations::CreateIndexedCellList( void )
+{
+PCELL pNextActiveCell;
+int iIndex;
+
+// Free the previous indexed cell list and allocate sufficient memory for the next one
+if( ppCellList )
+    free( ppCellList );
+
+ppCellList = (PCELL*)malloc( Params.iNumberOfCells * sizeof(PCELL) );
+
+// Compile an indexed list of the cells
+iIndex = 0;
+pNextActiveCell = pStartOfCurrentRow;
+while( pNextActiveCell )
+{
+    pActiveCell = pNextActiveCell;
+
+    ppCellList[iIndex] = pActiveCell;
+    iIndex++;
+	
+    pNextActiveCell=pActiveCell->pGetPointer( RIGHT );
+}
+}
+#endif // OPENMP || USE_KINETIC_MODEL
+
 // *****************************************************************************
 // *                                                                            																							*
 // *    KINETIC COMPONENT FOR DISTRIBUTION FUNCTION CALCULATIONS                						*
@@ -1916,48 +2000,6 @@ for( i=0; i<51; i++ )
     ReadDouble( pFile, &(SH_Table[i][X_T]) );
 }
 fclose( pFile );
-}
-
-void CEquations::CountCells( void )
-{
-PCELL pNextActiveCell;
-
-iNumCells = 0;
-
-pNextActiveCell = pStartOfCurrentRow;
-while( pNextActiveCell )
-{
-    pActiveCell = pNextActiveCell;
-
-    iNumCells++;
-
-    pNextActiveCell=pActiveCell->pGetPointer( RIGHT );
-}
-}
-
-void CEquations::CreateIndexedCellList( void )
-{
-PCELL pNextActiveCell;
-int iIndex;
-
-// Free the previous indexed cell list and allocate sufficient memory for the next one
-if( ppCellList )
-    free( ppCellList );
-
-ppCellList = (PCELL*)malloc( iNumCells * sizeof(PCELL) );
-
-// Compile an indexed list of the cells
-iIndex = 0;
-pNextActiveCell = pStartOfCurrentRow;
-while( pNextActiveCell )
-{
-    pActiveCell = pNextActiveCell;
-
-    ppCellList[iIndex] = pActiveCell;
-    iIndex++;
-	
-    pNextActiveCell=pActiveCell->pGetPointer( RIGHT );
-}
 }
 
 void CEquations::CalculateKineticModel( int iFirstStep )
