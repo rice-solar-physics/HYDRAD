@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 07/11/2018
+// * Date last modified: 07/19/2018
 // *
 // ****
 
@@ -24,7 +24,6 @@
 
 #ifdef OPENMP
 	#include <omp.h>
-	#define CHUNK_SIZE	10
 #endif // OPENMP
 
 
