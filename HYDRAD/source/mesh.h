@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 05/22/2018
+// * Date last modified: 07/19/2018
 // *
 // ****
 
@@ -43,6 +43,9 @@ class CAdaptiveMesh : private CEquations {
 #endif // ADAPT
 	void ShowProgress( clock_t *ptimer );
     void WriteToFile( void );
+#ifdef UPDATE_HYDRAD_CONFIG
+	void UpdateHYDRADConfig( void );
+#endif // UPDATE_HYDRAD_CONFIG
 
     public:
 
