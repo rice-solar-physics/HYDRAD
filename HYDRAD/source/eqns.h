@@ -5,7 +5,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 06/08/2018
+// * Date last modified: 07/11/2018
 // *
 // ****
 
@@ -46,8 +46,8 @@ class CEquations {
     // Function for finding the smallest time-scale
     void GetSmallestTimeScale( double *delta_t, int iFirstStep );
 
-	// The maximum current refinement level and the number of grid cells
-    int iMaxRL, iNumCells;
+	// The maximum current refinement level
+    int iMaxRL;
 
 #ifdef USE_KINETIC_MODEL
     // Functions for the Spitzer-Harm part of the solution
@@ -101,6 +101,17 @@ class CEquations {
     // Destructor
     ~CEquations( void );
 
+#if defined (OPENMP) || defined(USE_KINETIC_MODEL)
+    // Pointer to an indexed list of cells
+    PCELL *ppCellList;
+    void CreateIndexedCellList( void );
+#endif // OPENMP || USE_KINETIC_MODEL
+
+#ifdef USE_KINETIC_MODEL
+    void CalculateKineticModel( int iFirstStep );
+    void CalculateNonMaxDFN( void );
+#endif // USE_KINETIC_MODEL
+
     // Function for calculating physical quantities
     void CalculatePhysicalQuantities( void );
 
@@ -120,17 +131,5 @@ class CEquations {
     void Full_Time_Step( PCELLPROPERTIES CellProperties, double delta_t );
 
 	int GetMaxRL( void ) { return iMaxRL; }
-	int GetNumCells( void ) { return iNumCells; }
-
-#ifdef USE_KINETIC_MODEL
-    // Pointer to an indexed list of cells
-    PCELL *ppCellList;
-
-    void CountCells( void );
-    void CreateIndexedCellList( void );
-
-    void CalculateKineticModel( int iFirstStep );
-    void CalculateNonMaxDFN( void );
-#endif // USE_KINETIC_MODEL
 
 };

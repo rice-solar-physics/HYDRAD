@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 07/03/2018
+// * Date last modified: 07/19/2018
 // *
 // ****
 
@@ -18,6 +18,10 @@
 #include "../../Resources/source/constants.h"
 #include "../../Resources/source/file.h"
 #include "../../Resources/source/fitpoly.h"
+
+#ifdef OPENMP
+	#include <omp.h>
+#endif // OPENMP
 
 
 // **** ADAPTIVE MESH CLASS ****
@@ -49,7 +53,7 @@ void CAdaptiveMesh::CreateInitialMesh( void )
 FILE *pFile;
 PCELL pPreviousCell = NULL;
 CELLPROPERTIES CellProperties;
-int iNumberOfCells, i, j;
+int i, j;
 
 printf( "\nProcessing the initial conditions...\n" );
 
@@ -81,10 +85,10 @@ fscanf( pFile, "%i", &iFileNumber );
 
 ReadDouble( pFile, &Params.L );
 
-fscanf( pFile, "%i", &iNumberOfCells );
+fscanf( pFile, "%i", &Params.iNumberOfCells );
 
 // Create the initial mesh using values from the user-specified .amr file
-for( i = 0; i < iNumberOfCells; i++ )
+for( i = 0; i < Params.iNumberOfCells; i++ )
 {
     // Fill in the cell properties structure
 
@@ -160,6 +164,10 @@ if( mesh_time == 0.0 )
     Adapt();
 #endif // ADAPT
 
+#if defined (OPENMP) || defined (USE_KINETIC_MODEL)
+	CreateIndexedCellList();
+#endif // OPENMP || USE_KINETIC_MODEL
+
 #if defined (OPTICALLY_THICK_RADIATION) && defined (NLTE_CHROMOSPHERE)
 InitialiseRadiativeRates();
 CalculateInitialPhysicalQuantities();
@@ -215,15 +223,6 @@ while( pNextActiveCell )
 if( mesh_time > 0.0 )
     fclose( pIonFile );
 #endif // NON_EQUILIBRIUM_RADIATION
-
-// ******************************************************************************
-// *    INITIALISE THE KINETIC COMPONENT                                        *
-// ******************************************************************************
-
-#ifdef USE_KINETIC_MODEL
-CountCells();
-CreateIndexedCellList();
-#endif // USE_KINETIC_MODEL
 
 // ******************************************************************************
 // *    OUTPUT THE INITIAL STATE                                                *
@@ -298,7 +297,8 @@ do {
             if( drho < MIN_FRAC_DIFF && dTE_KEe < MIN_FRAC_DIFF && dTE_KEh < MIN_FRAC_DIFF && drho_e < MIN_FRAC_DIFF )
             {
                 iProlonged = TRUE;
-
+				Params.iNumberOfCells--;
+				
 		ZeroCellProperties( &(NewCellProperties[0]) );
 
 #ifdef NON_EQUILIBRIUM_RADIATION
@@ -456,7 +456,8 @@ do {
 	if( ( drho > MAX_FRAC_DIFF || dTE_KEe > MAX_FRAC_DIFF || dTE_KEh > MAX_FRAC_DIFF || drho_e > MAX_FRAC_DIFF || abs( CellProperties.iRefinementLevel - RightCellProperties.iRefinementLevel ) > 1 ) && ( CellProperties.iRefinementLevel < MAX_REFINEMENT_LEVEL || RightCellProperties.iRefinementLevel < MAX_REFINEMENT_LEVEL ) )
 	{
             iRestricted = TRUE;
-
+			Params.iNumberOfCells++;
+			
             if( CellProperties.iRefinementLevel <= RightCellProperties.iRefinementLevel )
             {
                 // Refine the current cell
@@ -1472,11 +1473,6 @@ do {
     }
 
 } while( iRestricted );
-
-#ifdef USE_KINETIC_MODEL
-CountCells();
-CreateIndexedCellList();
-#endif // USE_KINETIC_MODEL
 }
 #endif // ADAPT
 
@@ -1524,6 +1520,9 @@ while( mesh_time <= Params.Duration )
     if( mesh_time >= fNextOutputTime )
     {
         WriteToFile();
+#ifdef UPDATE_HYDRAD_CONFIG
+		UpdateHYDRADConfig();
+#endif // UPDATE_HYDRAD_CONFIG
 		fNextOutputTime += Params.OutputPeriod;
     }
 }
@@ -1541,9 +1540,9 @@ PCELL pNextActiveCell, pPreviousCell = NULL, pNewCell;
 CELLPROPERTIES CellProperties, NewCellProperties;
 double delta_t;
 
-#ifdef USE_KINETIC_MODEL
+#if defined (OPENMP) || defined (USE_KINETIC_MODEL)
 int iCell = 0;
-#endif // USE_KINETIC_MODEL
+#endif // OPENMP || USE_KINETIC_MODEL
 
 // The integration is 2nd order in time and uses the derivatives calculated at half the time-step
 delta_t = 0.5 * mesh_delta_t;
@@ -1596,10 +1595,10 @@ while( pNextActiveCell )
     pPreviousCell = pNewCell;
     pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
 
-#ifdef USE_KINETIC_MODEL
+#if defined (OPENMP) || defined (USE_KINETIC_MODEL)
     ppCellList[iCell] = pNewCell;
     iCell++;
-#endif // USE_KINETIC_MODEL
+#endif // OPENMP || USE_KINETIC_MODEL
 }
 
 // Calculate the physical quantities in the new cells
@@ -1625,7 +1624,12 @@ while( pNextActiveCell )
 #ifdef ADAPT
 // Adapt the mesh
 if( bAdapt )
+{
 	Adapt();
+#if defined (OPENMP) || defined (USE_KINETIC_MODEL)
+	CreateIndexedCellList();
+#endif // OPENMP || USE_KINETIC_MODEL
+}
 #endif // ADAPT
 
 // Calculate the physical quantities
@@ -1709,9 +1713,17 @@ void CAdaptiveMesh::ShowProgress( clock_t *ptimer )
 	double fTime[4];
 	int iUnits[4], i;
 	char cUnitLabel[6] = {'s','m','h','d','w','y'};
-	
+
+#ifdef OPENMP
+	int iDivisor;
+	#pragma omp parallel
+		iDivisor = CLOCKS_PER_SEC * omp_get_num_threads();
+	fTime[0] =  ((double)(ptimer[2]-ptimer[1])) / iDivisor;
+	fTime[1] = ((double)(clock() - ptimer[0])) / iDivisor;
+#else // OPENMP
 	fTime[0] =  ((double)(ptimer[2]-ptimer[1])) / CLOCKS_PER_SEC;
 	fTime[1] = ((double)(clock() - ptimer[0])) / CLOCKS_PER_SEC;
+#endif // OPENMP	
 	fTime[2] = fTime[1] / mesh_time;
 	fTime[3] = ( Params.Duration - mesh_time ) * fTime[2];
 	// Convert the times into convenient units given their magnitudes
@@ -1721,7 +1733,7 @@ void CAdaptiveMesh::ShowProgress( clock_t *ptimer )
 	printf( "model-time elapsed = %.4e s; dt = %.4e s\n", mesh_time, mesh_delta_t );	
 	printf( "wall-time elapsed = %.4e %c; ~ wall-time remaining = %.4e %c\n", fTime[1], cUnitLabel[iUnits[1]], fTime[3], cUnitLabel[iUnits[3]] );
 	printf( "\twall-time/%i steps = %.4e %c; wall-time/second = %.4e %c\n",  OUTPUT_EVERY_N_TIME_STEPS, fTime[0], cUnitLabel[iUnits[0]], fTime[2], cUnitLabel[iUnits[2]] );
-	printf( "\trefinement level = %i/%i; total grid cells = %i\n\n", GetMaxRL(), MAX_REFINEMENT_LEVEL, GetNumCells() );
+	printf( "\trefinement level = %i/%i; total grid cells = %i\n\n", GetMaxRL(), MAX_REFINEMENT_LEVEL, Params.iNumberOfCells );
 	/*
 	printf( "model-time elapsed = %.4e s; wall-time elapsed = %.4e %c\n", mesh_time, fTime[1], cUnitLabel[iUnits[1]] );
 	printf( "\tdt = %.4e s; refinement level = %i/%i; total grid cells = %i;\n", mesh_delta_t, GetMaxRL(), MAX_REFINEMENT_LEVEL, GetNumCells() );
@@ -1934,7 +1946,7 @@ sprintf( szAMRFilename, "Results/profile%i.amr", iFileNumber );
 
 pAMRFile = fopen( szAMRFilename, "w" );
 
-fprintf( pAMRFile, "%g\n%i\n%.16e\n%i\n", mesh_time, iFileNumber, Params.L, GetNumCells() );
+fprintf( pAMRFile, "%g\n%i\n%.16e\n%i\n", mesh_time, iFileNumber, Params.L, Params.iNumberOfCells );
 
 pNextActiveCell = pStartOfCurrentRow;
 
@@ -2047,3 +2059,23 @@ fclose( pDFNFile );
 
 iFileNumber++;
 }
+
+#ifdef UPDATE_HYDRAD_CONFIG
+void CAdaptiveMesh::UpdateHYDRADConfig( void )
+{
+FILE *pHYDRADConfigFile;
+time_t tCurrentTime;
+char *pszCurrentTime;
+
+tCurrentTime = time( NULL );
+pszCurrentTime = ctime(&tCurrentTime);
+
+pHYDRADConfigFile = fopen( "HYDRAD/config/hydrad.cfg", "w" );
+	fprintf( pHYDRADConfigFile, "Results/profile%i.amr\r\n", iFileNumber-1 );	// Note: WriteToFile() increments the file number counter
+	fprintf( pHYDRADConfigFile, "%s\r\n", Params.GravityFilename );
+	fprintf( pHYDRADConfigFile, "%e\r\n", Params.Duration );
+	fprintf( pHYDRADConfigFile, "%g\r\n\r\n", Params.OutputPeriod );
+	fprintf( pHYDRADConfigFile, "Configuration file generated by the HYDRAD code on %s", pszCurrentTime );	
+fclose( pHYDRADConfigFile );
+}
+#endif // UPDATE_HYDRAD_CONFIG
