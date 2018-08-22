@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 07/19/2018
+// * Date last modified: 08/22/2018
 // *
 // ****
 
@@ -1218,6 +1218,12 @@ while( pNextActiveCell->pGetPointer( RIGHT ) )
 
             // Calculate the conducted heat flux at the left boundary
 	    gradT = ( T[2][j] - T[0][j] ) / CellProperties.cell_width;
+
+#ifdef USE_MIKIC
+	    if( j == ELECTRON && T[1][j] < MIKIC_CRITICAL_TEMPERATURE )
+		T[1][j] = MIKIC_CRITICAL_TEMPERATURE;
+#endif // USE_MIKIC
+
 #ifdef OPTICALLY_THICK_RADIATION
             if( j == HYDROGEN && T[1][ELECTRON] < OPTICALLY_THICK_TEMPERATURE )
 		{
@@ -1233,7 +1239,12 @@ while( pNextActiveCell->pGetPointer( RIGHT ) )
 
             // Estimate the maximum conducted heat flux (treats n as approximately constant across cell)
             // BOLTZMANN_CONSTANT^1.5 = 1.621132937e-24
+#ifdef USE_MIKIC
+	    // When using the Mikic correction then calculate the maximum heat flux using the temperature in the grid cell center
+	    Fc_max = HEAT_FLUX_LIMITING_COEFFICIENT * (1.621132937e-24) * max_flux_coeff[j] * n[j] * pow( CellProperties.T[j], 1.5 );
+#else // USE_MIKIC
             Fc_max = HEAT_FLUX_LIMITING_COEFFICIENT * (1.621132937e-24) * max_flux_coeff[j] * n[j] * pow( T[1][j], 1.5 );
+#endif // USE_MIKIC
 
 	    // Apply the heat flux limiter
             term1 = CellProperties.Fc[0][j] * Fc_max;
@@ -1729,9 +1740,16 @@ CellProperties.TE_KE_term[5][ELECTRON] = - SMALLEST_DOUBLE;
 	#endif // NON_EQUILIBRIUM_RADIATION
 #endif // DECOUPLE_IONISATION_STATE_SOLVER
 
+#ifdef USE_MIKIC
+	if( CellProperties.T[ELECTRON] < MIKIC_CRITICAL_TEMPERATURE )
+	{
+		term1 = CellProperties.T[ELECTRON] / MIKIC_CRITICAL_TEMPERATURE;
+		CellProperties.TE_KE_term[5][ELECTRON] *= pow( term1, 2.5 );
+	}
+#endif // USE_MIKIC
+
 // **** RADIATION TIME STEP ****
-	    CellProperties.radiation_delta_t = ( SAFETY_RADIATION * CellProperties.TE_KE[1][ELECTRON] ) / fabs( CellProperties.TE_KE_term[5][ELECTRON] )
-;
+	    CellProperties.radiation_delta_t = ( SAFETY_RADIATION * CellProperties.TE_KE[1][ELECTRON] ) / fabs( CellProperties.TE_KE_term[5][ELECTRON] );
 // **** RADIATION TIME STEP ****
     }
 
