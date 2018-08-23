@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 08/22/2018
+// * Date last modified: 08/23/2018
 // *
 // ****
 
@@ -192,6 +192,9 @@ double term1, term2;
 int iNumElements, *piA;
 int i, j;
 
+#ifdef USE_MIKIC
+Te_max = 0.0;
+#endif // USE_MIKIC
 iMaxRL = 0;
 
 pNextActiveCell = pStartOfCurrentRow;
@@ -326,6 +329,10 @@ while( pNextActiveCell )
     CellProperties.Cs = pow( term1, 0.5 );
     CellProperties.M = fabs( CellProperties.v[1] / CellProperties.Cs );
 
+#ifdef USE_MIKIC
+    if( CellProperties.T[ELECTRON] > Te_max ) Te_max = CellProperties.T[ELECTRON];
+#endif // USE_MIKIC
+
 // *****************************************************************************
 // *                                                                            																							*
 // *    CALCULATE THE TIMESCALES                                                																*
@@ -433,6 +440,9 @@ int j;
 	#endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
 
+#ifdef USE_MIKIC
+Te_max = 0.0;
+#endif // USE_MIKIC
 iMaxRL = 0;
 
 #ifdef OPENMP
@@ -648,6 +658,10 @@ while( pNextActiveCell )
     term1 = ( GAMMA * ( CellProperties.P[1][ELECTRON] + CellProperties.P[1][HYDROGEN] ) ) / CellProperties.rho[1];
     CellProperties.Cs = pow( term1, 0.5 );
     CellProperties.M = fabs( CellProperties.v[1] / CellProperties.Cs );
+
+#ifdef USE_MIKIC
+    if( CellProperties.T[ELECTRON] > Te_max ) Te_max = CellProperties.T[ELECTRON];
+#endif // USE_MIKIC
 
 // *****************************************************************************
 // *                                                                            																							*
@@ -874,6 +888,16 @@ double Q1, Q2, Q3, QT;
 // Variables used by thermal and viscous flux transport algorithms
 double Kappa[SPECIES], max_flux_coeff[SPECIES];
 double T[3][SPECIES], gradT, n[SPECIES], P, v[2], gradv, Kappa_B, Kappa_L, Fc_max;
+#ifdef USE_MIKIC
+double Tc, Tmin;
+#ifdef OPTICALLY_THICK_RADIATION
+	Tmin = OPTICALLY_THICK_TEMPERATURE;
+#else // OPTICALLY_THICK_RADIATION
+	Tmin = MINIMUM_RADIATION_TEMPERATURE;
+#endif // OPTICALLY_THICK_RADIATION
+	Tc = MIKIC_TEMPERATURE_FRACTION * Te_max;
+	if( Tc > MIKIC_MAX_CRITICAL_TEMPERATURE ) Tc = MIKIC_MAX_CRITICAL_TEMPERATURE;
+#endif // USE_MIKIC
 #ifdef NUMERICAL_VISCOSITY
 double rho_v[2];
 #endif // NUMERICAL_VISCOSITY
@@ -1220,8 +1244,8 @@ while( pNextActiveCell->pGetPointer( RIGHT ) )
 	    gradT = ( T[2][j] - T[0][j] ) / CellProperties.cell_width;
 
 #ifdef USE_MIKIC
-	    if( j == ELECTRON && T[1][j] < MIKIC_CRITICAL_TEMPERATURE )
-		T[1][j] = MIKIC_CRITICAL_TEMPERATURE;
+	    if( j == ELECTRON && T[1][j] > Tmin && T[1][j] < Tc )
+    		T[1][j] = Tc;
 #endif // USE_MIKIC
 
 #ifdef OPTICALLY_THICK_RADIATION
@@ -1240,7 +1264,6 @@ while( pNextActiveCell->pGetPointer( RIGHT ) )
             // Estimate the maximum conducted heat flux (treats n as approximately constant across cell)
             // BOLTZMANN_CONSTANT^1.5 = 1.621132937e-24
 #ifdef USE_MIKIC
-	    // When using the Mikic correction then calculate the maximum heat flux using the temperature in the grid cell center
 	    Fc_max = HEAT_FLUX_LIMITING_COEFFICIENT * (1.621132937e-24) * max_flux_coeff[j] * n[j] * pow( CellProperties.T[j], 1.5 );
 #else // USE_MIKIC
             Fc_max = HEAT_FLUX_LIMITING_COEFFICIENT * (1.621132937e-24) * max_flux_coeff[j] * n[j] * pow( T[1][j], 1.5 );
@@ -1741,9 +1764,9 @@ CellProperties.TE_KE_term[5][ELECTRON] = - SMALLEST_DOUBLE;
 #endif // DECOUPLE_IONISATION_STATE_SOLVER
 
 #ifdef USE_MIKIC
-	if( CellProperties.T[ELECTRON] < MIKIC_CRITICAL_TEMPERATURE )
+	if( CellProperties.T[ELECTRON] > Tmin && CellProperties.T[ELECTRON] < Tc )
 	{
-		term1 = CellProperties.T[ELECTRON] / MIKIC_CRITICAL_TEMPERATURE;
+		term1 = CellProperties.T[ELECTRON] / Tc;
 		CellProperties.TE_KE_term[5][ELECTRON] *= pow( term1, 2.5 );
 	}
 #endif // USE_MIKIC

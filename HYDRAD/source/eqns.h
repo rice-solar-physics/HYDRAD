@@ -5,7 +5,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 07/11/2018
+// * Date last modified: 08/23/2018
 // *
 // ****
 
@@ -28,6 +28,9 @@ class CEquations {
     double *pfMagneticFieldCoefficients;
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
+#ifdef USE_MIKIC
+    double Te_max;
+#endif // USE_MIKIC
     double lower_radiation_temperature_boundary;
 
     void Initialise( void );
