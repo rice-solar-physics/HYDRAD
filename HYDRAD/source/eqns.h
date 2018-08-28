@@ -5,7 +5,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 08/23/2018
+// * Date last modified: 08/28/2018
 // *
 // ****
 
@@ -29,7 +29,7 @@ class CEquations {
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
 #ifdef USE_MIKIC
-    double Te_max;
+    double Tc, Te_max;
 #endif // USE_MIKIC
     double lower_radiation_temperature_boundary;
 

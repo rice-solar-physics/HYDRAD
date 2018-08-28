@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 08/23/2018
+// * Date last modified: 08/28/2018
 // *
 // ****
 
@@ -193,6 +193,8 @@ int iNumElements, *piA;
 int i, j;
 
 #ifdef USE_MIKIC
+double old_s = 0.0, old_T = 0.0, L_T;
+Tc = 0.0;
 Te_max = 0.0;
 #endif // USE_MIKIC
 iMaxRL = 0;
@@ -201,6 +203,13 @@ pNextActiveCell = pStartOfCurrentRow;
 while( pNextActiveCell )
 {
     pActiveCell = pNextActiveCell;
+#ifdef USE_MIKIC
+	if( pActiveCell->pGetPointer( LEFT ) )
+	{
+		old_s = CellProperties.s[1];
+		old_T = CellProperties.T[ELECTRON];
+	}
+#endif // USE_MIKIC
     pActiveCell->GetCellProperties( &CellProperties );
 
 	if( iMaxRL < CellProperties.iRefinementLevel ) iMaxRL = CellProperties.iRefinementLevel;
@@ -330,7 +339,9 @@ while( pNextActiveCell )
     CellProperties.M = fabs( CellProperties.v[1] / CellProperties.Cs );
 
 #ifdef USE_MIKIC
+    L_T = (0.5 * (old_T + CellProperties.T[ELECTRON])) / fabs( (CellProperties.T[ELECTRON] - old_T) / (CellProperties.s[1] - old_s) );
     if( CellProperties.T[ELECTRON] > Te_max ) Te_max = CellProperties.T[ELECTRON];
+    if( (CellProperties.cell_width/L_T) > 0.5 && CellProperties.T[ELECTRON] > Tc ) Tc = CellProperties.T[ELECTRON];
 #endif // USE_MIKIC
 
 // *****************************************************************************
@@ -441,6 +452,8 @@ int j;
 #endif // OPTICALLY_THICK_RADIATION
 
 #ifdef USE_MIKIC
+double old_s = 0.0, old_T = 0.0, L_T;
+Tc = 0.0;
 Te_max = 0.0;
 #endif // USE_MIKIC
 iMaxRL = 0;
@@ -452,12 +465,26 @@ iMaxRL = 0;
 for( iCounter=0; iCounter<iLocalNumberOfCells; iCounter++ )
 {
 	pLocalActiveCell = ppCellList[iCounter];
+#ifdef USE_MIKIC
+	if( pLocalActiveCell->pGetPointer( LEFT ) )
+	{
+		old_s = CellProperties.s[1];
+		old_T = CellProperties.T[ELECTRON];
+	}
+#endif // USE_MIKIC
 	pLocalActiveCell->GetCellProperties( &CellProperties );
 #else // OPENMP
 pNextActiveCell = pStartOfCurrentRow;
 while( pNextActiveCell )
 {
 	pActiveCell = pNextActiveCell;
+#ifdef USE_MIKIC
+	if( pActiveCell->pGetPointer( LEFT ) )
+	{
+		old_s = CellProperties.s[1];
+		old_T = CellProperties.T[ELECTRON];
+	}
+#endif // USE_MIKIC
     pActiveCell->GetCellProperties( &CellProperties );
 #endif // OPENMP
 
@@ -660,7 +687,9 @@ while( pNextActiveCell )
     CellProperties.M = fabs( CellProperties.v[1] / CellProperties.Cs );
 
 #ifdef USE_MIKIC
+    L_T = (0.5 * (old_T + CellProperties.T[ELECTRON])) / fabs( (CellProperties.T[ELECTRON] - old_T) / (CellProperties.s[1] - old_s) );
     if( CellProperties.T[ELECTRON] > Te_max ) Te_max = CellProperties.T[ELECTRON];
+    if( (CellProperties.cell_width/L_T) > 0.5 && CellProperties.T[ELECTRON] > Tc ) Tc = CellProperties.T[ELECTRON];
 #endif // USE_MIKIC
 
 // *****************************************************************************
@@ -889,14 +918,13 @@ double Q1, Q2, Q3, QT;
 double Kappa[SPECIES], max_flux_coeff[SPECIES];
 double T[3][SPECIES], gradT, n[SPECIES], P, v[2], gradv, Kappa_B, Kappa_L, Fc_max;
 #ifdef USE_MIKIC
-double Tc, Tmin;
+double Tmin;
 #ifdef OPTICALLY_THICK_RADIATION
 	Tmin = OPTICALLY_THICK_TEMPERATURE;
 #else // OPTICALLY_THICK_RADIATION
 	Tmin = MINIMUM_RADIATION_TEMPERATURE;
 #endif // OPTICALLY_THICK_RADIATION
-	Tc = MIKIC_TEMPERATURE_FRACTION * Te_max;
-	if( Tc > MIKIC_MAX_CRITICAL_TEMPERATURE ) Tc = MIKIC_MAX_CRITICAL_TEMPERATURE;
+	if( Tc > (MIKIC_TEMPERATURE_FRACTION*Te_max) ) Tc = MIKIC_TEMPERATURE_FRACTION * Te_max;
 #endif // USE_MIKIC
 #ifdef NUMERICAL_VISCOSITY
 double rho_v[2];
@@ -1244,8 +1272,8 @@ while( pNextActiveCell->pGetPointer( RIGHT ) )
 	    gradT = ( T[2][j] - T[0][j] ) / CellProperties.cell_width;
 
 #ifdef USE_MIKIC
-	    if( j == ELECTRON && T[1][j] > Tmin && T[1][j] < Tc )
-    		T[1][j] = Tc;
+	    if( j == ELECTRON && CellProperties.T[j] > Tmin && CellProperties.T[j] < Tc )
+	    	T[1][j] = Tc;
 #endif // USE_MIKIC
 
 #ifdef OPTICALLY_THICK_RADIATION
@@ -1766,8 +1794,8 @@ CellProperties.TE_KE_term[5][ELECTRON] = - SMALLEST_DOUBLE;
 #ifdef USE_MIKIC
 	if( CellProperties.T[ELECTRON] > Tmin && CellProperties.T[ELECTRON] < Tc )
 	{
-		term1 = CellProperties.T[ELECTRON] / Tc;
-		CellProperties.TE_KE_term[5][ELECTRON] *= pow( term1, 2.5 );
+            term1 = CellProperties.T[ELECTRON] / Tc;
+	    CellProperties.TE_KE_term[5][ELECTRON] *= pow( term1, 2.5 );
 	}
 #endif // USE_MIKIC
 
