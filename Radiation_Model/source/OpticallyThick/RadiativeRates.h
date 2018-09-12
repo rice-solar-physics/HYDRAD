@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 03/19/2018
+// * Date last modified: 09/05/2018
 // *
 // ****
 
@@ -12,6 +12,15 @@
 
 #ifdef OPTICALLY_THICK_RADIATION
 #ifdef NLTE_CHROMOSPHERE
+
+// Definitions for the temperature at which the foot-point density, used to scale T_b^top as a function of time, is defined in the NLTE chromosphere
+// and the turnover densities where each transition begins to brighten significantly
+#define NLTE_T_FP	9E3			// K
+	#define NLTE_n_Ha	6E12	// cm^-3
+	#define NLTE_n_Hb	5E12	// cm^-3
+	#define NLTE_n_Hg	1E13	// cm^-3
+	#define NLTE_n_Pa	3E13	// cm^-3
+	#define NLTE_n_Pb	5E13	// cm^-3
 
 #define MAX_ITERATIONS			300
 #define CONVERGENCE_EPSILON		0.1
@@ -57,7 +66,7 @@ class CRadiativeRates {
 	double **ppfColl_ion, **ppfColl_rec;
     
     int iNBBT, iNBFT;
-    double *pTrt, *pnu0, *pTeZ_c, *pZ_c_LEFT, *pZ_c_RIGHT, *pMcZ_c_LEFT, *pMcZ_c_RIGHT;
+    double *pTrt, **ppScaledTrt, *pnu0, *pTeZ_c, *pZ_c_LEFT, *pZ_c_RIGHT, *pMcZ_c_LEFT, *pMcZ_c_RIGHT;
     double *pterm1, *pterm2, *pH;
 
     // Functions to calculate the singular value decomposition of a matrix A and back-substitute to solve a matrix equation A x = b
@@ -105,15 +114,16 @@ class CRadiativeRates {
     double GetMcZ_c_LEFT( int i );
     double GetMcZ_c_RIGHT( int i );
     double GetTeZ_c( int i );
-    double GetTerm1( int i );
-    double GetTerm2( int i );
     double GetNu0( int i );
     double GetH( int i );
+	double GetTrt( int i );
+	double GetScaledTrt( int i, bool iFlag );
     void SetZ_c_LEFT( int i, double Z_c );
     void SetZ_c_RIGHT( int i, double Z_c );
     void SetMcZ_c_LEFT( int i, double McZ_c );
     void SetMcZ_c_RIGHT( int i, double McZ_c );
-    
+    void SetScaledTrt( int i, double Trt, bool iFlag );
+	
 };
 
 // Define a type for the radiative transition rates class

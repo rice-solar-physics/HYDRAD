@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *     
-// * Date last modified: 06/12/2018
+// * Date last modified: 09/12/2018
 // *
 // ****
 
@@ -62,6 +62,12 @@ if( iBeamHeatingDP )
 	free( pfBeamEnergyFlux );
 	free( pfBeamTime );
 }
+#ifdef OPTICALLY_THICK_RADIATION
+	#ifdef NLTE_CHROMOSPHERE
+		if( pfQbeam )
+			delete[] pfQbeam;
+	#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
 #endif // BEAM_HEATING
 
 if( !NumActivatedEvents )
@@ -388,6 +394,103 @@ double term1, term2;
 
 	return( fBeamHeating );
 }
+
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+void CHeat::InitQbeam( double fAvgEE, int iNumCells )
+{
+	// Set the average electron energy
+	fAverageElectronEnergy = fAvgEE;
+
+	// If memory has already been allocated to a beam at a previous time-step then free that memory ready for the beam at the current time-step
+	if( pfQbeam )
+		delete[] pfQbeam;
+
+	// Reset the index to the beam quantities
+	iQbeamIndex = 0;
+	 
+	 iQbeamIndex_max = iNumCells * 2;
+	pfQbeam = new double[iQbeamIndex_max];
+}
+
+void CHeat::SetQbeam( double s, double Qbeam )
+{
+	pfQbeam[iQbeamIndex] = s;
+	pfQbeam[iQbeamIndex+1] = Qbeam;
+
+	iQbeamIndex += 2;
+	if( iQbeamIndex == iQbeamIndex_max )
+		iQbeamIndex = 0;
+}
+
+double CHeat::GetQbeam( double s )
+{
+	if( !pfQbeam ) return 0.0;
+
+	double x[3], y[3], Qbeam;
+	int i;
+
+#ifdef OPENMP
+	for( i=0; i<=iQbeamIndex_max-2; i+=2 )
+#else // OPENMP
+	for( i=iQbeamIndex; i<=iQbeamIndex_max-2; i+=2 )
+#endif // OPENMP
+		if( s <= pfQbeam[i] ) break;
+
+	if( !i ) i+=2;
+	else if( i > iQbeamIndex_max-2) i = iQbeamIndex_max-2;
+
+	x[1] = pfQbeam[i-2];
+	x[2] = pfQbeam[i];
+	y[1] = pfQbeam[i-1];
+	y[2] = pfQbeam[i+1];
+	LinearFit( x, y, s, &Qbeam );
+	if( Qbeam < 0.0 ) Qbeam = 0.0;
+
+	iQbeamIndex = i;
+
+	return Qbeam;
+}
+
+double CHeat::GetAvgEE( void )
+{
+	return fAverageElectronEnergy;	
+}
+
+void CHeat::WriteQbeam( void )
+{
+	FILE *pFile;
+	int i;
+	
+	pFile = fopen( "Heating_Model/config/Qbeam.dat", "w" );
+		fprintf( pFile, "%.16e\n", fAverageElectronEnergy );
+		fprintf( pFile, "%i\n", iQbeamIndex_max>>1 );
+		for( i=0; i<iQbeamIndex_max; i+=2 )
+			fprintf( pFile, "%.16e\t%.16e\n", pfQbeam[i], pfQbeam[i+1] );
+	fclose( pFile );
+}
+
+void CHeat::ReadQbeam( void )
+{
+	FILE *pFile;
+	double fAvgEE, fs, fQbeam;
+	int iNumCells, i;
+	
+	pFile = fopen( "Heating_Model/config/Qbeam.dat", "r" );
+		ReadDouble( pFile, &fAvgEE );
+		fscanf( pFile, "%i", &iNumCells );
+		InitQbeam( fAvgEE, iNumCells );
+		for( i=0; i<iNumCells; i++ )
+		{
+			ReadDouble( pFile, &fs );
+			ReadDouble( pFile, &fQbeam );
+			SetQbeam( fs, fQbeam );
+		}
+	fclose( pFile );
+}
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
+
 #endif // BEAM_HEATING
 
 #ifdef OPTICALLY_THICK_RADIATION

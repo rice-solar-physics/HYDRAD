@@ -6,11 +6,19 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 02/06/2017
+// * Date last modified: 09/07/2018
 // *
 // ****
 
 #include "config.h"
+
+#ifdef OPTICALLY_THICK_RADIATION
+	#ifdef NLTE_CHROMOSPHERE
+		#ifdef BEAM_HEATING
+			#define Qbeam_CUT_OFF		1E-10
+		#endif // BEAM_HEATING
+	#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
 
 class CHeat {
 
@@ -36,6 +44,12 @@ class CHeat {
     // Beam heating parameters
         int iBeamHeatingDP;
         double *pfBeamTime, *pfBeamEnergyFlux, *pfBeamCutOff, *pfBeamSpectralIndex;
+#ifdef OPTICALLY_THICK_RADIATION
+	#ifdef NLTE_CHROMOSPHERE
+		int iQbeamIndex, iQbeamIndex_max;
+		double *pfQbeam = NULL, fAverageElectronEnergy = 0.0;
+	#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
 #endif // BEAM_HEATING
 
 #ifdef OPTICALLY_THICK_RADIATION
@@ -74,6 +88,17 @@ class CHeat {
     // Beam heating functionality
     void CalculateBeamParameters( double t, double *pBeamParams );
     double CalculateBeamHeating( double t, double *pBeamParams, double nds, double Nstar, double n_e, double n_H, double x );
+		#ifdef OPTICALLY_THICK_RADIATION
+			#ifdef NLTE_CHROMOSPHERE
+				// Functions that will provide access to the beam energy input (at the previous time-step) for the non-thermal collision frequency
+				void InitQbeam( double fAvgEE, int iNumCells );
+				void SetQbeam( double s, double Qbeam );
+				double GetQbeam( double s );
+				double GetAvgEE( void );
+				void WriteQbeam( void );
+				void ReadQbeam( void );
+			#endif // NLTE_CHROMOSPHERE
+		#endif // OPTICALLY_THICK_RADIATION
 #endif // BEAM_HEATING
 
 #ifdef OPTICALLY_THICK_RADIATION
