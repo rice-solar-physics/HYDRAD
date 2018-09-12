@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/01/2017
+// * Date last modified: 09/05/2018
 // *
 // ****
 
@@ -72,7 +72,7 @@ struct AdaptiveMeshCellProperties {
 	    double nH_c, nH_star_c;
 	#endif // BEAM_HEATING
 	#ifdef NLTE_CHROMOSPHERE
-	    double rho_e, Mc, Trad[10], Hstate[6], Del_Hstate_dot_v[6];
+	    double rho_e, Trad[10], Hstate[6], Del_Hstate_dot_v[6];
 	#endif // NLTE_CHROMOSPHERE
 #else // // OPTICALLY_THICK_RADIATION
 	#ifdef BEAM_HEATING

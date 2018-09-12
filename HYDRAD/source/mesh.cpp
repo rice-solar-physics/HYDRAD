@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 07/20/2018
+// * Date last modified: 09/07/2018
 // *
 // ****
 
@@ -132,20 +132,26 @@ for( i = 0; i < Params.iNumberOfCells; i++ )
     if( !i )
     {
         // Need to know the address of the left-most cell at each time t
-	// in order to derive the row of cells at t + delta_t
-	pStartOfCurrentRow = pActiveCell;
-	pStartOfPreviousRow = NULL;		
+		// in order to derive the row of cells at t + delta_t
+		pStartOfCurrentRow = pActiveCell;
+		pStartOfPreviousRow = NULL;		
 
-	// Set the LEFT pointer of the left-most cell to NULL
-	pActiveCell->SetPointer( LEFT, NULL );
+		// Set the LEFT pointer of the left-most cell to NULL
+		pActiveCell->SetPointer( LEFT, NULL );
     }
-    // If this is not the left-most cell set the RIGHT pointer of the previous cell
-    // to point at the new cell and the LEFT pointer of the new cell to point at
-    // the previous cell
     else
     {
-	pPreviousCell->SetPointer( RIGHT, pActiveCell );
-	pActiveCell->SetPointer( LEFT, pPreviousCell );
+	    	// If this is not the left-most cell set the RIGHT pointer of the previous cell
+    		// to point at the new cell and the LEFT pointer of the new cell to point at
+    		// the previous cell
+		pPreviousCell->SetPointer( RIGHT, pActiveCell );
+		pActiveCell->SetPointer( LEFT, pPreviousCell );
+		
+#if defined(OPTICALLY_THICK_RADIATION) || defined(BEAM_HEATING)	
+		// Identify the centre of the current row of grid cells
+		if( CellProperties.s[1] <= Params.L / 2.0 )
+			pCentreOfCurrentRow = pActiveCell;
+#endif // OPTICALLY_THICK_RADIATION || BEAM_HEATING
     }
 	
     // Keep track of the cell pointer so that the appropriate LEFT and RIGHT pointers can be set
@@ -169,6 +175,11 @@ if( mesh_time == 0.0 )
 #endif // OPENMP || USE_KINETIC_MODEL
 
 #if defined (OPTICALLY_THICK_RADIATION) && defined (NLTE_CHROMOSPHERE)
+#ifdef BEAM_HEATING
+	// Read the beam data used by the non-thermal ionization calculation if the code has been interrupted
+	if( mesh_time > 0.0 )
+		pHeat->ReadQbeam();
+#endif // BEAM_HEATING
 InitialiseRadiativeRates();
 CalculateInitialPhysicalQuantities();
 #else // OPTICALLY_THICK_RADIATION && NLTE_CHROMOSPHERE
@@ -389,6 +400,12 @@ do {
                     pNewCell[0]->SetPointer( RIGHT, NULL );
                     pNextActiveCell = pNewCell[0];
 		}
+		
+#if defined(OPTICALLY_THICK_RADIATION) || defined(BEAM_HEATING)
+		// Relocate the centre of the current row of grid cells
+		if( pActiveCell == pCentreOfCurrentRow || pRightCell == pCentreOfCurrentRow )
+			pCentreOfCurrentRow = pNewCell[0];
+#endif // OPTICALLY_THICK_RADIATION || BEAM_HEATING
 
 #ifdef NON_EQUILIBRIUM_RADIATION
                 if( CellProperties.pIonFrac && RightCellProperties.pIonFrac )
@@ -946,6 +963,12 @@ do {
 		pNewCell[1]->SetPointer( RIGHT, pRightCell );
 		pRightCell->SetPointer( LEFT, pNewCell[1] );
 
+#if defined(OPTICALLY_THICK_RADIATION) || defined(BEAM_HEATING)
+		// Relocate the centre of the current row of grid cells
+		if( pActiveCell == pCentreOfCurrentRow )
+			pCentreOfCurrentRow = pNewCell[1];
+#endif // OPTICALLY_THICK_RADIATION || BEAM_HEATING
+
 #ifdef NON_EQUILIBRIUM_RADIATION
                 if( CellProperties.pIonFrac )
                     delete CellProperties.pIonFrac;
@@ -1452,6 +1475,12 @@ do {
                     pNewCell[1]->SetPointer( RIGHT, NULL );
 		}
 
+#if defined(OPTICALLY_THICK_RADIATION) || defined(BEAM_HEATING)
+		// Relocate the centre of the current row of grid cells
+		if( pActiveCell == pCentreOfCurrentRow )
+			pCentreOfCurrentRow = pNewCell[0];
+#endif // OPTICALLY_THICK_RADIATION || BEAM_HEATING
+
 #ifdef NON_EQUILIBRIUM_RADIATION
                 if( CellProperties.pIonFrac )
                     delete CellProperties.pIonFrac;
@@ -1812,6 +1841,10 @@ pTermsFile = fopen( szTermsFilename, "w" );
 
 #ifdef OPTICALLY_THICK_RADIATION
 #ifdef NLTE_CHROMOSPHERE
+#ifdef BEAM_HEATING
+	// Write the beam data used by the non-thermal ionization calculation to a data file that will be used to reinitialise the calculation if the code is interrupted
+	pHeat->WriteQbeam();
+#endif // BEAM_HEATING
 #ifdef WRITE_FILE_HSTATE
 FILE *pHStateFile;
 char szHStateFilename[256];

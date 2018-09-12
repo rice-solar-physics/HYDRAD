@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 08/28/2018
+// * Date last modified: 09/12/2018
 // *
 // ****
 
@@ -183,14 +183,206 @@ delete pCaII;
 void CEquations::CalculateInitialPhysicalQuantities( void )
 {
 PCELL pNextActiveCell;
-CELLPROPERTIES CellProperties;
+CELLPROPERTIES CellProperties, NextCellProperties;
 
-double fH, fnu, fMcZ_c, fA, fZ[31];
+double frho_c, fLeftFPn_H, fRightFPn_H;
+double fH, fnu, fTrt[2], fMcZ_c, fA, fZ[31];
+double fTeZ_c, fZ_c;
 double fElement, fSum, flog10_Trad[10];
 double fBB_lu[6], fBB_ul[6], fBF[4], fFB[4], fColl_ex_lu[10], fColl_ex_ul[10], fColl_ion[5], fColl_rec[5];
-double term1, term2;
+double term1, term2, x[3], y[3];
 int iNumElements, *piA;
 int i, j;
+
+#ifdef BEAM_HEATING
+	double fQbeam, fLambda1, fLambda2, log_fAvgEE;
+	log_fAvgEE = log( pHeat->GetAvgEE() );
+	fLambda2 = 25.1 + log_fAvgEE;
+#endif // BEAM_HEATING
+
+		memset( &CellProperties, 0, sizeof(CELLPROPERTIES) );	// Avoids a warning that variables might be used undefined
+
+		// We need to make T_b^top a time-dependent function, which means finding the foot-point densities at each leg of the loop prior to executing the
+		// main loop. The foot-point density is defined as the density at a particular temperature (approx. the H_alpha formation temperature of 9,000 K)
+		frho_c = 0.0;
+		fLeftFPn_H = 0.0;
+		pNextActiveCell = pCentreOfCurrentRow;
+		while( pNextActiveCell )
+		{
+			pActiveCell = pNextActiveCell;
+			pActiveCell->GetCellProperties( &CellProperties );
+			// Calculate the electron density and temperature
+    			CellProperties.n[ELECTRON] = CellProperties.rho_e / ELECTRON_MASS;
+		    // GAMMA_MINUS_ONE / BOLTZMANN_CONSTANT = 4.830917874e15
+    			CellProperties.T[ELECTRON] = (4.830917874e15) * ( CellProperties.TE_KE[1][ELECTRON] / CellProperties.n[ELECTRON] );
+			// Calculate the column mass density
+			frho_c += CellProperties.rho[1] * CellProperties.cell_width;
+			CellProperties.rho_c = frho_c;
+			// ( GAMMA_MINUS_ONE * ELECTRON_MASS ) / BOLTZMANN_CONSTANT = 4.40066838247E-12
+			if( ( (4.40066838247e-12) * ( CellProperties.TE_KE[1][ELECTRON] / CellProperties.rho_e ) ) <= NLTE_T_FP && !fLeftFPn_H  )
+				fLeftFPn_H = CellProperties.rho[1] / AVERAGE_PARTICLE_MASS;
+	
+			pActiveCell->UpdateCellProperties( &CellProperties );
+	
+			pNextActiveCell = pActiveCell->pGetPointer( LEFT );
+		}
+
+		frho_c = 0.0;
+		fRightFPn_H = 0.0;
+		pNextActiveCell = pCentreOfCurrentRow;
+		while( pNextActiveCell )
+		{
+			pActiveCell = pNextActiveCell;
+			pActiveCell->GetCellProperties( &CellProperties );	
+			// Calculate the electron density and temperature
+    			CellProperties.n[ELECTRON] = CellProperties.rho_e / ELECTRON_MASS;
+		    // GAMMA_MINUS_ONE / BOLTZMANN_CONSTANT = 4.830917874e15
+    			CellProperties.T[ELECTRON] = (4.830917874e15) * ( CellProperties.TE_KE[1][ELECTRON] / CellProperties.n[ELECTRON] );
+			// Calculate the column mass density
+			frho_c += CellProperties.rho[1] * CellProperties.cell_width;
+			CellProperties.rho_c = frho_c;
+			// ( GAMMA_MINUS_ONE * ELECTRON_MASS ) / BOLTZMANN_CONSTANT = 4.40066838247E-12
+			if( ( (4.40066838247e-12) * ( CellProperties.TE_KE[1][ELECTRON] / CellProperties.rho_e ) ) <= NLTE_T_FP && !fRightFPn_H )
+				fRightFPn_H = CellProperties.rho[1] / AVERAGE_PARTICLE_MASS;
+
+			pActiveCell->UpdateCellProperties( &CellProperties );
+		
+			pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
+		}
+
+	    for(i=0; i<pRadiativeRates->GetNumberOfTransitions(); i++)
+    		{
+			fTrt[0] = fTrt[1] = pRadiativeRates->GetTrt(i);
+			// Identify the current transition
+			switch( i ) {
+						
+				case 0 :
+					if( fLeftFPn_H > NLTE_n_Ha )
+						fTrt[0] *= fLeftFPn_H / NLTE_n_Ha;
+					if( fRightFPn_H > NLTE_n_Ha )
+						fTrt[1] *= fRightFPn_H / NLTE_n_Ha;
+				break;
+						
+				case 1 :
+					if( fLeftFPn_H > NLTE_n_Hb )
+						fTrt[0] *= fLeftFPn_H / NLTE_n_Hb;
+					if( fRightFPn_H > NLTE_n_Hb )
+						fTrt[1] *= fRightFPn_H / NLTE_n_Hb;
+				break;
+						
+				case 2 :
+					if( fLeftFPn_H > NLTE_n_Hg )
+						fTrt[0] *= fLeftFPn_H / NLTE_n_Hg;
+					if( fRightFPn_H > NLTE_n_Hg )
+						fTrt[1] *= fRightFPn_H / NLTE_n_Hg;
+				break;
+						
+				case 3 :
+					if( fLeftFPn_H > NLTE_n_Pa )
+						fTrt[0] *= fLeftFPn_H / NLTE_n_Pa;
+					if( fRightFPn_H > NLTE_n_Pa )
+						fTrt[1] *= fRightFPn_H / NLTE_n_Pa;
+				break;
+						
+				case 4 :
+					if( fLeftFPn_H > NLTE_n_Pb )
+						fTrt[0] *= fLeftFPn_H / NLTE_n_Pb;
+					if( fRightFPn_H > NLTE_n_Pb )
+						fTrt[1] *= fRightFPn_H / NLTE_n_Pb;
+				break;
+						
+				default :
+				break;
+			}					
+
+			// If T_rad^b has been scaled then we must update other quantities
+			if( fTrt[0] != pRadiativeRates->GetScaledTrt(i,0) )
+			{
+				// log(0.5) + 0.5 = -0.19314718
+				// h / k_B = 4.7979e-11
+	            	fnu = pRadiativeRates->GetNu0(i);
+				fTeZ_c = ( (4.7979e-11) * fnu ) / ( -0.19314718 + ( (4.7979e-11) * (fnu/fTrt[0]) ) );
+	      		if( fTeZ_c >= MINIMUM_TEMPERATURE )
+				{
+					pNextActiveCell = pCentreOfCurrentRow;
+					pActiveCell = pNextActiveCell;
+					pActiveCell->GetCellProperties( &CellProperties );
+					pNextActiveCell = pActiveCell->pGetPointer( LEFT );
+					while( pNextActiveCell )
+					{
+						pActiveCell = pNextActiveCell;
+						pActiveCell->GetCellProperties( &NextCellProperties );
+						
+						if( ( fTeZ_c <= CellProperties.T[ELECTRON] && fTeZ_c >=NextCellProperties.T[ELECTRON] ) || ( fTeZ_c >= CellProperties.T[ELECTRON] && fTeZ_c <= NextCellProperties.T[ELECTRON] ) )
+							break;
+						
+						CellProperties.T[ELECTRON] = NextCellProperties.T[ELECTRON];
+						CellProperties.s[1] = NextCellProperties.s[1];
+						CellProperties.rho_c = NextCellProperties.rho_c;
+						
+						pNextActiveCell = pActiveCell->pGetPointer( LEFT );
+					}
+					// Note that while loop must exit with break condition or x[1] = x[2] and interpolation will fail		
+					x[1] = NextCellProperties.T[ELECTRON];
+					x[2] = CellProperties.T[ELECTRON];
+					y[1] = NextCellProperties.s[1];
+					y[2] = CellProperties.s[1];
+					LinearFit( x, y, fTeZ_c, &fZ_c );
+				
+					x[1] = NextCellProperties.rho_c;
+					x[2] = CellProperties.rho_c;
+					LinearFit( y, x, fZ_c, &fMcZ_c );
+			
+					pRadiativeRates->SetZ_c_LEFT( i, fZ_c );
+					pRadiativeRates->SetMcZ_c_LEFT( i, fMcZ_c );
+					pRadiativeRates->SetScaledTrt( i, fTrt[0], 0 );
+				}
+			}
+
+			// If T_rad^b has been scaled then we must update other quantities
+			if( fTrt[1] != pRadiativeRates->GetScaledTrt(i,1) )
+			{
+				// log(0.5) + 0.5 = -0.19314718
+				// h / k_B = 4.7979e-11
+	            	fnu = pRadiativeRates->GetNu0(i);
+				fTeZ_c = ( (4.7979e-11) * fnu ) / ( -0.19314718 + ( (4.7979e-11) * (fnu/fTrt[1]) ) );
+	      		if( fTeZ_c >= MINIMUM_TEMPERATURE )
+				{
+					pNextActiveCell = pCentreOfCurrentRow;
+					pActiveCell = pNextActiveCell;
+					pActiveCell->GetCellProperties( &CellProperties );
+					pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
+					while( pNextActiveCell )
+					{
+						pActiveCell = pNextActiveCell;
+						pActiveCell->GetCellProperties( &NextCellProperties );
+
+						if( ( fTeZ_c <= CellProperties.T[ELECTRON] && fTeZ_c >=NextCellProperties.T[ELECTRON] ) || ( fTeZ_c >= CellProperties.T[ELECTRON] && fTeZ_c <= NextCellProperties.T[ELECTRON] ) )
+							break;
+							
+						CellProperties.T[ELECTRON] = NextCellProperties.T[ELECTRON];
+						CellProperties.s[1] = NextCellProperties.s[1];
+						CellProperties.rho_c = NextCellProperties.rho_c;
+						
+						pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
+					}
+					// Note that while loop must exit with break condition or x[1] = x[2] and interpolation will fail		
+					x[1] = CellProperties.T[ELECTRON];
+					x[2] = NextCellProperties.T[ELECTRON];
+					y[1] = CellProperties.s[1];
+					y[2] = NextCellProperties.s[1];
+					LinearFit( x, y, fTeZ_c, &fZ_c );
+				
+					x[1] = CellProperties.rho_c;
+					x[2] = NextCellProperties.rho_c;
+					LinearFit( y, x, fZ_c, &fMcZ_c );
+			
+					pRadiativeRates->SetZ_c_RIGHT( i, fZ_c );
+					pRadiativeRates->SetMcZ_c_RIGHT( i, fMcZ_c );
+					pRadiativeRates->SetScaledTrt( i, fTrt[1], 1 );
+				}
+			}
+		}
 
 #ifdef USE_MIKIC
 double old_s = 0.0, old_T = 0.0, L_T;
@@ -232,34 +424,41 @@ while( pNextActiveCell )
     // GAMMA_MINUS_ONE / BOLTZMANN_CONSTANT = 4.830917874e15
     CellProperties.T[HYDROGEN] = (4.830917874e15) * AVERAGE_PARTICLE_MASS * ( term1 - term2 );
 
-    CellProperties.n[ELECTRON] = CellProperties.rho_e / ELECTRON_MASS;
-    CellProperties.T[ELECTRON] = (4.830917874e15) * ( CellProperties.TE_KE[1][ELECTRON] / CellProperties.n[ELECTRON] );
+    ///////////////////////////////////////////////////////////////////
+    // Calculate the electron density for the NLTE chromosphere   //
+    ///////////////////////////////////////////////////////////////////
+	// Initial guess for electron density and temperature are found in the loops above this main loop when NLTE_CHROMOSPHERE is defined
 
-    for(i=0; i<pRadiativeRates->GetNumberOfTransitions(); i++)
+	for(i=0; i<pRadiativeRates->GetNumberOfTransitions(); i++)
     {
-	if( CellProperties.s[1] <= pRadiativeRates->GetZ_c_LEFT(i) || CellProperties.s[1] >= pRadiativeRates->GetZ_c_RIGHT(i) )
-    	    CellProperties.Trad[i] = CellProperties.T[ELECTRON];
-        else
-        {
-	    fH = pRadiativeRates->GetH(i);
+        if( CellProperties.s[1] <= pRadiativeRates->GetZ_c_LEFT(i) || CellProperties.s[1] >= pRadiativeRates->GetZ_c_RIGHT(i) )
+	    		CellProperties.Trad[i] = CellProperties.T[ELECTRON];
+		else
+		{
+ 	        fH = pRadiativeRates->GetH(i);
             fnu = pRadiativeRates->GetNu0(i);
-            term1 = pRadiativeRates->GetTerm1(i);
-            term2 = pRadiativeRates->GetTerm2(i);
 
-	    if( CellProperties.s[1] <= Params.L / 2.0 )
-	        fMcZ_c = pRadiativeRates->GetMcZ_c_LEFT(i);
-	    else
+	        if( CellProperties.s[1] <= Params.L / 2.0 )
+			{
+				fTrt[0] = pRadiativeRates->GetScaledTrt(i,0);
+	            fMcZ_c = pRadiativeRates->GetMcZ_c_LEFT(i);
+			}
+	        else
+			{
+				fTrt[0] = pRadiativeRates->GetScaledTrt(i,1);
                 fMcZ_c = pRadiativeRates->GetMcZ_c_RIGHT(i);
-
-	    // Equation (3) in Leenaarts & Wedemeyer-Bohm, 2006, A&A, 460, 301
-	    // Note that this equation is different to Espen Sollum's thesis (from which this treatment was taken), equation (5.3),
-	    // where Te(z) is used in place of Te(Z_crit) in Sollum. Leenaarts claims the difference is small (private communication)
-	    fA = term1 + ( term2 * pow( ( CellProperties.Mc / fMcZ_c ), fH ) );
-
-	    CellProperties.Trad[i] = ( (4.7979e-11) * fnu ) / log( (1.0/fA) + 1.0 );
-        }
-    }
-    
+			}
+ 
+        		// Equation (3) in Leenaarts & Wedemeyer-Bohm, 2006, A&A, 460, 301
+        		// Note that this equation is different to Espen Sollum's thesis (from which this treatment was taken), equation (5.3),
+        		// where Te(z) is used in place of Te(Z_crit) in Sollum. Leenaarts claims the difference is small (private communication)
+			term1 = exp( ( (4.7979e-11) * fnu ) / fTrt[0] ) - 1.0;
+			term2 = 1.0 + pow( ( CellProperties.rho_c / fMcZ_c ), fH );
+			fA = term2 / term1;
+        		CellProperties.Trad[i] = ( (4.7979e-11) * fnu ) / log( (1.0/fA) + 1.0 );
+		}
+	}
+	    
     // Calculate the contribution to the electron density from elements other than hydrogen:
     fSum = 0.0;
 
@@ -305,11 +504,28 @@ while( pNextActiveCell )
     for(j=0; j<pRadiativeRates->GetNumberOfTransitions(); j++)
        	flog10_Trad[j] = log10( CellProperties.Trad[j]) ;
 
+#ifdef BEAM_HEATING
+	fQbeam = pHeat->GetQbeam( CellProperties.s[1] );
+#endif // BEAM_HEATING
+
     // CALCULATE NLTE HI FRACTION
     pRadiativeRates->GetBoundBoundRates( fBB_lu, fBB_ul, &(flog10_Trad[0]) );
     pRadiativeRates->GetBoundFreeRates( fBF, &(flog10_Trad[6]) );
     pRadiativeRates->GetFreeBoundRates( fFB, &(flog10_Trad[6]), log10(CellProperties.T[ELECTRON]), CellProperties.n[ELECTRON] );
     pRadiativeRates->GetCollisionalRatesRH( fColl_ex_lu, fColl_ex_ul, fColl_ion, fColl_rec, log10( CellProperties.T[ELECTRON] ), CellProperties.n[ELECTRON] );
+
+#ifdef BEAM_HEATING
+		if( fQbeam > Qbeam_CUT_OFF )
+		{
+			fLambda1 = 66.0 + ( 1.5 * log_fAvgEE ) - ( 0.5 * log( CellProperties.n[ELECTRON] ) );
+			term1 = fQbeam * ( fLambda2 /  ( ( fLambda1 * CellProperties.n[ELECTRON] ) + ( fLambda2 * CellProperties.n[HYDROGEN] ) ) );
+
+			fColl_ex_lu[0] += 2.94E10 * term1;
+			fColl_ex_lu[1] += 5.35E9 * term1;
+			fColl_ex_lu[2] += 1.91E9 * term1;
+			fColl_ion[0] += 1.73E10 * term1;
+		}
+#endif // BEAM_HEATING
 
     pRadiativeRates->SolveHIIFraction( &(CellProperties.Hstate[0]), fColl_ex_lu, fColl_ex_ul, fColl_ion, fColl_rec, fBB_lu, fBB_ul, fBF, fFB );
     CellProperties.HI = 1.0 - CellProperties.Hstate[5];
@@ -404,9 +620,7 @@ while( pNextActiveCell )
 
 void CEquations::CalculatePhysicalQuantities( void )
 {
-#ifndef OPENMP
-	PCELL pNextActiveCell;
-#endif // OPENMP
+PCELL pNextActiveCell;
 CELLPROPERTIES CellProperties;
 
 // General variables
@@ -415,11 +629,202 @@ int j;
 
 #ifdef OPTICALLY_THICK_RADIATION
 	#ifdef NLTE_CHROMOSPHERE
-		double fH, fnu, fMcZ_c, fA, fZ[31];
+		CELLPROPERTIES NextCellProperties;
+		double frho_c, fLeftFPn_H, fRightFPn_H;
+		double fH, fnu, fTrt[2], fMcZ_c, fA, fZ[31];
+		double fTeZ_c, fZ_c;
 		double fElement, fSum, flog10_Trad[10], fPreviousIteration;
 		double fBB_lu[6], fBB_ul[6], fBF[4], fFB[4], fColl_ex_lu[10], fColl_ex_ul[10], fColl_ion[5], fColl_rec[5];
+		double x[3], y[3];
 		int iNumElements, *piA;
 		int i;
+		#ifdef BEAM_HEATING
+			double fQbeam, fLambda1, fLambda2, log_fAvgEE;
+		#endif // BEAM_HEATING
+
+		memset( &CellProperties, 0, sizeof(CELLPROPERTIES) );	// Avoids a warning that variables might be used undefined
+
+		// We need to make T_b^top a time-dependent function, which means finding the foot-point densities at each leg of the loop prior to executing the
+		// main loop. The foot-point density is defined as the density at a particular temperature (approx. the H_alpha formation temperature of 9,000 K)
+		frho_c = 0.0;
+		fLeftFPn_H = 0.0;
+		pNextActiveCell = pCentreOfCurrentRow;
+		while( pNextActiveCell )
+		{
+			pActiveCell = pNextActiveCell;
+			pActiveCell->GetCellProperties( &CellProperties );
+			// Calculate the electron density and temperature
+    			CellProperties.n[ELECTRON] = CellProperties.rho_e / ELECTRON_MASS;
+		    // GAMMA_MINUS_ONE / BOLTZMANN_CONSTANT = 4.830917874e15
+    			CellProperties.T[ELECTRON] = (4.830917874e15) * ( CellProperties.TE_KE[1][ELECTRON] / CellProperties.n[ELECTRON] );
+			// Calculate the column mass density
+			frho_c += CellProperties.rho[1] * CellProperties.cell_width;
+			CellProperties.rho_c = frho_c;
+			// ( GAMMA_MINUS_ONE * ELECTRON_MASS ) / BOLTZMANN_CONSTANT = 4.40066838247E-12
+			if( ( (4.40066838247e-12) * ( CellProperties.TE_KE[1][ELECTRON] / CellProperties.rho_e ) ) <= NLTE_T_FP && !fLeftFPn_H  )
+				fLeftFPn_H = CellProperties.rho[1] / AVERAGE_PARTICLE_MASS;
+	
+			pActiveCell->UpdateCellProperties( &CellProperties );
+	
+			pNextActiveCell = pActiveCell->pGetPointer( LEFT );
+		}
+
+		frho_c = 0.0;
+		fRightFPn_H = 0.0;
+		pNextActiveCell = pCentreOfCurrentRow;
+		while( pNextActiveCell )
+		{
+			pActiveCell = pNextActiveCell;
+			pActiveCell->GetCellProperties( &CellProperties );	
+			// Calculate the electron density and temperature
+    			CellProperties.n[ELECTRON] = CellProperties.rho_e / ELECTRON_MASS;
+		    // GAMMA_MINUS_ONE / BOLTZMANN_CONSTANT = 4.830917874e15
+    			CellProperties.T[ELECTRON] = (4.830917874e15) * ( CellProperties.TE_KE[1][ELECTRON] / CellProperties.n[ELECTRON] );
+			// Calculate the column mass density
+			frho_c += CellProperties.rho[1] * CellProperties.cell_width;
+			CellProperties.rho_c = frho_c;
+			// ( GAMMA_MINUS_ONE * ELECTRON_MASS ) / BOLTZMANN_CONSTANT = 4.40066838247E-12
+			if( ( (4.40066838247e-12) * ( CellProperties.TE_KE[1][ELECTRON] / CellProperties.rho_e ) ) <= NLTE_T_FP && !fRightFPn_H )
+				fRightFPn_H = CellProperties.rho[1] / AVERAGE_PARTICLE_MASS;
+
+			pActiveCell->UpdateCellProperties( &CellProperties );
+		
+			pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
+		}
+
+	    for(i=0; i<pRadiativeRates->GetNumberOfTransitions(); i++)
+    		{
+			fTrt[0] = fTrt[1] = pRadiativeRates->GetTrt(i);
+			// Identify the current transition
+			switch( i ) {
+						
+				case 0 :
+					if( fLeftFPn_H > NLTE_n_Ha )
+						fTrt[0] *= fLeftFPn_H / NLTE_n_Ha;
+					if( fRightFPn_H > NLTE_n_Ha )
+						fTrt[1] *= fRightFPn_H / NLTE_n_Ha;
+				break;
+						
+				case 1 :
+					if( fLeftFPn_H > NLTE_n_Hb )
+						fTrt[0] *= fLeftFPn_H / NLTE_n_Hb;
+					if( fRightFPn_H > NLTE_n_Hb )
+						fTrt[1] *= fRightFPn_H / NLTE_n_Hb;
+				break;
+						
+				case 2 :
+					if( fLeftFPn_H > NLTE_n_Hg )
+						fTrt[0] *= fLeftFPn_H / NLTE_n_Hg;
+					if( fRightFPn_H > NLTE_n_Hg )
+						fTrt[1] *= fRightFPn_H / NLTE_n_Hg;
+				break;
+						
+				case 3 :
+					if( fLeftFPn_H > NLTE_n_Pa )
+						fTrt[0] *= fLeftFPn_H / NLTE_n_Pa;
+					if( fRightFPn_H > NLTE_n_Pa )
+						fTrt[1] *= fRightFPn_H / NLTE_n_Pa;
+				break;
+						
+				case 4 :
+					if( fLeftFPn_H > NLTE_n_Pb )
+						fTrt[0] *= fLeftFPn_H / NLTE_n_Pb;
+					if( fRightFPn_H > NLTE_n_Pb )
+						fTrt[1] *= fRightFPn_H / NLTE_n_Pb;
+				break;
+						
+				default :
+				break;
+			}					
+
+			// If T_rad^b has been scaled then we must update other quantities
+			if( fTrt[0] != pRadiativeRates->GetScaledTrt(i,0) )
+			{
+				// log(0.5) + 0.5 = -0.19314718
+				// h / k_B = 4.7979e-11
+	            	fnu = pRadiativeRates->GetNu0(i);
+				fTeZ_c = ( (4.7979e-11) * fnu ) / ( -0.19314718 + ( (4.7979e-11) * (fnu/fTrt[0]) ) );
+	      		if( fTeZ_c >= MINIMUM_TEMPERATURE )
+				{
+					pNextActiveCell = pCentreOfCurrentRow;
+					pActiveCell = pNextActiveCell;
+					pActiveCell->GetCellProperties( &CellProperties );
+					pNextActiveCell = pActiveCell->pGetPointer( LEFT );
+					while( pNextActiveCell )
+					{
+						pActiveCell = pNextActiveCell;
+						pActiveCell->GetCellProperties( &NextCellProperties );
+						
+						if( ( fTeZ_c <= CellProperties.T[ELECTRON] && fTeZ_c >=NextCellProperties.T[ELECTRON] ) || ( fTeZ_c >= CellProperties.T[ELECTRON] && fTeZ_c <= NextCellProperties.T[ELECTRON] ) )
+							break;
+						
+						CellProperties.T[ELECTRON] = NextCellProperties.T[ELECTRON];
+						CellProperties.s[1] = NextCellProperties.s[1];
+						CellProperties.rho_c = NextCellProperties.rho_c;
+						
+						pNextActiveCell = pActiveCell->pGetPointer( LEFT );
+					}
+					// Note that while loop must exit with break condition or x[1] = x[2] and interpolation will fail		
+					x[1] = NextCellProperties.T[ELECTRON];
+					x[2] = CellProperties.T[ELECTRON];
+					y[1] = NextCellProperties.s[1];
+					y[2] = CellProperties.s[1];
+					LinearFit( x, y, fTeZ_c, &fZ_c );
+				
+					x[1] = NextCellProperties.rho_c;
+					x[2] = CellProperties.rho_c;
+					LinearFit( y, x, fZ_c, &fMcZ_c );
+			
+					pRadiativeRates->SetZ_c_LEFT( i, fZ_c );
+					pRadiativeRates->SetMcZ_c_LEFT( i, fMcZ_c );
+					pRadiativeRates->SetScaledTrt( i, fTrt[0], 0 );
+				}
+			}
+
+			// If T_rad^b has been scaled then we must update other quantities
+			if( fTrt[1] != pRadiativeRates->GetScaledTrt(i,1) )
+			{
+				// log(0.5) + 0.5 = -0.19314718
+				// h / k_B = 4.7979e-11
+	            	fnu = pRadiativeRates->GetNu0(i);
+				fTeZ_c = ( (4.7979e-11) * fnu ) / ( -0.19314718 + ( (4.7979e-11) * (fnu/fTrt[1]) ) );
+	      		if( fTeZ_c >= MINIMUM_TEMPERATURE )
+				{
+					pNextActiveCell = pCentreOfCurrentRow;
+					pActiveCell = pNextActiveCell;
+					pActiveCell->GetCellProperties( &CellProperties );
+					pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
+					while( pNextActiveCell )
+					{
+						pActiveCell = pNextActiveCell;
+						pActiveCell->GetCellProperties( &NextCellProperties );
+
+						if( ( fTeZ_c <= CellProperties.T[ELECTRON] && fTeZ_c >=NextCellProperties.T[ELECTRON] ) || ( fTeZ_c >= CellProperties.T[ELECTRON] && fTeZ_c <= NextCellProperties.T[ELECTRON] ) )
+							break;
+
+						CellProperties.T[ELECTRON] = NextCellProperties.T[ELECTRON];
+						CellProperties.s[1] = NextCellProperties.s[1];
+						CellProperties.rho_c = NextCellProperties.rho_c;
+						
+						pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
+					}
+					// Note that while loop must exit with break condition or x[1] = x[2] and interpolation will fail		
+					x[1] = CellProperties.T[ELECTRON];
+					x[2] = NextCellProperties.T[ELECTRON];
+					y[1] = CellProperties.s[1];
+					y[2] = NextCellProperties.s[1];
+					LinearFit( x, y, fTeZ_c, &fZ_c );
+				
+					x[1] = CellProperties.rho_c;
+					x[2] = NextCellProperties.rho_c;
+					LinearFit( y, x, fZ_c, &fMcZ_c );
+			
+					pRadiativeRates->SetZ_c_RIGHT( i, fZ_c );
+					pRadiativeRates->SetMcZ_c_RIGHT( i, fMcZ_c );
+					pRadiativeRates->SetScaledTrt( i, fTrt[1], 1 );
+				}
+			}
+		}
 	#endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
 
@@ -429,14 +834,18 @@ int j;
 	#if defined (OPTICALLY_THICK_RADIATION) || defined (BEAM_HEATING)
     		int indexCentre=0;
 		#define REDUCTION_VAR reduction(max: iMaxRL, indexCentre)
+		#ifdef NLTE_CHROMOSPHERE
+			#ifdef BEAM_HEATING
+				#define NLTE_VARS  frho_c, fLeftFPn_H, fRightFPn_H, fH, fnu, fTrt, fMcZ_c, fA, fZ, fTeZ_c, fZ_c, fElement, fSum, flog10_Trad, fPreviousIteration, fBB_lu, fBB_ul, fBF, fFB, fColl_ex_lu, fColl_ex_ul, fColl_ion, fColl_rec, x, y, iNumElements, piA, i, fQbeam, fLambda1, fLambda2, log_fAvgEE,
+			#else // BEAM_HEATING
+				#define NLTE_VARS  frho_c, fLeftFPn_H, fRightFPn_H, fH, fnu, fTrt, fMcZ_c, fA, fZ, fTeZ_c, fZ_c, fElement, fSum, flog10_Trad, fPreviousIteration, fBB_lu, fBB_ul, fBF, fFB, fColl_ex_lu, fColl_ex_ul, fColl_ion, fColl_rec, x, y, iNumElements, piA, i,
+			#endif // BEAM_HEATING
+		#else // NLTE_CHROMOSPHERE
+			#define NLTE_VARS
+		#endif //NLTE_CHROMOSPHERE
 	#else // OPTICALLY_THICK_RADIATION || BEAM_HEATING
-		#define REDUCTION_VAR
+		#define REDUCTION_VAR reduction(max: iMaxRL)
 	#endif // OPTICALLY_THICK_RADIATION || BEAM_HEATING
-	#ifdef NLTE_CHROMOSPHERE
-		#define NLTE_VARS fH, fnu, fMcZ_c, fA, fZ, fElement, fSum, flog10_Trad, fPreviousIteration, fBB_lu, fBB_ul, fBF, fFB, fColl_ex_lu, fColl_ex_ul, fColl_ion, fColl_rec, iNumElements, piA, i,
-	#else // NLTE_CHROMOSPHERE
-		#define NLTE_VARS
-	#endif //NLTE_CHROMOSPHERE
 	
 #pragma omp parallel shared( ppCellList, iLocalNumberOfCells )	\
                      private( iCounter, term1, term2, j, NLTE_VARS CellProperties )
@@ -448,6 +857,10 @@ int j;
 		#ifdef NON_EQUILIBRIUM_RADIATION
 			double *pfZ;
 		#endif // NON_EQUILIBRIUM_RADIATION
+		#ifdef BEAM_HEATING
+			log_fAvgEE = log( pHeat->GetAvgEE() );
+			fLambda2 = 25.1 + log_fAvgEE;
+		#endif // BEAM_HEATING
 	#endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
 
@@ -520,36 +933,37 @@ while( pNextActiveCell )
     ///////////////////////////////////////////////////////////////////
     // Calculate the electron density for the NLTE chromosphere   //
     ///////////////////////////////////////////////////////////////////
-
-    CellProperties.n[ELECTRON] = CellProperties.rho_e / ELECTRON_MASS;
-
-    // GAMMA_MINUS_ONE / BOLTZMANN_CONSTANT = 4.830917874e15
-    CellProperties.T[ELECTRON] = (4.830917874e15) * ( CellProperties.TE_KE[1][ELECTRON] / CellProperties.n[ELECTRON] );
+	// Initial guess for electron density and temperature are found in the loops above this main loop when NLTE_CHROMOSPHERE is defined
 
     for(i=0; i<pRadiativeRates->GetNumberOfTransitions(); i++)
     {
         if( CellProperties.s[1] <= pRadiativeRates->GetZ_c_LEFT(i) || CellProperties.s[1] >= pRadiativeRates->GetZ_c_RIGHT(i) )
-	    CellProperties.Trad[i] = CellProperties.T[ELECTRON];
-	else
-	{
-	    fH = pRadiativeRates->GetH(i);
+	    		CellProperties.Trad[i] = CellProperties.T[ELECTRON];
+		else
+		{
+ 	        fH = pRadiativeRates->GetH(i);
             fnu = pRadiativeRates->GetNu0(i);
-            term1 = pRadiativeRates->GetTerm1(i);
-            term2 = pRadiativeRates->GetTerm2(i);
 
-	    if( CellProperties.s[1] <= Params.L / 2.0 )
-		fMcZ_c = pRadiativeRates->GetMcZ_c_LEFT(i);
-            else
+	        if( CellProperties.s[1] <= Params.L / 2.0 )
+			{
+				fTrt[0] = pRadiativeRates->GetScaledTrt(i,0);
+	            fMcZ_c = pRadiativeRates->GetMcZ_c_LEFT(i);
+			}
+	        else
+			{
+				fTrt[0] = pRadiativeRates->GetScaledTrt(i,1);
                 fMcZ_c = pRadiativeRates->GetMcZ_c_RIGHT(i);
-
-	    // Equation (3) in Leenaarts & Wedemeyer-Bohm, 2006, A&A, 460, 301
-	    // Note that this equation is different to Espen Sollum's thesis (from which this treatment was taken), equation (5.3),
-	    // where Te(z) is used in place of Te(Z_crit) in Sollum. Leenaarts claims the difference is small (private communication)
-	    fA = term1 + ( term2 * pow( ( CellProperties.Mc / fMcZ_c ), fH ) );
-
-	    CellProperties.Trad[i] = ( (4.7979e-11) * fnu ) / log( (1.0/fA) + 1.0 );
+			}
+ 
+        		// Equation (3) in Leenaarts & Wedemeyer-Bohm, 2006, A&A, 460, 301
+        		// Note that this equation is different to Espen Sollum's thesis (from which this treatment was taken), equation (5.3),
+        		// where Te(z) is used in place of Te(Z_crit) in Sollum. Leenaarts claims the difference is small (private communication)
+			term1 = exp( ( (4.7979e-11) * fnu ) / fTrt[0] ) - 1.0;
+			term2 = 1.0 + pow( ( CellProperties.rho_c / fMcZ_c ), fH );
+			fA = term2 / term1;
+        		CellProperties.Trad[i] = ( (4.7979e-11) * fnu ) / log( (1.0/fA) + 1.0 );
+		}
 	}
-    }
 
     // Calculate the contribution to the electron density from elements other than hydrogen:
     fSum = 0.0;
@@ -596,30 +1010,79 @@ while( pNextActiveCell )
     for(j=0; j<pRadiativeRates->GetNumberOfTransitions(); j++)
        	flog10_Trad[j] = log10( CellProperties.Trad[j]) ;
 
+#ifdef BEAM_HEATING
+	fQbeam = pHeat->GetQbeam( CellProperties.s[1] );
+#endif // BEAM_HEATING
     for(i=0; i<=MAX_ITERATIONS; i++ )
     {
-	fPreviousIteration = CellProperties.n[ELECTRON];
+		fPreviousIteration = CellProperties.n[ELECTRON];
 
-	// CALCULATE NLTE HI FRACTION
+		// CALCULATE NLTE HI FRACTION
        	pRadiativeRates->GetBoundBoundRates( fBB_lu, fBB_ul, &(flog10_Trad[0]) );
         pRadiativeRates->GetBoundFreeRates( fBF, &(flog10_Trad[6]) );
        	pRadiativeRates->GetFreeBoundRates( fFB, &(flog10_Trad[6]), log10(CellProperties.T[ELECTRON]), CellProperties.n[ELECTRON] );
-        pRadiativeRates->GetCollisionalRatesRH( fColl_ex_lu, fColl_ex_ul, fColl_ion, fColl_rec, log10( CellProperties.T[ELECTRON] ), CellProperties.n[ELECTRON] );
+		pRadiativeRates->GetCollisionalRatesRH( fColl_ex_lu, fColl_ex_ul, fColl_ion, fColl_rec, log10( CellProperties.T[ELECTRON] ), CellProperties.n[ELECTRON] );
 
-	pRadiativeRates->SolveHIIFraction( &(CellProperties.Hstate[0]), fColl_ex_lu, fColl_ex_ul, fColl_ion, fColl_rec, fBB_lu, fBB_ul, fBF, fFB );
-	CellProperties.HI = 1.0 - CellProperties.Hstate[5];
-               
-	// Estimate the new density and temperature
-	CellProperties.n[ELECTRON] = CellProperties.n[ELECTRON] - CONVERGENCE_EPSILON * ( CellProperties.n[ELECTRON] - ( CellProperties.n[HYDROGEN] * ( CellProperties.Hstate[5] + fSum ) ) );
-	CellProperties.T[ELECTRON] =  CellProperties.T[ELECTRON] - CONVERGENCE_EPSILON * ( CellProperties.T[ELECTRON] - ( ( (4.830917874e15) * CellProperties.TE_KE[1][ELECTRON] ) / CellProperties.n[ELECTRON] ) );
+#ifdef BEAM_HEATING
+		if( fQbeam > Qbeam_CUT_OFF )
+		{	
+			fLambda1 = 66.0 + ( 1.5 * log_fAvgEE ) - ( 0.5 * log( CellProperties.n[ELECTRON] ) );
+			term1 = fQbeam * ( fLambda2 /  ( ( fLambda1 * CellProperties.n[ELECTRON] ) + ( fLambda2 * CellProperties.n[HYDROGEN] ) ) );
+						
+			fColl_ex_lu[0] += 2.94E10 * term1;
+			fColl_ex_lu[1] += 5.35E9 * term1;
+			fColl_ex_lu[2] += 1.91E9 * term1;
+			fColl_ion[0] += 1.73E10 * term1;
+		}
+#endif // BEAM_HEATING
 
-	// Check for convergence and exit the loop if the condition is met
+		pRadiativeRates->SolveHIIFraction( &(CellProperties.Hstate[0]), fColl_ex_lu, fColl_ex_ul, fColl_ion, fColl_rec, fBB_lu, fBB_ul, fBF, fFB );
+		CellProperties.HI = 1.0 - CellProperties.Hstate[5];
+	
+		// Estimate the new density and temperature
+		CellProperties.n[ELECTRON] = CellProperties.n[ELECTRON] - CONVERGENCE_EPSILON * ( CellProperties.n[ELECTRON] - ( CellProperties.n[HYDROGEN] * ( CellProperties.Hstate[5] + fSum ) ) );
+		CellProperties.T[ELECTRON] =  CellProperties.T[ELECTRON] - CONVERGENCE_EPSILON * ( CellProperties.T[ELECTRON] - ( ( (4.830917874e15) * CellProperties.TE_KE[1][ELECTRON] ) / CellProperties.n[ELECTRON] ) );
+/*
+if( isnan(CellProperties.n[ELECTRON]) || isnan(CellProperties.T[ELECTRON]) )
+{
+	printf( "s=%g, i=%i, ne = %g, Te=%g, rho_e=%g, Ee=%g\n", CellProperties.s[1], i, CellProperties.n[ELECTRON], CellProperties.T[ELECTRON], CellProperties.rho_e, CellProperties.TE_KE[1][ELECTRON] );
+	printf( "\tnH=%g, H5=%g, fSum=%g\n", CellProperties.n[HYDROGEN], CellProperties.Hstate[5], fSum );
+	printf( "fLamda1=%g, fLambda2=%g, fQbeam=%g, term1=%g\n", fLambda1, fLambda2, fQbeam, term1 );
+	for( j=0; j<10; j++ )
+		printf( "\tex_lu[%i]=%g", j, fColl_ex_lu[j] );	
+	printf( "\n" );
+	for( j=0; j<10; j++ )
+		printf( "\tex_ul[%i]=%g", j, fColl_ex_ul[j] );	
+	printf( "\n" );
+	for( j=0; j<5; j++ )
+		printf( "\tion[%i]=%g", j, fColl_ion[j] );	
+	printf( "\n" );
+	for( j=0; j<5; j++ )
+		printf( "\trec[%i]=%g", j, fColl_rec[j] );	
+	printf( "\n" );
+	for( j=0; j<6; j++ )
+		printf( "\tBB_lu[%i]=%g", j, fBB_lu[j] );	
+	printf( "\n" );
+	for( j=0; j<6; j++ )
+		printf( "\tBB_ul[%i]=%g", j, fBB_ul[j] );	
+	printf( "\n" );
+	for( j=0; j<4; j++ )
+		printf( "\tBF[%i]=%g", j, fBF[j] );	
+	printf( "\n" );
+	for( j=0; j<4; j++ )
+		printf( "\tFB[%i]=%g", j, fFB[j] );	
+	printf( "\n" );
+
+	break;
+}
+*/
+		// Check for convergence and exit the loop if the condition is met
         if( i && (fabs(fPreviousIteration-CellProperties.n[ELECTRON])/CellProperties.n[ELECTRON]) < CONVERGENCE_CONDITION ) break;
     }
 
     CellProperties.rho_e = CellProperties.n[ELECTRON] * ELECTRON_MASS;
     // BOLTZMANN_CONSTANT / GAMMA_MINUS_ONE = 2.07e-16
-    CellProperties.TE_KE[1][ELECTRON] = (2.07e-16) * CellProperties.n[ELECTRON] * CellProperties.T[ELECTRON];
+	CellProperties.TE_KE[1][ELECTRON] = (2.07e-16) * CellProperties.n[ELECTRON] * CellProperties.T[ELECTRON];
 #else // NLTE_CHROMOSPHERE
 
     /////////////////////////////////////////////////////////////////
@@ -749,6 +1212,7 @@ while( pNextActiveCell )
     pActiveCell->UpdateCellProperties( &CellProperties );
 	pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
 #endif // OPENMP
+//printf( "FINISHED s=%g\n", CellProperties.s[1] );
 }
 
 #ifdef OPENMP
@@ -814,6 +1278,10 @@ for(i=0; i<pRadiativeRates->GetNumberOfTransitions(); i++)
         ///////////////////////////////////////
 
 	// Find the centre of the grid (corresponds approximately to the apex of the loop)
+	pNextActiveCell = pCentreOfCurrentRow;
+	pActiveCell = pNextActiveCell;
+	pActiveCell->GetCellProperties( &CellProperties );
+/*
 	pNextActiveCell = pStartOfCurrentRow;
 	while( pNextActiveCell )
 	{
@@ -822,11 +1290,11 @@ for(i=0; i<pRadiativeRates->GetNumberOfTransitions(); i++)
 		if( CellProperties.s[1] >= Params.L / 2.0 ) break;
 		pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
 	}
-		
-	CellProperties.Mc = CellProperties.rho[1] * CellProperties.cell_width;
+*/	
+	CellProperties.rho_c = CellProperties.rho[1] * CellProperties.cell_width;
 	pActiveCell->UpdateCellProperties( &CellProperties );
 
-	fMcZ_c_LEFT = CellProperties.Mc;
+	fMcZ_c_LEFT = CellProperties.rho_c;
 	fMcZ_c_RIGHT = fMcZ_c_LEFT; 
 
 	pLeftActiveCell = pActiveCell;
@@ -844,7 +1312,7 @@ for(i=0; i<pRadiativeRates->GetNumberOfTransitions(); i++)
 		if( LeftCellProperties.s[1] >= fZ_c )
 		{
 			fMcZ_c_LEFT += LeftCellProperties.rho[1] * LeftCellProperties.cell_width;
-			LeftCellProperties.Mc = fMcZ_c_LEFT;
+			LeftCellProperties.rho_c = fMcZ_c_LEFT;
 			pLeftCell->UpdateCellProperties( &LeftCellProperties );
 			pLeftActiveCell = pLeftCell;
 		}
@@ -852,7 +1320,7 @@ for(i=0; i<pRadiativeRates->GetNumberOfTransitions(); i++)
 		if( RightCellProperties.s[1] <= ( Params.L - fZ_c ) )
 		{
 			fMcZ_c_RIGHT += RightCellProperties.rho[1] * RightCellProperties.cell_width;
-			RightCellProperties.Mc = fMcZ_c_RIGHT;
+			RightCellProperties.rho_c = fMcZ_c_RIGHT;
 			pRightCell->UpdateCellProperties( &RightCellProperties );
 			pRightActiveCell = pRightCell;
 		}
@@ -863,8 +1331,8 @@ for(i=0; i<pRadiativeRates->GetNumberOfTransitions(); i++)
 	pActiveCell->GetCellProperties( &CellProperties );
 	x[1] = LeftCellProperties.s[1];
 	x[2] = CellProperties.s[1];
-	y[1] = CellProperties.Mc + ( LeftCellProperties.rho[1] * LeftCellProperties.cell_width );
-	y[2] = CellProperties.Mc;	
+	y[1] = CellProperties.rho_c + ( LeftCellProperties.rho[1] * LeftCellProperties.cell_width );
+	y[2] = CellProperties.rho_c;	
 	LinearFit( x, y, fZ_c, &fMcZ_c );
 	pRadiativeRates->SetMcZ_c_LEFT( i, fMcZ_c );
 	
@@ -873,8 +1341,8 @@ for(i=0; i<pRadiativeRates->GetNumberOfTransitions(); i++)
 	pActiveCell->GetCellProperties( &CellProperties );
 	x[1] = CellProperties.s[1];
 	x[2] = RightCellProperties.s[1];
-	y[1] = CellProperties.Mc;
-	y[2] = CellProperties.Mc + ( RightCellProperties.rho[1] * RightCellProperties.cell_width );
+	y[1] = CellProperties.rho_c;
+	y[2] = CellProperties.rho_c + ( RightCellProperties.rho[1] * RightCellProperties.cell_width );
 	LinearFit( x, y, ( Params.L - fZ_c ), &fMcZ_c );
 	pRadiativeRates->SetMcZ_c_RIGHT( i, fMcZ_c );
 }
@@ -896,19 +1364,22 @@ CELLPROPERTIES CellProperties, FarLeftCellProperties, LeftCellProperties, RightC
 PCELL pFarRightCell;
 CELLPROPERTIES FarRightCellProperties;
 double ps[5];
-#ifdef NON_EQUILIBRIUM_RADIATION
-// Variables used for time-dependent ionisation balance calculation
-double **ppni0, **ppni1, **ppni2, **ppni3, **ppni4, **ppdnibydt;
-#endif // NON_EQUILIBRIUM_RADIATION
-#ifdef OPTICALLY_THICK_RADIATION
-#ifdef NLTE_CHROMOSPHERE
-double *pHstate0, *pHstate1, *pHstate2, *pHstate3, *pHstate4;
-#endif // NLTE_CHROMOSPHERE
-#endif // OPTICALLY_THICK_RADIATION
+	#ifdef NON_EQUILIBRIUM_RADIATION
+		// Variables used for time-dependent ionisation balance calculation
+		double **ppni0, **ppni1, **ppni2, **ppni3, **ppni4, **ppdnibydt;
+	#endif // NON_EQUILIBRIUM_RADIATION
+	#ifdef OPTICALLY_THICK_RADIATION
+		#ifdef NLTE_CHROMOSPHERE
+			double *pHstate0, *pHstate1, *pHstate2, *pHstate3, *pHstate4;
+		#endif // NLTE_CHROMOSPHERE
+	#endif // OPTICALLY_THICK_RADIATION
 #endif // NON_EQUILIBRIUM_RADIATION || ( OPTICALLY_THICK_RADIATION && NLTE_CHROMOSPHERE )
 
 #ifdef OPTICALLY_THICK_RADIATION
-double fHI_c, frho_c, cell_width_cos_theta;
+	double fHI_c;
+	#ifndef NLTE_CHROMOSPHERE
+		double frho_c;
+	#endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
 
 // Variables used by advective flux transport algorithm
@@ -927,7 +1398,7 @@ double Tmin;
 	if( Tc > (MIKIC_TEMPERATURE_FRACTION*Te_max) ) Tc = MIKIC_TEMPERATURE_FRACTION * Te_max;
 #endif // USE_MIKIC
 #ifdef NUMERICAL_VISCOSITY
-double rho_v[2];
+	double rho_v[2];
 #endif // NUMERICAL_VISCOSITY
 
 Kappa[ELECTRON] = SPITZER_ELECTRON_CONDUCTIVITY;
@@ -960,6 +1431,13 @@ int j;
 	double fColumnDensitystar = 0.0;						// Nstar (defined in Hawley & Fisher 1994, ApJ, 426, 287)
 	double avg_energy = ( ( 1.0 - delta )/( 2.0 - delta ) ) * cutoff_energy;	// Average energy of the electron distribution
 	double Lambda1, Lambda2;
+
+	#ifdef OPTICALLY_THICK_RADIATION
+		#ifdef NLTE_CHROMOSPHERE
+			// Evaluate terms doesn't time-step in the two left-most and two right-most grid cells
+			pHeat->InitQbeam( avg_energy, Params.iNumberOfCells-4 );
+		#endif // NLTE_CHROMOSPHERE
+	#endif // OPTICALLY_THICK_RADIATION
 #endif // BEAM_HEATING
 
 #ifdef USE_KINETIC_MODEL
@@ -1356,9 +1834,8 @@ while( pNextActiveCell->pGetPointer( RIGHT ) )
 
 	if( CellProperties.viscosity_delta_t < TIME_STEP_LIMIT )
 	{
-            CellProperties.eta = ( term1 * n[j] ) / TIME_STEP_LIMIT;
+    		CellProperties.eta = ( term1 * n[j] ) / TIME_STEP_LIMIT;
 	    CellProperties.viscosity_delta_t = TIME_STEP_LIMIT;
-
 	}
 
 	LeftCellProperties.viscosity_delta_t += CellProperties.viscosity_delta_t;
@@ -1432,7 +1909,9 @@ while( pNextActiveCell->pGetPointer( RIGHT ) )
 // Left-hand leg of the loop
 #ifdef OPTICALLY_THICK_RADIATION
 fHI_c = 0.0;
-frho_c = 0.0;
+	#ifndef NLTE_CHROMOSPHERE
+		frho_c = 0.0;
+	#endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
 #ifdef BEAM_HEATING
 	fColumnDensity = 0.0;
@@ -1456,14 +1935,14 @@ while( pNextActiveCell )
 #ifdef OPTICALLY_THICK_RADIATION
     if( CellProperties.T[ELECTRON] < OPTICALLY_THICK_TEMPERATURE )
     {
-        cell_width_cos_theta = CellProperties.cell_width * fabs( cos( ( _PI_ * CellProperties.s[1] ) / Params.L ) );
         // Calculate the neutral hydrogen column number density
-        fHI_c += ( CellProperties.HI * CellProperties.n[HYDROGEN] ) * cell_width_cos_theta;
-        // Calculate the mass column density
-        frho_c += CellProperties.rho[1] * cell_width_cos_theta;
-
+        fHI_c += ( CellProperties.HI * CellProperties.n[HYDROGEN] ) * CellProperties.cell_width;
         CellProperties.HI_c = fHI_c;
+#ifndef NLTE_CHROMOSPHERE
+        // Calculate the mass column density
+        frho_c += CellProperties.rho[1] * CellProperties.cell_width;
         CellProperties.rho_c = frho_c;
+#endif // NLTE_CHROMOSPHERE
     }
 #endif // OPTICALLY_THICK_RADIATION
 
@@ -1475,7 +1954,9 @@ while( pNextActiveCell )
 // Right-hand leg of the loop
 #ifdef OPTICALLY_THICK_RADIATION
 fHI_c = 0.0;
-frho_c = 0.0;
+	#ifndef NLTE_CHROMOSPHERE
+		frho_c = 0.0;
+	#endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
 #ifdef BEAM_HEATING
 	fColumnDensity = 0.0;
@@ -1499,14 +1980,14 @@ while( pNextActiveCell )
 #ifdef OPTICALLY_THICK_RADIATION
     if( CellProperties.T[ELECTRON] < OPTICALLY_THICK_TEMPERATURE )
     {
-        cell_width_cos_theta = CellProperties.cell_width * fabs( cos( ( _PI_ * CellProperties.s[1] ) / Params.L ) );
-        // Calculate the neutral hydrogen column number density
-        fHI_c += ( CellProperties.HI * CellProperties.n[HYDROGEN] ) * cell_width_cos_theta;
-        // Calculate the mass column density
-        frho_c += CellProperties.rho[1] * cell_width_cos_theta;
-
+		// Calculate the neutral hydrogen column number density
+        fHI_c += ( CellProperties.HI * CellProperties.n[HYDROGEN] ) * CellProperties.cell_width;;
         CellProperties.HI_c = fHI_c;
+#ifndef NLTE_CHROMOSPHERE
+        // Calculate the mass column density
+        frho_c += CellProperties.rho[1] * CellProperties.cell_width;
         CellProperties.rho_c = frho_c;
+#endif // NLTE_CHROMOSPHERE
     }
 #endif // OPTICALLY_THICK_RADIATION
 
@@ -1728,6 +2209,11 @@ while( pNextActiveCell->pGetPointer( RIGHT )->pGetPointer( RIGHT ) )
 
 #ifdef BEAM_HEATING
     CellProperties.TE_KE_term[4][ELECTRON] = pHeat->CalculateBeamHeating( current_time, BeamParams, CellProperties.nH_c, CellProperties.nH_star_c, CellProperties.n[ELECTRON], CellProperties.n[HYDROGEN], (1.0-CellProperties.HI) );
+	#ifdef OPTICALLY_THICK_RADIATION
+		#ifdef NLTE_CHROMOSPHERE
+			pHeat->SetQbeam( CellProperties.s[1], CellProperties.TE_KE_term[4][ELECTRON] );
+		#endif // NLTE_CHROMOSPHERE
+	#endif // OPTICALLY_THICK_RADIATION
     CellProperties.TE_KE_term[4][HYDROGEN] = SMALLEST_DOUBLE;
     CellProperties.TE_KE_term[4][HEATED_SPECIES] += pHeat->CalculateHeating( CellProperties.s[1], current_time );
 #else // BEAM_HEATING

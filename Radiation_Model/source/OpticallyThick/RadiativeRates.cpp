@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 07/02/2018
+// * Date last modified: 09/07/2018
 // *
 // ****
 
@@ -83,6 +83,9 @@ fclose( pRatesFiles );
     
     // Allocate memory for the transition data
     pTrt =          (double*)malloc( sizeof(double) * (iNBBT+iNBFT) );
+    ppScaledTrt = (double**)malloc( sizeof(double) * 2 );
+		for( i=0; i<2; i++ )
+			ppScaledTrt[i] = (double*)malloc( sizeof(double) * (iNBBT+iNBFT) );
     pnu0 =          (double*)malloc( sizeof(double) * (iNBBT+iNBFT) );
     pTeZ_c  =       (double*)malloc( sizeof(double) * (iNBBT+iNBFT) );
     pZ_c_LEFT =     (double*)malloc( sizeof(double) * (iNBBT+iNBFT) );
@@ -102,6 +105,7 @@ fclose( pRatesFiles );
         fscanf( pTRANSFile, "%i", &iBuffer );	// i
         fscanf( pTRANSFile, "%i", &iBuffer );	// j
         ReadDouble( pTRANSFile, &(pTrt[i]) );	// T_rad^top
+			ppScaledTrt[0][i] = ppScaledTrt[1][i] = pTrt[i];
         ReadDouble( pTRANSFile, &(pnu0[i]) );	// Transition rest frequency (wavelength)
         ReadDouble( pTRANSFile, &(pTeZ_c[i]) );	// Temperature at Z_c
     }
@@ -192,11 +196,13 @@ free( pZ_c_RIGHT );
 free( pZ_c_LEFT );
 free( pTeZ_c );
 free( pnu0 );
+for( i=0; i<2; i++ )
+	free( ppScaledTrt[i] );
+free( ppScaledTrt );
 free( pTrt );
-
 }
 
-// Given a matrix a[1..m][1..n], this routine computes its singular value decomposition, A = U ·W ·V T . The matrix U replaces a on output.
+// Given a matrix a[1..m][1..n], this routine computes its singular value decomposition, A = U ï¿½W ï¿½V T . The matrix U replaces a on output.
 // The diagonal matrix of singular values W is output as a vector w[1..n]. The matrix V (not the transpose V T ) is output as v[1..n][1..n].
 int CRadiativeRates::svdcmp(double **a, int m, int n, double *w, double **v)
 {
@@ -467,8 +473,8 @@ int CRadiativeRates::svdcmp(double **a, int m, int n, double *w, double **v)
     return 0;
 }
 
-// Solves A·X = B for a vector X, where A is specified by the arrays u[1..m][1..n], w[1..n], v[1..n][1..n] as returned by svdcmp. m and n are the dimensions of a, and will be equal for square matrices.
-// b[1..m] is the input right-hand side. x[1..n] is the output solution vector. No input quantities are destroyed, so the routine may be called sequentially with different b’s.
+// Solves Aï¿½X = B for a vector X, where A is specified by the arrays u[1..m][1..n], w[1..n], v[1..n][1..n] as returned by svdcmp. m and n are the dimensions of a, and will be equal for square matrices.
+// b[1..m] is the input right-hand side. x[1..n] is the output solution vector. No input quantities are destroyed, so the routine may be called sequentially with different bï¿½s.
 void CRadiativeRates::svbksb(double **u, double *w, double **v, int m, int n, double *b, double *x)
 {
     int jj,j,i;
@@ -970,11 +976,11 @@ for( j=0; j<iColl_ionTRvals; j++ )
 void CRadiativeRates::SolveHIIFraction( double *pfHstate, double *pfColl_ex_lu, double *pfColl_ex_ul, double *pfColl_ion, double *pfColl_rec, double *pfBB_lu, double *pfBB_ul, double *pfBF, double *pfFB )
 {
     // Solves the 7x6 matrix equation M x = b, for the level populations of hydrogen x
-    // Returns x[5], the ionized fraction of hydrogen
+    // (where the vector x contains the level populations)
     
     int i;
     double fSum;
-    double **M, *w, **V, *b, *x;
+    double **M, *w, **V, *b;
 /*
     M = (double**)malloc( sizeof(double*) * (7) );
     for( i=0; i<7; i++ )
@@ -986,7 +992,6 @@ void CRadiativeRates::SolveHIIFraction( double *pfHstate, double *pfColl_ex_lu, 
     
     w = (double*)malloc( sizeof(double) * 6 );
     b = (double*)malloc( sizeof(double) * 7 );
-    x = (double*)malloc( sizeof(double) * 6 );
 */
     M = (double**)alloca( sizeof(double*) * 7 );
     for( i=0; i<7; i++ )
@@ -998,8 +1003,6 @@ void CRadiativeRates::SolveHIIFraction( double *pfHstate, double *pfColl_ex_lu, 
     
     w = (double*)alloca( sizeof(double) * 6 );
     b = (double*)alloca( sizeof(double) * 7 );
-    x = (double*)alloca( sizeof(double) * 6 );
-
     
     // row 1:
     fSum = 0.0;
@@ -1089,7 +1092,6 @@ void CRadiativeRates::SolveHIIFraction( double *pfHstate, double *pfColl_ex_lu, 
     // row 7:
     for( i=0; i<6; i++ )
         M[6][i] = 1.0;
-    
 
     // Singular value decomposition of the matrix:
     i = svdcmp( M, 7, 6, w, V );
@@ -1099,21 +1101,18 @@ void CRadiativeRates::SolveHIIFraction( double *pfHstate, double *pfColl_ex_lu, 
         b[i] = 0.0;
     b[6] = 1.0;
 
-
     // Back substitution:
-    svbksb( M, w, V, 7, 6, b, x );
+    svbksb( M, w, V, 7, 6, b, pfHstate );
     
     // Normalize the sum of all levels to 1
     fSum = 0.0;
     for( i=0; i<6; i++)
     {
-	if( x[i] <= 0.0 ) x[i] = 1E-300;
-        fSum += x[i];
+		if( pfHstate[i] <= 0.0 ) pfHstate[i] = 1E-300;
+    		fSum += pfHstate[i];
     }
     for( i=0; i<6; i++)
-        x[i] /= fSum;
-    
-    memcpy( pfHstate, x, sizeof(double)*6 );
+        pfHstate[i] /= fSum;
 /*
     // Free memory
     for( i=0; i<7; i++ )
@@ -1123,7 +1122,6 @@ void CRadiativeRates::SolveHIIFraction( double *pfHstate, double *pfColl_ex_lu, 
         free( V[i] );
     free( V );
     free( w );
-    free( x );
     free( b );
 */
 }
@@ -1333,16 +1331,6 @@ double CRadiativeRates::GetTeZ_c( int i )
     return (pTeZ_c[i]);
 }
 
-double CRadiativeRates::GetTerm1( int i )
-{
-    return (pterm1[i]);
-}
-
-double CRadiativeRates::GetTerm2( int i )
-{
-    return (pterm2[i]);
-}
-
 double CRadiativeRates::GetNu0( int i )
 {
     return (pnu0[i]);
@@ -1353,6 +1341,15 @@ double CRadiativeRates::GetH( int i )
     return (pH[i]);
 }
 
+double CRadiativeRates::GetTrt( int i )
+{
+	return (pTrt[i]);
+}
+
+double CRadiativeRates::GetScaledTrt( int i, bool iFlag )
+{
+	return(ppScaledTrt[iFlag][i]);
+}
 
 void CRadiativeRates::SetZ_c_LEFT( int i, double Z_c )
 {
@@ -1372,6 +1369,11 @@ void CRadiativeRates::SetMcZ_c_LEFT( int i, double McZ_c )
 void CRadiativeRates::SetMcZ_c_RIGHT( int i, double McZ_c )
 {
     pMcZ_c_RIGHT[i] = McZ_c;
+}
+
+void CRadiativeRates::SetScaledTrt( int i, double Trt, bool iFlag )
+{
+	ppScaledTrt[iFlag][i] = Trt;
 }
 
 #endif // NLTE_CHROMOSPHERE
