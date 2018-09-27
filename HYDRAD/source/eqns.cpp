@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 09/12/2018
+// * Date last modified: 09/26/2018
 // *
 // ****
 
@@ -384,24 +384,24 @@ int i, j;
 			}
 		}
 
-#ifdef USE_MIKIC
+#ifdef USE_JB
 double old_s = 0.0, old_T = 0.0, L_T;
 Tc = 0.0;
 Te_max = 0.0;
-#endif // USE_MIKIC
+#endif // USE_JB
 iMaxRL = 0;
 
 pNextActiveCell = pStartOfCurrentRow;
 while( pNextActiveCell )
 {
     pActiveCell = pNextActiveCell;
-#ifdef USE_MIKIC
+#ifdef USE_JB
 	if( pActiveCell->pGetPointer( LEFT ) )
 	{
 		old_s = CellProperties.s[1];
 		old_T = CellProperties.T[ELECTRON];
 	}
-#endif // USE_MIKIC
+#endif // USE_JB
     pActiveCell->GetCellProperties( &CellProperties );
 
 	if( iMaxRL < CellProperties.iRefinementLevel ) iMaxRL = CellProperties.iRefinementLevel;
@@ -554,11 +554,11 @@ while( pNextActiveCell )
     CellProperties.Cs = pow( term1, 0.5 );
     CellProperties.M = fabs( CellProperties.v[1] / CellProperties.Cs );
 
-#ifdef USE_MIKIC
+#ifdef USE_JB
     L_T = (0.5 * (old_T + CellProperties.T[ELECTRON])) / fabs( (CellProperties.T[ELECTRON] - old_T) / (CellProperties.s[1] - old_s) );
     if( CellProperties.T[ELECTRON] > Te_max ) Te_max = CellProperties.T[ELECTRON];
     if( (CellProperties.cell_width/L_T) > 0.5 && CellProperties.T[ELECTRON] > Tc ) Tc = CellProperties.T[ELECTRON];
-#endif // USE_MIKIC
+#endif // USE_JB
 
 // *****************************************************************************
 // *                                                                            																							*
@@ -845,6 +845,7 @@ int j;
 		#endif //NLTE_CHROMOSPHERE
 	#else // OPTICALLY_THICK_RADIATION || BEAM_HEATING
 		#define REDUCTION_VAR reduction(max: iMaxRL)
+		#define NLTE_VARS
 	#endif // OPTICALLY_THICK_RADIATION || BEAM_HEATING
 	
 #pragma omp parallel shared( ppCellList, iLocalNumberOfCells )	\
@@ -864,11 +865,11 @@ int j;
 	#endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
 
-#ifdef USE_MIKIC
+#ifdef USE_JB
 double old_s = 0.0, old_T = 0.0, L_T;
 Tc = 0.0;
 Te_max = 0.0;
-#endif // USE_MIKIC
+#endif // USE_JB
 iMaxRL = 0;
 
 #ifdef OPENMP
@@ -878,26 +879,26 @@ iMaxRL = 0;
 for( iCounter=0; iCounter<iLocalNumberOfCells; iCounter++ )
 {
 	pLocalActiveCell = ppCellList[iCounter];
-#ifdef USE_MIKIC
+#ifdef USE_JB
 	if( pLocalActiveCell->pGetPointer( LEFT ) )
 	{
 		old_s = CellProperties.s[1];
 		old_T = CellProperties.T[ELECTRON];
 	}
-#endif // USE_MIKIC
+#endif // USE_JB
 	pLocalActiveCell->GetCellProperties( &CellProperties );
 #else // OPENMP
 pNextActiveCell = pStartOfCurrentRow;
 while( pNextActiveCell )
 {
 	pActiveCell = pNextActiveCell;
-#ifdef USE_MIKIC
+#ifdef USE_JB
 	if( pActiveCell->pGetPointer( LEFT ) )
 	{
 		old_s = CellProperties.s[1];
 		old_T = CellProperties.T[ELECTRON];
 	}
-#endif // USE_MIKIC
+#endif // USE_JB
     pActiveCell->GetCellProperties( &CellProperties );
 #endif // OPENMP
 
@@ -1149,11 +1150,11 @@ if( isnan(CellProperties.n[ELECTRON]) || isnan(CellProperties.T[ELECTRON]) )
     CellProperties.Cs = pow( term1, 0.5 );
     CellProperties.M = fabs( CellProperties.v[1] / CellProperties.Cs );
 
-#ifdef USE_MIKIC
+#ifdef USE_JB
     L_T = (0.5 * (old_T + CellProperties.T[ELECTRON])) / fabs( (CellProperties.T[ELECTRON] - old_T) / (CellProperties.s[1] - old_s) );
     if( CellProperties.T[ELECTRON] > Te_max ) Te_max = CellProperties.T[ELECTRON];
     if( (CellProperties.cell_width/L_T) > 0.5 && CellProperties.T[ELECTRON] > Tc ) Tc = CellProperties.T[ELECTRON];
-#endif // USE_MIKIC
+#endif // USE_JB
 
 // *****************************************************************************
 // *                                                                            																							*
@@ -1388,15 +1389,15 @@ double Q1, Q2, Q3, QT;
 // Variables used by thermal and viscous flux transport algorithms
 double Kappa[SPECIES], max_flux_coeff[SPECIES];
 double T[3][SPECIES], gradT, n[SPECIES], P, v[2], gradv, Kappa_B, Kappa_L, Fc_max;
-#ifdef USE_MIKIC
+#ifdef USE_JB
 double Tmin;
 #ifdef OPTICALLY_THICK_RADIATION
 	Tmin = OPTICALLY_THICK_TEMPERATURE;
 #else // OPTICALLY_THICK_RADIATION
 	Tmin = MINIMUM_RADIATION_TEMPERATURE;
 #endif // OPTICALLY_THICK_RADIATION
-	if( Tc > (MIKIC_TEMPERATURE_FRACTION*Te_max) ) Tc = MIKIC_TEMPERATURE_FRACTION * Te_max;
-#endif // USE_MIKIC
+	if( Tc > (JB_TEMPERATURE_FRACTION*Te_max) ) Tc = JB_TEMPERATURE_FRACTION * Te_max;
+#endif // USE_JB
 #ifdef NUMERICAL_VISCOSITY
 	double rho_v[2];
 #endif // NUMERICAL_VISCOSITY
@@ -1749,10 +1750,10 @@ while( pNextActiveCell->pGetPointer( RIGHT ) )
             // Calculate the conducted heat flux at the left boundary
 	    gradT = ( T[2][j] - T[0][j] ) / CellProperties.cell_width;
 
-#ifdef USE_MIKIC
+#ifdef USE_JB
 	    if( j == ELECTRON && CellProperties.T[j] > Tmin && CellProperties.T[j] < Tc )
 	    	T[1][j] = Tc;
-#endif // USE_MIKIC
+#endif // USE_JB
 
 #ifdef OPTICALLY_THICK_RADIATION
             if( j == HYDROGEN && T[1][ELECTRON] < OPTICALLY_THICK_TEMPERATURE )
@@ -1769,11 +1770,11 @@ while( pNextActiveCell->pGetPointer( RIGHT ) )
 
             // Estimate the maximum conducted heat flux (treats n as approximately constant across cell)
             // BOLTZMANN_CONSTANT^1.5 = 1.621132937e-24
-#ifdef USE_MIKIC
+#ifdef USE_JB
 	    Fc_max = HEAT_FLUX_LIMITING_COEFFICIENT * (1.621132937e-24) * max_flux_coeff[j] * n[j] * pow( CellProperties.T[j], 1.5 );
-#else // USE_MIKIC
+#else // USE_JB
             Fc_max = HEAT_FLUX_LIMITING_COEFFICIENT * (1.621132937e-24) * max_flux_coeff[j] * n[j] * pow( T[1][j], 1.5 );
-#endif // USE_MIKIC
+#endif // USE_JB
 
 	    // Apply the heat flux limiter
             term1 = CellProperties.Fc[0][j] * Fc_max;
@@ -2277,13 +2278,13 @@ CellProperties.TE_KE_term[5][ELECTRON] = - SMALLEST_DOUBLE;
 	#endif // NON_EQUILIBRIUM_RADIATION
 #endif // DECOUPLE_IONISATION_STATE_SOLVER
 
-#ifdef USE_MIKIC
+#ifdef USE_JB
 	if( CellProperties.T[ELECTRON] > Tmin && CellProperties.T[ELECTRON] < Tc )
 	{
-            term1 = CellProperties.T[ELECTRON] / Tc;
+    		term1 = CellProperties.T[ELECTRON] / Tc;
 	    CellProperties.TE_KE_term[5][ELECTRON] *= pow( term1, 2.5 );
 	}
-#endif // USE_MIKIC
+#endif // USE_JB
 
 // **** RADIATION TIME STEP ****
 	    CellProperties.radiation_delta_t = ( SAFETY_RADIATION * CellProperties.TE_KE[1][ELECTRON] ) / fabs( CellProperties.TE_KE_term[5][ELECTRON] );
