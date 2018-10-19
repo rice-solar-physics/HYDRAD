@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/16/2017
+// * Date last modified: 10/19/2018
 // *
 // ****
 
@@ -916,7 +916,7 @@ for( i=0; i<iNumStrands; i++ )
     if( iNumNEQElements > 0 )
     {
         for( j=0; j<iNumCells; j++ )
-    	{
+    		{
             pLoop->GetPHYData( i, j, &PHYData );
 
             // Reset the total counts detected from the current grid cell
@@ -926,25 +926,25 @@ for( i=0; i<iNumStrands; i++ )
             for( k=0; k<iNumNEQElements; k++ )
             {
                 // Reset the total emission due to this element (summed over all ionisation states)
-		fEQElementEmiss = 0.0;
-		fNEQElementEmiss = 0.0;
+				fEQElementEmiss = 0.0;
+				fNEQElementEmiss = 0.0;
 
-		// Get the atomic number of the element
-		iZ = pLoop->GetAtomicNumber( i, k );
+				// Get the atomic number of the element
+				iZ = pLoop->GetAtomicNumber( i, k );
 
-		// Get the element abundance
-		fAb = pNEQRadiation->GetAbundance( iZ );
+				// Get the element abundance
+				fAb = pNEQRadiation->GetAbundance( iZ );
 
-		// Allocate sufficient space to store the equilibrium ion population fractions
-		pfEQ = (double*)malloc( sizeof(double) * (iZ+1) );
+				// Allocate sufficient space to store the equilibrium ion population fractions
+				pfEQ = (double*)malloc( sizeof(double) * (iZ+1) );
 #ifdef DENSITY_DEPENDENT_RATES
-		pNEQRadiation->GetEquilIonFrac( iZ, pfEQ, log10(PHYData.fTe), log10(PHYData.fne) );
+				pNEQRadiation->GetEquilIonFrac( iZ, pfEQ, log10(PHYData.fTe), log10(PHYData.fne) );
 #else // DENSITY_DEPENDENT_RATES
-		pNEQRadiation->GetEquilIonFrac( iZ, pfEQ, log10(PHYData.fTe) );
+				pNEQRadiation->GetEquilIonFrac( iZ, pfEQ, log10(PHYData.fTe) );
 #endif // DENSITY_DEPENDENT_RATES
 
-		for( m=0; m<=iZ; m++ )
-		{
+				for( m=0; m<=iZ; m++ )
+				{
                     // Get the ion population fraction
                     fNEQ = pLoop->GetNEQ( i, j, k, m );
                     // Get the ion emissivity
@@ -952,35 +952,32 @@ for( i=0; i<iNumStrands; i++ )
                     // Multiply the stored ion emissivity by the ion population fraction and sum
                     fEQElementEmiss += ( pfEQ[m] * fIonEmiss );
                     fNEQElementEmiss += ( fNEQ * fIonEmiss );
-		}
+				}
 
-		// Multiply by the element abundance relative to hydrogen and the column emission measure
-		fEQElementEmiss *= ( fAb * PHYData.fne * PHYData.fnH );
-		fNEQElementEmiss *= ( fAb * PHYData.fne * PHYData.fnH );
-
-		// Record the specified counts [DN pixel^-1 s^-1] at the appropriate detector pixel, taking into account the line-of-sight depth
-		Detect( PHYData.fs, PHYData.fds, fSD, fLength, fEQElementEmiss, fNEQElementEmiss );
+				// Multiply by the element abundance relative to hydrogen and the column emission measure, and divide by the number of strands (to avoid summing over time)
+				fEQElementEmiss *= ( fAb * PHYData.fne * PHYData.fnH ) / ((double)iNumStrands);
+				fNEQElementEmiss *= ( fAb * PHYData.fne * PHYData.fnH ) / ((double)iNumStrands);
 
                 // Keep track of the total counts detected from the current grid cell
                 fEQCounts += fEQElementEmiss;
                 fNEQCounts += fNEQElementEmiss;
 
-		free( pfEQ );
+				free( pfEQ );
             }
-
+			// Record the specified counts [DN pixel^-1 s^-1] at the appropriate detector pixel, taking into account the line-of-sight depth
+			Detect( PHYData.fs, PHYData.fds, fSD, fLength, fEQCounts, fNEQCounts );
             // Write the equilibrium and non-equilibrium counts to the strands data file [DN pixel^-1 s^-1]
             fprintf( pStrandsFile, "%.8e\t%.8e\t%.8e\t%.8e\n", PHYData.fs, PHYData.fds, ( PHYData.fds * fEQCounts ), ( PHYData.fds * fNEQCounts ) );
-	}
-
-	printf( " - DONE!\n" );
+		}
+		printf( " - DONE!\n" );
     }
     else
     {
         // Assume an equilibrium ionisaton state
-	piZ = pEQRadiation->pGetAtomicNumbers( &iNumEQElements );
+		piZ = pEQRadiation->pGetAtomicNumbers( &iNumEQElements );
 
-	for( j=0; j<iNumCells; j++ )
-	{
+		for( j=0; j<iNumCells; j++ )
+		{
             pLoop->GetPHYData( i, j, &PHYData );
 
             // Reset the total counts detected from the current grid cell
@@ -989,43 +986,40 @@ for( i=0; i<iNumStrands; i++ )
             for( k=0; k<iNumEQElements; k++ )
             {
                 // Reset the total emission due to this element (summed over all ionisation states)
-		fEQElementEmiss = 0.0;
+				fEQElementEmiss = 0.0;
 
-		// Get the element abundance
-		fAb = pEQRadiation->GetAbundance( piZ[k] );
+				// Get the element abundance
+				fAb = pEQRadiation->GetAbundance( piZ[k] );
 
-		// Allocate sufficient space to store the equilibrium ion population fractions
-		pfEQ = (double*)malloc( sizeof(double) * (piZ[k]+1) );
+				// Allocate sufficient space to store the equilibrium ion population fractions
+				pfEQ = (double*)malloc( sizeof(double) * (piZ[k]+1) );
 #ifdef DENSITY_DEPENDENT_RATES
-		pEQRadiation->GetEquilIonFrac( piZ[k], pfEQ, log10(PHYData.fTe), log10(PHYData.fne) );
+				pEQRadiation->GetEquilIonFrac( piZ[k], pfEQ, log10(PHYData.fTe), log10(PHYData.fne) );
 #else // DENSITY_DEPENDENT_RATES
-		pEQRadiation->GetEquilIonFrac( piZ[k], pfEQ, log10(PHYData.fTe) );
+				pEQRadiation->GetEquilIonFrac( piZ[k], pfEQ, log10(PHYData.fTe) );
 #endif // DENSITY_DEPENDENT_RATES
 
-		for( m=0; m<=piZ[k]; m++ )
-		{
+				for( m=0; m<=piZ[k]; m++ )
+				{
                     // Multiply the stored ion emissivity by the ion population fraction and sum
                     fEQElementEmiss += ( pfEQ[m] * GetIonEmission( piZ[k], m+1, log10(PHYData.fTe), log10(PHYData.fne) ) );
-		}
+				}
 
-		// Multiply by the element abundance relative to hydrogen and the column emission measure
-		fEQElementEmiss *= ( fAb * PHYData.fne * PHYData.fnH );
+				// Multiply by the element abundance relative to hydrogen and the column emission measure
+				fEQElementEmiss *= ( fAb * PHYData.fne * PHYData.fnH ) / ((double)iNumStrands);
 
-		// Record the specified counts [DN pixel^-1 s^-1] at the appropriate detector pixel, taking into account the line-of-sight depth
-		Detect( PHYData.fs, PHYData.fds, fSD, fLength, fEQElementEmiss );
-
-                // Keep track of the total counts detected from the current grid cell
+	          	// Keep track of the total counts detected from the current grid cell
                 fEQCounts += fEQElementEmiss;
 
-		free( pfEQ );
+				free( pfEQ );
             }
-
+			// Record the specified counts [DN pixel^-1 s^-1] at the appropriate detector pixel, taking into account the line-of-sight depth
+			Detect( PHYData.fs, PHYData.fds, fSD, fLength, fEQCounts );
             // Write the equilibrium counts to the strands data file [DN pixel^-1 s^-1]
             fprintf( pStrandsFile, "%.8e\t%.8e\t%.8e\n", PHYData.fs, PHYData.fds, ( PHYData.fds * fEQCounts ) );
+		}
+		printf( " - DONE!\n" );
 	}
-
-	printf( " - DONE!\n" );
-    }
 }
 
 // Close the strands data file
@@ -1082,7 +1076,7 @@ for( i=0; i<iNumStrands; i++ )
     if( iNumNEQElements > 0 )
     {
         for( j=0; j<iNumCells; j++ )
-	{
+		{
             pLoop->GetPHYData( i, j, &PHYData );
 
             // Reset the total counts detected from the current grid cell
@@ -1092,17 +1086,17 @@ for( i=0; i<iNumStrands; i++ )
             for( k=0; k<iNumNEQElements; k++ )
             {
                 // Get the atomic number of the element
-		iZ = pLoop->GetAtomicNumber( i, k );
+				iZ = pLoop->GetAtomicNumber( i, k );
 
-		// Get the element abundance
-		fAb = pNEQRadiation->GetAbundance( iZ );
+				// Get the element abundance
+				fAb = pNEQRadiation->GetAbundance( iZ );
 
-		// Allocate sufficient space to store the equilibrium ion population fractions
-		pfEQ = (double*)malloc( sizeof(double) * (iZ+1) );
+				// Allocate sufficient space to store the equilibrium ion population fractions
+				pfEQ = (double*)malloc( sizeof(double) * (iZ+1) );
 #ifdef DENSITY_DEPENDENT_RATES
-		pNEQRadiation->GetEquilIonFrac( iZ, pfEQ, log10(PHYData.fTe), log10(PHYData.fne) );
+				pNEQRadiation->GetEquilIonFrac( iZ, pfEQ, log10(PHYData.fTe), log10(PHYData.fne) );
 #else // DENSITY_DEPENDENT_RATES
-		pNEQRadiation->GetEquilIonFrac( iZ, pfEQ, log10(PHYData.fTe) );
+				pNEQRadiation->GetEquilIonFrac( iZ, pfEQ, log10(PHYData.fTe) );
 #endif // DENSITY_DEPENDENT_RATES
 
                 // Calculate the multiplicative factor used to convert to [DN pixel^-1 s^-1]
@@ -1111,8 +1105,8 @@ for( i=0; i<iNumStrands; i++ )
                 // Calculate the most probable ion speed (page 221, Dere, K. P., & Mason, H. E. 1993, Sol. Phys., 144, 217)
                 fvi_th = sqrt( (2.0*BOLTZMANN_CONSTANT*PHYData.fTi) / GetMass( iZ ) );
 
-		for( m=0; m<=iZ; m++ )
-		{
+				for( m=0; m<=iZ; m++ )
+				{
                     // Get the ion population fraction
                     fNEQ = pLoop->GetNEQ( i, j, k, m );
 
@@ -1128,45 +1122,42 @@ for( i=0; i<iNumStrands; i++ )
                     for( n=0; n<iNumLines; n++ )
                     {
                        	// Calculate the spectral properties of the line
-			// (Eq. (2), Dere, K. P., & Mason, H. E. 1993, Sol. Phys., 144, 217)
+						// (Eq. (2), Dere, K. P., & Mason, H. E. 1993, Sol. Phys., 144, 217)
                         fSpectralProperties[0] = ( pfLineList[n] * pfLineList[n] ) / ( 2.0 * SPEED_OF_LIGHT * SPEED_OF_LIGHT );
-			// Calculate the Doppler width plus instrumental width (the instrumental width is the FWHM so needs to be converted into Gaussian width)
-			// FWHM = 2*SQRT(2*LN(2)) * Gaussian Width -> 1.0/8*LN(2) = 0.18033688
-			fSpectralProperties[1] = ( fSpectralProperties[0] * fvi_th * fvi_th ) + ( 0.18033688 * fInstrumentalLineWidth * fInstrumentalLineWidth );
-			// SQRT( 2*PI ) = 2.50662827
-			fSpectralProperties[2] = 2.50662827 * sqrt( fSpectralProperties[1] );
-			fSpectralProperties[3] = sqrt( 2.0 * fSpectralProperties[0] ) * PHYData.fvp;
+						// Calculate the Doppler width plus instrumental width (the instrumental width is the FWHM so needs to be converted into Gaussian width)
+						// FWHM = 2*SQRT(2*LN(2)) * Gaussian Width -> 1.0/8*LN(2) = 0.18033688
+						fSpectralProperties[1] = ( fSpectralProperties[0] * fvi_th * fvi_th ) + ( 0.18033688 * fInstrumentalLineWidth * fInstrumentalLineWidth );
+						// SQRT( 2*PI ) = 2.50662827
+						fSpectralProperties[2] = 2.50662827 * sqrt( fSpectralProperties[1] );
+						fSpectralProperties[3] = sqrt( 2.0 * fSpectralProperties[0] ) * PHYData.fvp;
                         
-			// Get the line emissivity
+						// Get the line emissivity
                         fLineEmiss = GetLineEmission( iZ, m+1, pfLineList[n], log10(PHYData.fTe), log10(PHYData.fne) );
-                        // Multiply the stored line emissivity by the equilibrium and non-equilibrium ion population fractions, the element abundance relative to hydrogen, and the density squared
-                        fLineEmiss *= fConst;
+                        // Multiply the stored line emissivity by the equilibrium and non-equilibrium ion population fractions, the element abundance relative to hydrogen, the density squared,
+						// and divide by the number of strands (to avoid summing over time)
+                        fLineEmiss *= fConst / ((double)iNumStrands);
                         Detect( PHYData, fSD, fLength, fLineEmiss*pfEQ[m], fLineEmiss*fNEQ, pfLineList[n], fSpectralProperties );
 
                         // Keep track of the total counts detected from the current grid cell
                         fEQCounts += fLineEmiss*pfEQ[m];
                         fNEQCounts += fLineEmiss*fNEQ;
                     }
-
                     free( pfLineList );
-		}
-
-		free( pfEQ );
+				}
+				free( pfEQ );
             }
-
             // Write the equilibrium and non-equilibrium counts to the strands data file [DN pixel^-1 s^-1]
             fprintf( pStrandsFile, "%.8e\t%.8e\t%.8e\t%.8e\n", PHYData.fs, PHYData.fds, ( PHYData.fds * fEQCounts ), ( PHYData.fds * fNEQCounts ) );
-	}
-
+		}
         printf( " - DONE!\n" );
     }
     else
     {
         // Assume an equilibrium ionisation state
-	piZ = pEQRadiation->pGetAtomicNumbers( &iNumEQElements );
+		piZ = pEQRadiation->pGetAtomicNumbers( &iNumEQElements );
 
-	for( j=0; j<iNumCells; j++ )
-	{
+		for( j=0; j<iNumCells; j++ )
+		{
             pLoop->GetPHYData( i, j, &PHYData );
 
             // Reset the total counts detected from the current grid cell
@@ -1175,14 +1166,14 @@ for( i=0; i<iNumStrands; i++ )
             for( k=0; k<iNumEQElements; k++ )
             {
                 // Get the element abundance
-		fAb = pEQRadiation->GetAbundance( piZ[k] );
+				fAb = pEQRadiation->GetAbundance( piZ[k] );
 
-		// Allocate sufficient space to store the equilibrium ion population fractions
-		pfEQ = (double*)malloc( sizeof(double) * (piZ[k]+1) );
+				// Allocate sufficient space to store the equilibrium ion population fractions
+				pfEQ = (double*)malloc( sizeof(double) * (piZ[k]+1) );
 #ifdef DENSITY_DEPENDENT_RATES
-		pEQRadiation->GetEquilIonFrac( piZ[k], pfEQ, log10(PHYData.fTe), log10(PHYData.fne) );
+				pEQRadiation->GetEquilIonFrac( piZ[k], pfEQ, log10(PHYData.fTe), log10(PHYData.fne) );
 #else // DENSITY_DEPENDENT_RATES
-		pEQRadiation->GetEquilIonFrac( piZ[k], pfEQ, log10(PHYData.fTe) );
+				pEQRadiation->GetEquilIonFrac( piZ[k], pfEQ, log10(PHYData.fTe) );
 #endif // DENSITY_DEPENDENT_RATES
 
                 // Calculate the multiplicative factor used to convert to [DN pixel^-1 s^-1]
@@ -1191,8 +1182,8 @@ for( i=0; i<iNumStrands; i++ )
                 // Calculate the most probable ion speed (page 221, Dere, K. P., & Mason, H. E. 1993, Sol. Phys., 144, 217)
                 fvi_th = sqrt( (2.0*BOLTZMANN_CONSTANT*PHYData.fTi) / GetMass( piZ[k] ) );
 
-		for( m=0; m<=piZ[k]; m++ )
-		{
+				for( m=0; m<=piZ[k]; m++ )
+				{
                     // Get the number of emission lines for the current ion
                     iNumLines = GetNumLines( piZ[k], m+1 );
 
@@ -1205,36 +1196,33 @@ for( i=0; i<iNumStrands; i++ )
                     for( n=0; n<iNumLines; n++ )
                     {
                         // Calculate the spectral properties of the line
-			// (Eq. (2), Dere, K. P., & Mason, H. E. 1993, Sol. Phys., 144, 217)
+						// (Eq. (2), Dere, K. P., & Mason, H. E. 1993, Sol. Phys., 144, 217)
                         fSpectralProperties[0] = ( pfLineList[n] * pfLineList[n] ) / ( 2.0 * SPEED_OF_LIGHT * SPEED_OF_LIGHT );
-			// Calculate the Doppler width plus instrumental width (the instrumental width is the FWHM so needs to be converted into Gaussian width)
-			// FWHM = 2*SQRT(2*LN(2)) * Gaussian Width -> 1.0/8*LN(2) = 0.18033688
-			fSpectralProperties[1] = ( fSpectralProperties[0] * fvi_th * fvi_th ) + ( 0.18033688 * fInstrumentalLineWidth * fInstrumentalLineWidth );
-			// SQRT( 2*PI ) = 2.50662827
-			fSpectralProperties[2] = 2.50662827 * sqrt( fSpectralProperties[1] );
-			fSpectralProperties[3] = sqrt( 2.0 * fSpectralProperties[0] ) * PHYData.fvp;
+						// Calculate the Doppler width plus instrumental width (the instrumental width is the FWHM so needs to be converted into Gaussian width)
+						// FWHM = 2*SQRT(2*LN(2)) * Gaussian Width -> 1.0/8*LN(2) = 0.18033688
+						fSpectralProperties[1] = ( fSpectralProperties[0] * fvi_th * fvi_th ) + ( 0.18033688 * fInstrumentalLineWidth * fInstrumentalLineWidth );
+						// SQRT( 2*PI ) = 2.50662827
+						fSpectralProperties[2] = 2.50662827 * sqrt( fSpectralProperties[1] );
+						fSpectralProperties[3] = sqrt( 2.0 * fSpectralProperties[0] ) * PHYData.fvp;
 
                         // Get the line emissivity
                         fLineEmiss = GetLineEmission( piZ[k], m+1, pfLineList[n], log10(PHYData.fTe), log10(PHYData.fne) );
-                        // Multiply the stored line emissivity by the equilibrium and non-equilibrium ion population fractions, the element abundance relative to hydrogen, and the density squared
-                        fLineEmiss *= fConst;
+                        // Multiply the stored line emissivity by the equilibrium and non-equilibrium ion population fractions, the element abundance relative to hydrogen, the density squared,
+                        // and divide by the number of strands (to avoid summing over time)
+						fLineEmiss *= fConst / ((double)iNumStrands);
                         Detect( PHYData, fSD, fLength, fLineEmiss*pfEQ[m], pfLineList[n], fSpectralProperties );
 
                         // Keep track of the total counts detected from the current grid cell
                         fEQCounts += fLineEmiss*pfEQ[m];
                     }
-
                     free( pfLineList );
-		}
-
-		free( pfEQ );
+				}
+				free( pfEQ );
             }
-
             // Write the equilibrium and non-equilibrium counts to the strands data file [DN pixel^-1 s^-1]
             fprintf( pStrandsFile, "%.8e\t%.8e\t%.8e\n", PHYData.fs, PHYData.fds, ( PHYData.fds * fEQCounts ) );
-	}
-
-	printf( " - DONE!\n" );
+		}
+		printf( " - DONE!\n" );
     }
 }
 
