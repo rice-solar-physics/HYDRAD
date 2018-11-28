@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 09/05/2018
+// * Date last modified: 11/27/2018
 // *
 // ****
 
@@ -14,13 +14,17 @@
 #ifdef NLTE_CHROMOSPHERE
 
 // Definitions for the temperature at which the foot-point density, used to scale T_b^top as a function of time, is defined in the NLTE chromosphere
-// and the turnover densities where each transition begins to brighten significantly
+// and the foot-point density itself (scaled by the quantities defined below for each transition)
 #define NLTE_T_FP	9E3			// K
-	#define NLTE_n_Ha	6E12	// cm^-3
-	#define NLTE_n_Hb	5E12	// cm^-3
-	#define NLTE_n_Hg	1E13	// cm^-3
-	#define NLTE_n_Pa	3E13	// cm^-3
-	#define NLTE_n_Pb	5E13	// cm^-3
+#define NLTE_n0     1.9e11     // cm^-3
+// Indices for each transition that are used to scale the ratio of the density to the foot-point density. When multiplied by the temperature defined
+// above this gives the brightness temperature for each transition according to the formula: T_b = T_0 * (n/n_0)^m
+    #define NLTE_m_Ha   0.1188
+    #define NLTE_m_Hb   0.1116
+    #define NLTE_m_Hg   0.1061
+    #define NLTE_m_Pa   0.1460
+    #define NLTE_m_Pb   0.1402
+    #define NLTE_m_Bra  0.1979
 
 #define MAX_ITERATIONS			300
 #define CONVERGENCE_EPSILON		0.1
