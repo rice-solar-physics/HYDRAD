@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 09/26/2018
+// * Date last modified: 11/28/2018
 // *
 // ****
 
@@ -256,40 +256,47 @@ int i, j;
 			// Identify the current transition
 			switch( i ) {
 						
-				case 0 :
-					if( fLeftFPn_H > NLTE_n_Ha )
-						fTrt[0] *= fLeftFPn_H / NLTE_n_Ha;
-					if( fRightFPn_H > NLTE_n_Ha )
-						fTrt[1] *= fRightFPn_H / NLTE_n_Ha;
-				break;
-						
-				case 1 :
-					if( fLeftFPn_H > NLTE_n_Hb )
-						fTrt[0] *= fLeftFPn_H / NLTE_n_Hb;
-					if( fRightFPn_H > NLTE_n_Hb )
-						fTrt[1] *= fRightFPn_H / NLTE_n_Hb;
-				break;
-						
-				case 2 :
-					if( fLeftFPn_H > NLTE_n_Hg )
-						fTrt[0] *= fLeftFPn_H / NLTE_n_Hg;
-					if( fRightFPn_H > NLTE_n_Hg )
-						fTrt[1] *= fRightFPn_H / NLTE_n_Hg;
-				break;
-						
-				case 3 :
-					if( fLeftFPn_H > NLTE_n_Pa )
-						fTrt[0] *= fLeftFPn_H / NLTE_n_Pa;
-					if( fRightFPn_H > NLTE_n_Pa )
-						fTrt[1] *= fRightFPn_H / NLTE_n_Pa;
-				break;
-						
-				case 4 :
-					if( fLeftFPn_H > NLTE_n_Pb )
-						fTrt[0] *= fLeftFPn_H / NLTE_n_Pb;
-					if( fRightFPn_H > NLTE_n_Pb )
-						fTrt[1] *= fRightFPn_H / NLTE_n_Pb;
-				break;
+				case 0 :	// H-alpha
+                    if( fLeftFPn_H > NLTE_n0 )
+                        fTrt[0] *= pow((fLeftFPn_H/NLTE_n0), NLTE_m_Ha);
+                    if( fRightFPn_H > NLTE_n0 )
+                        fTrt[1] *= pow((fRightFPn_H/NLTE_n0), NLTE_m_Ha);
+                    break;
+                    
+                case 1 :	// H-beta
+                    if( fLeftFPn_H > NLTE_n0 )
+                        fTrt[0] *= pow((fLeftFPn_H/NLTE_n0), NLTE_m_Hb);
+                    if( fRightFPn_H > NLTE_n0 )
+                        fTrt[1] *= pow((fRightFPn_H/NLTE_n0), NLTE_m_Hb);
+                    break;
+                    
+                case 2 :	// H-gamma
+                    if( fLeftFPn_H > NLTE_n0 )
+                        fTrt[0] *= pow((fLeftFPn_H/NLTE_n0), NLTE_m_Hg);
+                    if( fRightFPn_H > NLTE_n0 )
+                        fTrt[1] *= pow((fRightFPn_H/NLTE_n0), NLTE_m_Hg);
+                    break;
+                    
+                case 3 :	// Paschen-alpha
+                    if( fLeftFPn_H > NLTE_n0 )
+                        fTrt[0] *= pow((fLeftFPn_H/NLTE_n0), NLTE_m_Pa);
+                    if( fRightFPn_H > NLTE_n0 )
+                        fTrt[1] *= pow((fRightFPn_H/NLTE_n0), NLTE_m_Pa);
+                    break;
+                    
+                case 4 :	// Paschen-beta
+                    if( fLeftFPn_H > NLTE_n0 )
+                        fTrt[0] *= pow((fLeftFPn_H/NLTE_n0), NLTE_m_Pb);
+                    if( fRightFPn_H > NLTE_n0 )
+                        fTrt[1] *= pow((fRightFPn_H/NLTE_n0), NLTE_m_Pb);
+                    break;
+                    
+                case 5 :	// Brackett-alpha
+                    if( fLeftFPn_H > NLTE_n0 )
+                        fTrt[0] *= pow((fLeftFPn_H/NLTE_n0), NLTE_m_Bra);
+                    if( fRightFPn_H > NLTE_n0 )
+                        fTrt[1] *= pow((fRightFPn_H/NLTE_n0), NLTE_m_Bra);
+                    break;
 						
 				default :
 				break;
@@ -698,40 +705,47 @@ int j;
 			// Identify the current transition
 			switch( i ) {
 						
-				case 0 :
-					if( fLeftFPn_H > NLTE_n_Ha )
-						fTrt[0] *= fLeftFPn_H / NLTE_n_Ha;
-					if( fRightFPn_H > NLTE_n_Ha )
-						fTrt[1] *= fRightFPn_H / NLTE_n_Ha;
+				case 0 :	// H-alpha
+					if( fLeftFPn_H > NLTE_n0 )
+                        fTrt[0] *= pow((fLeftFPn_H/NLTE_n0), NLTE_m_Ha);
+					if( fRightFPn_H > NLTE_n0 )
+						fTrt[1] *= pow((fRightFPn_H/NLTE_n0), NLTE_m_Ha);
 				break;
 						
-				case 1 :
-					if( fLeftFPn_H > NLTE_n_Hb )
-						fTrt[0] *= fLeftFPn_H / NLTE_n_Hb;
-					if( fRightFPn_H > NLTE_n_Hb )
-						fTrt[1] *= fRightFPn_H / NLTE_n_Hb;
+				case 1 :	// H-beta
+                    if( fLeftFPn_H > NLTE_n0 )
+                        fTrt[0] *= pow((fLeftFPn_H/NLTE_n0), NLTE_m_Hb);
+                    if( fRightFPn_H > NLTE_n0 )
+                        fTrt[1] *= pow((fRightFPn_H/NLTE_n0), NLTE_m_Hb);
 				break;
 						
-				case 2 :
-					if( fLeftFPn_H > NLTE_n_Hg )
-						fTrt[0] *= fLeftFPn_H / NLTE_n_Hg;
-					if( fRightFPn_H > NLTE_n_Hg )
-						fTrt[1] *= fRightFPn_H / NLTE_n_Hg;
+				case 2 :	// H-gamma
+                    if( fLeftFPn_H > NLTE_n0 )
+                        fTrt[0] *= pow((fLeftFPn_H/NLTE_n0), NLTE_m_Hg);
+                    if( fRightFPn_H > NLTE_n0 )
+                        fTrt[1] *= pow((fRightFPn_H/NLTE_n0), NLTE_m_Hg);
 				break;
 						
-				case 3 :
-					if( fLeftFPn_H > NLTE_n_Pa )
-						fTrt[0] *= fLeftFPn_H / NLTE_n_Pa;
-					if( fRightFPn_H > NLTE_n_Pa )
-						fTrt[1] *= fRightFPn_H / NLTE_n_Pa;
+				case 3 :	// Paschen-alpha
+                    if( fLeftFPn_H > NLTE_n0 )
+                        fTrt[0] *= pow((fLeftFPn_H/NLTE_n0), NLTE_m_Pa);
+                    if( fRightFPn_H > NLTE_n0 )
+                        fTrt[1] *= pow((fRightFPn_H/NLTE_n0), NLTE_m_Pa);
 				break;
 						
-				case 4 :
-					if( fLeftFPn_H > NLTE_n_Pb )
-						fTrt[0] *= fLeftFPn_H / NLTE_n_Pb;
-					if( fRightFPn_H > NLTE_n_Pb )
-						fTrt[1] *= fRightFPn_H / NLTE_n_Pb;
+				case 4 :	// Paschen-beta
+                    if( fLeftFPn_H > NLTE_n0 )
+                        fTrt[0] *= pow((fLeftFPn_H/NLTE_n0), NLTE_m_Pb);
+                    if( fRightFPn_H > NLTE_n0 )
+                        fTrt[1] *= pow((fRightFPn_H/NLTE_n0), NLTE_m_Pb);
 				break;
+                
+                case 5 :	// Brackett-alpha
+                    if( fLeftFPn_H > NLTE_n0 )
+                        fTrt[0] *= pow((fLeftFPn_H/NLTE_n0), NLTE_m_Bra);
+                    if( fRightFPn_H > NLTE_n0 )
+                        fTrt[1] *= pow((fRightFPn_H/NLTE_n0), NLTE_m_Bra);
+                break;
 						
 				default :
 				break;
@@ -973,38 +987,38 @@ while( pNextActiveCell )
     piA = CellProperties.pIonFrac->pGetElementInfo( &iNumElements );
     for( i=0; i<iNumElements; i++ )
     {
-	// Don't double count hydrogen
-	if( piA[i] > 1 )
-	{
-	    fElement = 0.0;
+		// Don't double count hydrogen
+		if( piA[i] > 1 )
+		{
+	    		fElement = 0.0;
 
             pfZ = CellProperties.pIonFrac->pGetIonFrac( piA[i] );
             for( j=1; j<piA[i]+1; j++ )
-		fElement += ((double)j) * pfZ[j];
+				fElement += ((double)j) * pfZ[j];
 
-		fElement *= pRadiation->GetAbundance( piA[i] );
+			fElement *= pRadiation->GetAbundance( piA[i] );
 
-		fSum += fElement;
-	}		
+			fSum += fElement;
+		}		
     }
 #endif // NON_EQUILIBRIUM_RADIATION
 
     piA = pRadiation2->pGetAtomicNumbers( &iNumElements );
     for( i=0; i<iNumElements; i++ )
     {
-	// Don't double count hydrogen
-	if( piA[i] > 1 )
-	{
-	    fElement = 0.0;
+		// Don't double count hydrogen
+		if( piA[i] > 1 )
+		{
+	    		fElement = 0.0;
 			
-	    pRadiation2->GetEquilIonFrac( piA[i], fZ, log10(CellProperties.T[ELECTRON]) );
-	    for( j=1; j<piA[i]+1; j++ )
-		fElement += ((double)j) * fZ[j];
+	    		pRadiation2->GetEquilIonFrac( piA[i], fZ, log10(CellProperties.T[ELECTRON]) );
+	    		for( j=1; j<piA[i]+1; j++ )
+				fElement += ((double)j) * fZ[j];
 
             fElement *= pRadiation2->GetAbundance( piA[i] );
 
             fSum += fElement;
-	}
+		}
     }
 
     // Convert the radiation temperatures for each transition to log values
@@ -1999,7 +2013,7 @@ while( pNextActiveCell )
 #endif // OPTICALLY_THICK_RADIATION || BEAM_HEATING
 
 // *****************************************************************************
-// *    TERMS OF THE CONVERSATION EQUATIONS                                     												*
+// *    TERMS OF THE CONSERVATION EQUATIONS                                     												*
 // *****************************************************************************
 
 pNextActiveCell = pStartOfCurrentRow->pGetPointer( RIGHT )->pGetPointer( RIGHT );
