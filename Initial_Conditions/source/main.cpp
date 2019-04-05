@@ -5,7 +5,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 06/08/2018
+// * Date last modified: 04/05/2019
 // *
 // ****
 
@@ -55,7 +55,7 @@ PRADIATION pRadiation;
 FILE *pFile;
 #ifdef USE_POLY_FIT_TO_GRAVITY
 #else // USE_POLY_FIT_TO_GRAVITY
-char szGravityFilename[256];
+char szGravityFilename[512];
 #endif // USE_POLY_FIT_TO_GRAVITY
 double *pfGravityCoefficients;
 int i;
@@ -973,7 +973,7 @@ void RecalculateElectronDensity( PARAMETERS Params )
 
     FILE *pAMRFile, *pTRANSFile, *pTERMSFile;
     FILE *pOUTPUTFile;
-    char szAMRFilename[256], szBuffer[256];
+    char szAMRFilename[512], szBuffer[512];
     double *ps, *pds, *prho, *pne, *pnH, *pT, *pMc;
     double fEH;
     double *pTrt, *pnu0, *pTeZ_c, *pZ_c_LEFT, *pZ_c_RIGHT, *pMcZ_c_LEFT, *pMcZ_c_RIGHT;
@@ -1370,7 +1370,7 @@ void GetMcZ_c( double *Z_c, double *McZ_c, int iEntries, double *ps, double *pMc
 int AMR2PHY( PARAMETERS Params )
 {
     FILE *pAMRFile, *pPHYFile;
-    char szPHYFilename[256];
+    char szPHYFilename[512];
     double *pfs, *pfds, frho_e, frho_H, frhov, fE_e, fE_H;
     double *pfv, *pfCs, *pfne, *pfnH, *pfPe, *pfPH, *pfTe, *pfTH, *pfF_ce, *pfF_cH;
     double flast_s, flast_ne, flast_nH, flast_Te;
@@ -1505,7 +1505,7 @@ int AMR2PHY( PARAMETERS Params )
 
 void RecalculateChromosphericHeating( PARAMETERS Params, int number_of_lines )
 {
-    char szPHYFilename[256];
+    char szPHYFilename[512];
     double s, v, Cs, n_e, n_H, P_e, P_H, T_e, T_H, Fce, FcH;
     double frho_c = 0., fHI_c =0., previous_s = Params.Lfull/2., cell_width_cos_theta = 0., fDensityDifference = 0., fRadiation=0.;
     double fSum, fElement, fZ[31];

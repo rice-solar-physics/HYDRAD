@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/28/2018
+// * Date last modified: 04/05/2019
 // *
 // ****
 
@@ -621,6 +621,12 @@ while( pNextActiveCell )
 
     pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
 }
+#ifdef USE_JB
+// Prevent the critical temperature for the TRAC method decreasing by more than 5% of the previous value
+if( old_Tc && Tc < (old_Tc/1.05) )
+	Tc = old_Tc/1.05;
+old_Tc = Tc;
+#endif // USE_JB
 }
 #endif // OPTICALLY_THICK_RADIATION
 #endif // NLTE_CHROMOSPHERE
@@ -1227,15 +1233,18 @@ if( isnan(CellProperties.n[ELECTRON]) || isnan(CellProperties.T[ELECTRON]) )
     pActiveCell->UpdateCellProperties( &CellProperties );
 	pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
 #endif // OPENMP
-//printf( "FINISHED s=%g\n", CellProperties.s[1] );
 }
-
 #ifdef OPENMP
-	// pActiveCell = pLocalActiveCell;
 	#if defined (OPTICALLY_THICK_RADIATION) || defined (BEAM_HEATING)
 		pCentreOfCurrentRow = ppCellList[indexCentre];
 	#endif // OPTICALLY_THICK_RADIATION || BEAM_HEATING
 #endif // OPENMP
+#ifdef USE_JB
+// Prevent the critical temperature for the TRAC method decreasing by more than 5% of the previous value
+if( old_Tc && Tc < (old_Tc/1.05) )
+	Tc = old_Tc/1.05;
+old_Tc = Tc;
+#endif // USE_JB
 }
 
 #ifdef OPTICALLY_THICK_RADIATION
