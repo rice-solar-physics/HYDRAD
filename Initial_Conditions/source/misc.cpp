@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 06/08/2018
+// * Date last modified: 04/05/2019
 // *
 // ****
 
@@ -59,7 +59,7 @@ void GenerateSemiCircularLoop( PARAMETERS Params )
 double CalcSolarGravity( double s, double Lfull, double Inc );
 
 FILE *pFile;
-char szGravityFilename[256];
+char szGravityFilename[512];
 double s, ds;
 int i;
 
@@ -190,7 +190,7 @@ for( j=0; j<MAX_REFINEMENT_LEVEL; j++ )
 sAMR = ds / 2.0;
 
 #if defined (OPTICALLY_THICK_RADIATION) && defined (NLTE_CHROMOSPHERE)
-char szAMRFilename[256];
+char szAMRFilename[512];
 sprintf( szAMRFilename, "%s.orig", Params.szOutputFilename );
 pFile = fopen( szAMRFilename, "w" );
 #else // OPTICALLY_THICK_RADIATION && NLTE_CHROMOSPHERE
@@ -274,7 +274,7 @@ free( ppiID );
 void WritePHYFile( int iTotalSteps, double *s, double *T, double *nH, double *ne, PARAMETERS Params )
 {
 FILE *pFile;
-char szPHYFilename[256];
+char szPHYFilename[512];
 double v, rho, Pe, PH, P, Cs, Fce, FcH;
 int i;
 
@@ -317,7 +317,7 @@ fclose( pFile );
 void WriteSOLFile( double finalH0, PARAMETERS Params )
 {
 FILE *pFile;
-char szSOLFilename[256];
+char szSOLFilename[512];
 
 sprintf( szSOLFilename, "%s.sol", Params.szOutputFilename );
 pFile = fopen( szSOLFilename, "w" );
