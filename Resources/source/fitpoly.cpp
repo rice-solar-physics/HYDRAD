@@ -7,7 +7,7 @@
 // *
 // * Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 02/12/2017
+// * Date last modified: 04/11/2019
 // *
 // ****
 
@@ -17,7 +17,6 @@
 #include <math.h>
 
 #include "fitpoly.h"
-
 
 // ** Numerical Recipes standard error handler **
 void nrerror2(char error_text[])
@@ -31,9 +30,15 @@ exit(1);
 // ** Routine to perform a linear interpolation / extrapolation **
 void LinearFit( double xa[], double ya[], double x, double *y )
 {
-double fGrad;
+double dx, fGrad;
 
-fGrad = ( ya[2] - ya[1] ) / ( xa[2] - xa[1] );
+dx = xa[2] - xa[1];
+if( !dx ) {
+	*y = ya[2];
+	return;
+}
+
+fGrad = ( ya[2] - ya[1] ) / dx;
 
 *y = ( fGrad * ( x - xa[2] ) ) + ya[2];
 }
