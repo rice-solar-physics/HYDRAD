@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 04/05/2019
+// * Date last modified: 07/09/2019
 // *
 // ****
 
@@ -2099,9 +2099,15 @@ while( pNextActiveCell->pGetPointer( RIGHT )->pGetPointer( RIGHT ) )
 // *    PRESSURE GRADIENT                                                       																		*
 // *****************************************************************************
 
-    UpperValue = CellProperties.P[2][ELECTRON] + CellProperties.P[2][HYDROGEN];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+    LowerValue = ( CellProperties.P[0][ELECTRON] + CellProperties.P[0][HYDROGEN] ) * fCrossSection[0];
+    UpperValue = ( CellProperties.P[2][ELECTRON] + CellProperties.P[2][HYDROGEN] ) * fCrossSection[2];
+    CellProperties.rho_v_term[1] = - ( UpperValue - LowerValue ) / fCellVolume;
+#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
     LowerValue = CellProperties.P[0][ELECTRON] + CellProperties.P[0][HYDROGEN];
+    UpperValue = CellProperties.P[2][ELECTRON] + CellProperties.P[2][HYDROGEN];
     CellProperties.rho_v_term[1] = - ( UpperValue - LowerValue ) / CellProperties.cell_width;
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
 // *****************************************************************************
 // *    GRAVITY                                                                 																					*
@@ -2321,7 +2327,13 @@ CellProperties.TE_KE_term[5][ELECTRON] = - SMALLEST_DOUBLE;
     // Derived from qnEv = v dP/ds
     // The term added to the electron energy equation is (e)nEv = v dPe/ds
     // The term added to the hydrogen energy equation is (-e)nEv = -v dPe/ds
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+    LowerValue = CellProperties.P[0][ELECTRON] * fCrossSection[0];
+    UpperValue = CellProperties.P[2][ELECTRON] * fCrossSection[2];
+    CellProperties.TE_KE_term[6][ELECTRON] = CellProperties.v[1] * ( ( UpperValue - LowerValue ) / fCellVolume );
+#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
     CellProperties.TE_KE_term[6][ELECTRON] = CellProperties.v[1] * ( ( CellProperties.P[2][ELECTRON] - CellProperties.P[0][ELECTRON] ) / CellProperties.cell_width );
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
     CellProperties.TE_KE_term[6][HYDROGEN] = -CellProperties.TE_KE_term[6][ELECTRON];
 
     for( j=0; j<SPECIES; j++ )
