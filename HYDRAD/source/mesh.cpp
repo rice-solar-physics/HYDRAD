@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 02/19/2019
+// * Date last modified: 09/24/2019
 // *
 // ****
 
@@ -157,6 +157,7 @@ for( i = 0; i < Params.iNumberOfCells; i++ )
     // Keep track of the cell pointer so that the appropriate LEFT and RIGHT pointers can be set
     // next time around
     pPreviousCell = pActiveCell;
+	pEndOfCurrentRow = pActiveCell;
 }
 
 fclose( pFile );
@@ -344,17 +345,17 @@ do {
 		
 		pLeftCell = pActiveCell->pGetPointer( LEFT );
 		pFarRightCell = pRightCell->pGetPointer( RIGHT );
+#ifdef OPEN_FIELD
+		if( pLeftCell )
+#else // OPEN_FIELD		
 		if( pLeftCell && pFarRightCell )
-		{
+#endif // OPEN_FIELD
 		    NewCellProperties[0].rho_v[1] = ( CellProperties.rho_v[1] + RightCellProperties.rho_v[1] ) / 2.0;
-		}
 		else
-		{
 // ******************************************************************************
 // *    IMPLEMENT HYDROSTATIC BOUNDARY CONDITIONS                               *
 // ******************************************************************************
 		    NewCellProperties[0].rho_v[1] = 0.0;
-		}
 
 		for( j=0; j<SPECIES; j++ )
                     NewCellProperties[0].TE_KE[1][j] = ( CellProperties.TE_KE[1][j] + RightCellProperties.TE_KE[1][j] ) / 2.0;
@@ -398,6 +399,7 @@ do {
 		else
 		{
                     pNewCell[0]->SetPointer( RIGHT, NULL );
+					pEndOfCurrentRow = pNewCell[0];
                     pNextActiveCell = pNewCell[0];
 		}
 		
@@ -817,14 +819,18 @@ do {
                         // Implement hydrostatic boundary conditions in the right-most of the two new cells
 
                         x[1] = CellProperties.s[1];
-			x[2] = RightCellProperties.s[1];
+						x[2] = RightCellProperties.s[1];
 
                         y[1] = CellProperties.rho[1];
                         y[2] = RightCellProperties.rho[1];
                         LinearFit( x, y, NewCellProperties[1].s[1], &(NewCellProperties[1].rho[1]) );
-
+#ifdef OPEN_FIELD
+                        y[1] = CellProperties.rho_v[1];
+                        y[2] = RightCellProperties.rho_v[1];
+                        LinearFit( x, y, NewCellProperties[1].s[1], &(NewCellProperties[1].rho_v[1]) );
+#else // OPEN_FIELD
                         NewCellProperties[1].rho_v[1] = 0.0;
-
+#endif // OPEN_FIELD
                         for( j=0; j<SPECIES; j++ )
                         {
                             y[1] = CellProperties.TE_KE[1][j];
@@ -843,7 +849,7 @@ do {
 
 #ifdef OPTICALLY_THICK_RADIATION
 #ifdef NLTE_CHROMOSPHERE
-			y[1] = CellProperties.rho_e;
+						y[1] = CellProperties.rho_e;
                         y[2] = RightCellProperties.rho_e;
                         LinearFit( x, y, NewCellProperties[1].s[1], &(NewCellProperties[1].rho_e) );
 #endif // NLTE_CHROMOSPHERE
@@ -1330,14 +1336,18 @@ do {
                         // Implement hydrostatic boundary conditions in the right-most of the two new cells
 
                         x[1] = CellProperties.s[1];
-			x[2] = RightCellProperties.s[1];
+						x[2] = RightCellProperties.s[1];
 
                         y[1] = CellProperties.rho[1];
                         y[2] = RightCellProperties.rho[1];
                         LinearFit( x, y, NewCellProperties[1].s[1], &(NewCellProperties[1].rho[1]) );
-
+#ifdef OPEN_FIELD
+                        y[1] = CellProperties.rho_v[1];
+                        y[2] = RightCellProperties.rho_v[1];
+                        LinearFit( x, y, NewCellProperties[1].s[1], &(NewCellProperties[1].rho_v[1]) );
+#else // OPEN_FIELD
                         NewCellProperties[1].rho_v[1] = 0.0;
-
+#endif // OPEN_FIELD
                         for( j=0; j<SPECIES; j++ )
                         {
                             y[1] = CellProperties.TE_KE[1][j];
@@ -1356,7 +1366,7 @@ do {
 
 #ifdef OPTICALLY_THICK_RADIATION
 #ifdef NLTE_CHROMOSPHERE
-			y[1] = CellProperties.rho_e;
+						y[1] = CellProperties.rho_e;
                         y[2] = RightCellProperties.rho_e;
                         LinearFit( x, y, NewCellProperties[1].s[1], &(NewCellProperties[1].rho_e) );
 #endif // NLTE_CHROMOSPHERE
@@ -1381,17 +1391,22 @@ do {
                     
                     // NEW CELLS
                     
-		    x[1] = LeftCellProperties.s[1];
-		    x[2] = CellProperties.s[1];
+				    x[1] = LeftCellProperties.s[1];
+				    x[2] = CellProperties.s[1];
 
                     y[1] = LeftCellProperties.rho[1];
                     y[2] = CellProperties.rho[1];
                     LinearFit( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho[1]) );
                     LinearFit( x, y, NewCellProperties[1].s[1], &(NewCellProperties[1].rho[1]) );
-
+#ifdef OPEN_FIELD
+                    y[1] = LeftCellProperties.rho_v[1];
+                    y[2] = CellProperties.rho_v[1];
+                    LinearFit( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho_v[1]) );
+                    LinearFit( x, y, NewCellProperties[1].s[1], &(NewCellProperties[1].rho_v[1]) );
+#else // OPEN_FIELD
                     NewCellProperties[0].rho_v[1] = 0.0;
                     NewCellProperties[1].rho_v[1] = 0.0;
-
+#endif // OPEN_FIELD
                     for( j=0; j<SPECIES; j++ )
                     {
                         y[1] = LeftCellProperties.TE_KE[1][j];
@@ -1473,6 +1488,7 @@ do {
 		else
 		{
                     pNewCell[1]->SetPointer( RIGHT, NULL );
+					pEndOfCurrentRow = pNewCell[1];
 		}
 
 #if defined(OPTICALLY_THICK_RADIATION) || defined(BEAM_HEATING)
@@ -1504,6 +1520,115 @@ do {
 } while( iRestricted );
 }
 #endif // ADAPT
+
+void CAdaptiveMesh::EnforceBoundaryConditions( void )
+{
+PCELL pNextActiveCell, pGhostCell[2];
+CELLPROPERTIES CellProperties[2], GhostCellProperties[2];
+
+// Left-hand boundary
+pNextActiveCell = pStartOfCurrentRow;
+pActiveCell = pNextActiveCell;
+pActiveCell->GetCellProperties( &(CellProperties[0]) );
+CellProperties[0].rho_v[1] = 0.0;
+pActiveCell->UpdateCellProperties( &(CellProperties[0]) );
+
+pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
+pActiveCell = pNextActiveCell;
+pActiveCell->GetCellProperties( &(CellProperties[0]) );
+CellProperties[0].rho_v[1] = 0.0;
+pActiveCell->UpdateCellProperties( &(CellProperties[0]) );
+
+// Right-hand boundary
+pNextActiveCell = pEndOfCurrentRow->pGetPointer( LEFT );
+pGhostCell[0] = pNextActiveCell;
+pGhostCell[0]->GetCellProperties( &(GhostCellProperties[0]) );
+pNextActiveCell = pEndOfCurrentRow;
+pGhostCell[1] = pNextActiveCell;
+pGhostCell[1]->GetCellProperties( &(GhostCellProperties[1]) );
+#ifdef OPEN_FIELD
+	int j;
+
+	pNextActiveCell = pEndOfCurrentRow->pGetPointer( LEFT )->pGetPointer( LEFT );
+	pActiveCell = pNextActiveCell;
+	pActiveCell->GetCellProperties( &(CellProperties[1]) );
+
+#ifdef FORCE_SYMMETRY
+	GhostCellProperties[0].rho[1] = CellProperties[1].rho[1];
+	GhostCellProperties[1].rho[1] = GhostCellProperties[0].rho[1];
+
+	GhostCellProperties[0].rho_v[1] = 0.0;
+	GhostCellProperties[1].rho_v[1] = 0.0;
+	
+	for( j=0; j<SPECIES; j++ )
+	{
+		GhostCellProperties[0].TE_KE[1][j] = CellProperties[1].TE_KE[1][j];
+		GhostCellProperties[1].TE_KE[1][j] = GhostCellProperties[0].TE_KE[1][j];
+	}
+
+#ifdef NON_EQUILIBRIUM_RADIATION
+	GhostCellProperties[0].pIonFrac->CopyAllIonFrac( CellProperties[1].pIonFrac );
+	GhostCellProperties[1].pIonFrac->CopyAllIonFrac( GhostCellProperties[0].pIonFrac );
+#endif // NON_EQUILIBRIUM_RADIATION
+
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+	GhostCellProperties[0].rho_e = CellProperties[1].rho_e;
+	GhostCellProperties[1].rho_e = GhostCellProperties[0].rho_e;
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
+#else // FORCE_SYMMETRY
+	double x[3], y[3];
+
+	pNextActiveCell = pActiveCell->pGetPointer( LEFT );
+	pActiveCell = pNextActiveCell;
+	pActiveCell->GetCellProperties( &(CellProperties[0]) );
+
+	x[1] = CellProperties[0].s[1];
+	x[2] = CellProperties[1].s[1];
+
+	y[1] = CellProperties[0].rho[1];
+	y[2] = CellProperties[1].rho[1];
+	LinearFit( x, y, GhostCellProperties[0].s[1], &(GhostCellProperties[0].rho[1]) );
+	// Set a zero density gradient across the ghost cells
+	GhostCellProperties[1].rho[1] = GhostCellProperties[0].rho[1];
+
+	// Set the mass flux constant across the ghost cells
+	GhostCellProperties[0].rho_v[1] = CellProperties[1].rho_v[1];
+	GhostCellProperties[1].rho_v[1] = GhostCellProperties[0].rho_v[1];
+
+	// Set the total energy flux constant across the ghost cells
+	for( j=0; j<SPECIES; j++ )
+	{
+		GhostCellProperties[0].TE_KE[1][j] = CellProperties[1].TE_KE[1][j] * ( CellProperties[1].rho_v[1] / GhostCellProperties[0].rho_v[1] ) * ( GhostCellProperties[0].rho[1] / CellProperties[1].rho[1] );
+		GhostCellProperties[1].TE_KE[1][j] = GhostCellProperties[0].TE_KE[1][j] * ( GhostCellProperties[0].rho_v[1] / GhostCellProperties[1].rho_v[1] ) * ( GhostCellProperties[1].rho[1] / GhostCellProperties[0].rho[1] );
+	}
+
+#ifdef NON_EQUILIBRIUM_RADIATION
+	double **ppIonFrac[3];
+   	ppIonFrac[1] = CellProperties[0].pIonFrac->ppGetIonFrac();
+   	ppIonFrac[2] = CellProperties[1].pIonFrac->ppGetIonFrac();
+   	GhostCellProperties[0].pIonFrac->InterpolateAllIonFrac( x, ppIonFrac, 2, GhostCellProperties[0].s[1] );
+	GhostCellProperties[1].pIonFrac->CopyAllIonFrac( GhostCellProperties[0].pIonFrac );
+#endif // NON_EQUILIBRIUM_RADIATION
+
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+	y[1] = CellProperties[0].rho_e;
+	y[2] = CellProperties[1].rho_e;
+	LinearFit( x, y, GhostCellProperties[0].s[1], &(GhostCellProperties[0].rho_e) );
+	// Set a zero density gradient across the ghost cells
+	GhostCellProperties[1].rho_e = GhostCellProperties[0].rho_e;
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
+#endif // FORCE_SYMMETRY
+#else // OPEN_FIELD
+	GhostCellProperties[0].rho_v[1] = 0.0;
+	GhostCellProperties[1].rho_v[1] = 0.0;
+#endif // OPEN_FIELD
+	pGhostCell[0]->UpdateCellProperties( &(GhostCellProperties[0]) );
+	pGhostCell[1]->UpdateCellProperties( &(GhostCellProperties[1]) );
+}
 
 void CAdaptiveMesh::Solve( void )
 {
@@ -1628,7 +1753,12 @@ while( pNextActiveCell )
     ppCellList[iCell] = pNewCell;
     iCell++;
 #endif // OPENMP || USE_KINETIC_MODEL
+
+	pEndOfCurrentRow = pNewCell;
 }
+
+// Enforce the boundary conditions
+EnforceBoundaryConditions();
 
 // Calculate the physical quantities in the new cells
 CalculatePhysicalQuantities();
@@ -1649,6 +1779,9 @@ while( pNextActiveCell )
 
     pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
 }
+
+// Enforce the boundary conditions
+EnforceBoundaryConditions();
 
 #ifdef ADAPT
 // Adapt the mesh

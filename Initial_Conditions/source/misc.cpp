@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 04/05/2019
+// * Date last modified: 09/24/2019
 // *
 // ****
 
@@ -54,9 +54,13 @@ fclose( pFile );
 
 #ifdef USE_POLY_FIT_TO_GRAVITY
 #else // USE_POLY_FIT_TO_GRAVITY
-void GenerateSemiCircularLoop( PARAMETERS Params )
+void GenerateDefaultLoop( PARAMETERS Params )
 {
-double CalcSolarGravity( double s, double Lfull, double Inc );
+#ifdef OPEN_FIELD
+	double CalcSolarGravity( double s, double Inc );
+#else // OPEN_FIELD
+	double CalcSolarGravity( double s, double Lfull, double Inc );
+#endif // OPEN_FIELD
 
 FILE *pFile;
 char szGravityFilename[512];
@@ -81,7 +85,11 @@ ds = Params.Lfull / ( ndat - 1 );
 for( i=1; i<=ndat; i++ )
 {
     x[i] = s / Params.Lfull;
+#ifdef OPEN_FIELD
+    y[i] = CalcSolarGravity( s, Params.Inc );
+#else // OPEN_FIELD
     y[i] = CalcSolarGravity( s, Params.Lfull, Params.Inc );
+#endif // OPEN_FIELD
     sig[i] = 1.0;
     s += ds;
 }
@@ -110,19 +118,32 @@ free_vector( y, 1, ndat );
 free_vector( x, 1, ndat );
 }
 
+#ifdef OPEN_FIELD
+double CalcSolarGravity( double s, double Inc )
+#else // OPEN_FIELD
 double CalcSolarGravity( double s, double Lfull, double Inc )
+#endif // OPEN_FIELD
 {
-double fTheta, fHeight, fPhi1, fPhi2, r, result;
+double fPhi1, r, result;
 
-fTheta = ( _PI_ * s ) / Lfull;
-fHeight = ( Lfull / _PI_ ) * sin( fTheta );
-
-// Now allow for the possibility of loop inclination away from the perpendicular
+// Convert the inclination angle to radians
 fPhi1 = ( _PI_ / 180.0 ) * Inc;
-fPhi2 = atan( ( fHeight * tan( fPhi1 ) ) / ( SOLAR_RADIUS + fHeight ) );
-r = ( SOLAR_RADIUS + fHeight ) / cos( fPhi2 );
 
-result = - SOLAR_SURFACE_GRAVITY * ( SOLAR_RADIUS_SQUARED / ( r * r ) ) * cos( fTheta ) * cos( fPhi1 );
+#ifdef OPEN_FIELD
+	r = ( SOLAR_RADIUS + s );
+	result = - SOLAR_SURFACE_GRAVITY * ( SOLAR_RADIUS_SQUARED / ( r * r ) ) * cos( fPhi1 );
+#else // OPEN_FIELD
+	double fTheta, fHeight, fPhi2;
+
+	fTheta = ( _PI_ * s ) / Lfull;
+	fHeight = ( Lfull / _PI_ ) * sin( fTheta );
+
+	// Now allow for the possibility of loop inclination away from the perpendicular
+	fPhi2 = atan( ( fHeight * tan( fPhi1 ) ) / ( SOLAR_RADIUS + fHeight ) );
+	r = ( SOLAR_RADIUS + fHeight ) / cos( fPhi2 );
+
+	result = - SOLAR_SURFACE_GRAVITY * ( SOLAR_RADIUS_SQUARED / ( r * r ) ) * cos( fTheta ) * cos( fPhi1 );
+#endif // OPEN_FIELD
 
 return result;
 }
