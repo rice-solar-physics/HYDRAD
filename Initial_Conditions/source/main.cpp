@@ -5,7 +5,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 07/16/2019
+// * Date last modified: 09/24/2019
 // *
 // ****
 
@@ -87,7 +87,7 @@ pRadiation = new CRadiation( (char *)"Radiation_Model/config/elements_eq.cfg" );
 #ifdef USE_POLY_FIT_TO_GRAVITY
 pFile = fopen( POLY_FIT_TO_GRAVITY_FILE, "r" );
 #else // USE_POLY_FIT_TO_GRAVITY
-GenerateSemiCircularLoop( Params );
+GenerateDefaultLoop( Params );
 sprintf( szGravityFilename, "%s.gravity", Params.szOutputFilename );
 pFile = fopen( szGravityFilename, "r" );
 #endif // USE_POLY_FIT_TO_GRAVITY
@@ -188,7 +188,11 @@ int iStep;
 max_ds = Params.Lfull / MIN_CELLS;
 
 sL = Params.s0;
-sR = Params.Lfull - sL;
+#ifdef OPEN_FIELD
+	sR = Params.Lfull + max_ds;
+#else // OPEN_FIELD
+	sR = Params.Lfull - sL;
+#endif // OPEN_FIELD
 
 // First find the lower- and upper-limits of the heating range
 for( Log_10H0=Params.Log_10H0[0]; Log_10H0<=Params.Log_10H0[1]; Log_10H0+=Params.dLog_10H0 )
@@ -295,21 +299,25 @@ for( Log_10H0=Params.Log_10H0[0]; Log_10H0<=Params.Log_10H0[1]; Log_10H0+=Params
             FracDiff_nH = fabs( 1.0 - ( nH[iStep+1] / nH[iStep] ) );
             if( FracDiff_T > EPSILON || FracDiff_nH > EPSILON )
             {
-		ds /= MAX_VARIATION;
-		if( ds < MIN_DS )
-		{
-			ds = MIN_DS;
-		}
+				ds /= MAX_VARIATION;
+				if( ds < MIN_DS )
+				{
+					ds = MIN_DS;
+				}
             }
 
         } while ( ( FracDiff_T > EPSILON || FracDiff_nH > EPSILON ) && ds > MIN_DS );
 // **** NEW ****
+        Fc += dFcbyds * ds;
+
         s[iStep+1] = s[iStep] + ds;
         if( s[iStep+1] >= sR ) break;
 
+#ifdef OPEN_FIELD
+#else // OPEN_FIELD
         if( T[iStep+1] < Params.T0 ) break;
+#endif // OPEN_FIELD
 
-        Fc += dFcbyds * ds;
         P[iStep+1] = P[iStep] + ( dPbyds * ds );
         nH[iStep+1] = P[iStep+1] / ( 2.0 * BOLTZMANN_CONSTANT * T[iStep+1] );
 #ifdef OPTICALLY_THICK_RADIATION
@@ -325,7 +333,11 @@ for( Log_10H0=Params.Log_10H0[0]; Log_10H0<=Params.Log_10H0[1]; Log_10H0+=Params
         iStep++;
     }
 
+#ifdef OPEN_FIELD
+	if( Fc > 0.0 ) break;
+#else // OPEN_FIELD
     if( s[iStep+1] < sR ) break;
+#endif // OPEN_FIELD
 }
 
 return Log_10H0;
@@ -352,8 +364,11 @@ double minFc = LARGEST_DOUBLE;
 max_ds = Params.Lfull / MIN_CELLS;
 
 sL = Params.s0;
-sR = Params.Lfull - sL;
-
+#ifdef OPEN_FIELD
+	sR = Params.Lfull + max_ds;
+#else // OPEN_FIELD
+	sR = Params.Lfull - sL;
+#endif // OPEN_FIELD
 H0lower = pow( 10.0, (Log_10H0-Params.dLog_10H0) );
 H0upper = pow( 10.0, (Log_10H0) );
 dH0 = ( H0upper - H0lower ) / Params.Hintervals;
@@ -465,21 +480,25 @@ for( H0=H0lower; H0<=H0upper; H0+=dH0 )
             FracDiff_nH = fabs( 1.0 - ( nH[iStep+1] / nH[iStep] ) );
             if( FracDiff_T > EPSILON || FracDiff_nH > EPSILON )
             {
-		ds /= MAX_VARIATION;
-		if( ds < MIN_DS )
-		{
-			ds = MIN_DS;
-		}
+				ds /= MAX_VARIATION;
+				if( ds < MIN_DS )
+				{
+					ds = MIN_DS;
+				}
             }
 
         } while ( ( FracDiff_T > EPSILON || FracDiff_nH > EPSILON ) && ds > MIN_DS );
 // **** NEW ****
+        Fc += dFcbyds * ds;
+
         s[iStep+1] = s[iStep] + ds;
         if( s[iStep+1] >= sR ) break;
 
+#ifdef OPEN_FIELD
+#else // OPEN_FIELD
         if( T[iStep+1] < Params.T0 ) break;
-
-        Fc += dFcbyds * ds;
+#endif // OPEN_FIELD
+		
         P[iStep+1] = P[iStep] + ( dPbyds * ds );
         nH[iStep+1] = P[iStep+1] / ( 2.0 * BOLTZMANN_CONSTANT * T[iStep+1] );
 #ifdef OPTICALLY_THICK_RADIATION
@@ -495,13 +514,20 @@ for( H0=H0lower; H0<=H0upper; H0+=dH0 )
         iStep++;
     }
 
+#ifdef OPEN_FIELD
+	if( Fc > 0.0 ) {
+		finalH0 = H0;
+		break;
+	 }
+#else // OPEN_FIELD
     if( s[iStep+1] < sR ) break;
 
     if( ( s[iStep+1] >= sR ) && ( Fc > 0.0 ) && ( fabs(Fc) < fabs(minFc) ) )
     {
         minFc = Fc;
-	finalH0 = H0;
+		finalH0 = H0;
     }
+#endif // OPEN_FIELD
 }
 
 return finalH0;
@@ -525,7 +551,11 @@ int iStep;
 max_ds = Params.Lfull / MIN_CELLS;
 
 sL = Params.s0;
-sR = Params.Lfull - sL;
+#ifdef OPEN_FIELD
+	sR = Params.Lfull + max_ds;
+#else // OPEN_FIELD
+	sR = Params.Lfull - sL;
+#endif // OPEN_FIELD
 
 iStep = 0;
 
@@ -638,11 +668,11 @@ while( s[iStep] <= sR ) {
             FracDiff_nH = fabs( 1.0 - ( nH[iStep+1] / nH[iStep] ) );
             if( FracDiff_T > EPSILON || FracDiff_nH > EPSILON )
             {
-		ds /= MAX_VARIATION;
-		if( ds < MIN_DS )
-		{
-			ds = MIN_DS;
-		}
+				ds /= MAX_VARIATION;
+				if( ds < MIN_DS )
+				{
+					ds = MIN_DS;
+				}
             }
 
         } while ( ( FracDiff_T > EPSILON || FracDiff_nH > EPSILON ) && ds > MIN_DS );
@@ -802,6 +832,9 @@ for( i=iStep; i<iStep+iCHRSteps+iTRplusCoronaplusTRSteps-1; i++ )
     ne[i-iStep] = ne[i];
 }
 
+#ifdef OPEN_FIELD
+	iTotalSteps = iTRplusCoronaplusTRSteps + iCHRSteps - 1;
+#else // OPEN_FIELD
 // Right-hand chromosphere
 
 iStep = iTRplusCoronaplusTRSteps + iCHRSteps - 1;
@@ -875,6 +908,7 @@ for( ;; ) {
 }
 
 iTotalSteps = iStep + 1;
+#endif // OPEN_FIELD
 
 // Delete the optically-thick ion object
 delete pHI;
@@ -1023,6 +1057,9 @@ for( i=iStep; i<iStep+iCHRSteps+iTRplusCoronaplusTRSteps-1; i++ )
     ne[i-iStep] = ne[i];
 }
 
+#ifdef OPEN_FIELD
+	iTotalSteps = iCHRSteps + iTRplusCoronaplusTRSteps - 1;
+#else // OPEN_FIELD
 // Right-hand chromosphere
 
 iStep = iTRplusCoronaplusTRSteps + iCHRSteps - 1;
@@ -1092,6 +1129,7 @@ for( ;; ) {
 }
 
 iTotalSteps = iStep + 1;
+#endif // OPEN_FIELD
 
 return iTotalSteps;
 }
@@ -1137,7 +1175,7 @@ void RecalculateElectronDensity( PARAMETERS Params )
 	ReadDouble( pAMRFile, &fBuffer );		// Timestamp
 	fscanf( pAMRFile, "%i", &iBuffer );		// File number
 	ReadDouble( pAMRFile, &fL );			// Loop length
-	fscanf( pAMRFile, "%i", &iEntries );		// Number of grid cells
+	fscanf( pAMRFile, "%i", &iEntries );	// Number of grid cells
 
 	// Allocate memory to hold the position, hydrogen number density, and electron temperature profiles
 	ps = (double*)malloc( sizeof(double) * iEntries );
@@ -1156,7 +1194,7 @@ void RecalculateElectronDensity( PARAMETERS Params )
 	    ReadDouble( pAMRFile, &(prho[i]) );		// Mass density
 	    ReadDouble( pAMRFile, &fBuffer );		// Momentum density
 	    ReadDouble( pAMRFile, &fBuffer );		// Electron energy density
-	    ReadDouble( pAMRFile, &fEH );		// Hydrogen energy density
+	    ReadDouble( pAMRFile, &fEH );			// Hydrogen energy density
 
 	    fscanf( pAMRFile, "%i", &iBuffer );		// Refinement level
 	    for( j=0; j<MAX_REFINEMENT_LEVEL; j++ )
@@ -1290,8 +1328,8 @@ void RecalculateElectronDensity( PARAMETERS Params )
 	if( !(j%1000) )
 		printf( "%.3g%%\n", 100.0*((double)j/(double)iEntries) );
 
-        // Calculate the contribution to the electron density from elements other than hydrogen:
-        fSum = 0.0;
+    // Calculate the contribution to the electron density from elements other than hydrogen:
+    fSum = 0.0;
         
 	// Elements treated in equilibrium (except hydrogen)
 	piA = pRadiationEQ->pGetAtomicNumbers( &iNumElements );
@@ -1304,11 +1342,11 @@ void RecalculateElectronDensity( PARAMETERS Params )
 			
 	        pRadiationEQ->GetEquilIonFrac( piA[i], fZ, log10(pT[j]) );
 	        for( h=1; h<piA[i]+1; h++ )
-		    fElement += ((double)h) * fZ[h];
+		    	fElement += ((double)h) * fZ[h];
 
-                fElement *= pRadiationEQ->GetAbundance( piA[i] );
+            fElement *= pRadiationEQ->GetAbundance( piA[i] );
 
-                fSum += fElement;
+            fSum += fElement;
 	    }
         }
 
@@ -1323,22 +1361,22 @@ void RecalculateElectronDensity( PARAMETERS Params )
 			
 	        pRadiationNEQ->GetEquilIonFrac( piA[i], fZ, log10(pT[j]) );
 	        for( h=1; h<piA[i]+1; h++ )
-		    fElement += ((double)h) * fZ[h];
+		    	fElement += ((double)h) * fZ[h];
 
-                fElement *= pRadiationNEQ->GetAbundance( piA[i] );
+            fElement *= pRadiationNEQ->GetAbundance( piA[i] );
 
-                fSum += fElement;
+            fSum += fElement;
 	    }
         }
 
-	// Convert the radiation temperatures for each transition to log values
-	for( i=0; i<iNBBT+iNBFT; i++ )
-                fradT[i] = log10( ppTrad[i][j] );
+		// Convert the radiation temperatures for each transition to log values
+		for( i=0; i<iNBBT+iNBFT; i++ )
+        	fradT[i] = log10( ppTrad[i][j] );
 
         // Iterate until the solution converges
         for( iIteration=0; iIteration<=MAX_ITERATIONS; iIteration++ )
         {
-	    fPreviousIteration = pne[j];
+		    fPreviousIteration = pne[j];
 
             pRadiativeRates->GetBoundBoundRates( fBB_lu, fBB_ul, &(fradT[0]) );
             pRadiativeRates->GetBoundFreeRates( fBF, &(fradT[6]) );
@@ -1350,7 +1388,7 @@ void RecalculateElectronDensity( PARAMETERS Params )
             // Recalculate the electron density. To improve stability, iterate gradually to the converged solution rather than taking large steps
             pne[j] = pne[j] - CONVERGENCE_EPSILON * ( pne[j] - ( pnH[j] * ( fY[5] + fSum ) ) );
 	    
-	    // Check for convergence and exit the loop if the condition is met
+		    // Check for convergence and exit the loop if the condition is met
             if( iIteration && (fabs(fPreviousIteration-pne[j])/pne[j]) < CONVERGENCE_CONDITION ) break;
         }
     }
@@ -1365,7 +1403,7 @@ void RecalculateElectronDensity( PARAMETERS Params )
 	ReadDouble( pAMRFile, &fBuffer );	fprintf( pOUTPUTFile, "%g\r\n", fBuffer );		// Timestamp
 	fscanf( pAMRFile, "%i", &iBuffer );	fprintf( pOUTPUTFile, "%i\r\n", iBuffer );		// File number
 	ReadDouble( pAMRFile, &fL );		fprintf( pOUTPUTFile, "%g\r\n", fL );			// Loop length
-	fscanf( pAMRFile, "%i", &iEntries );	fprintf( pOUTPUTFile, "%i\r\n", iEntries );		// Number of grid cells
+	fscanf( pAMRFile, "%i", &iEntries );	fprintf( pOUTPUTFile, "%i\r\n", iEntries );	// Number of grid cells
 
 	for( i=0; i<iEntries; i++ )
 	{
@@ -1373,18 +1411,18 @@ void RecalculateElectronDensity( PARAMETERS Params )
 	    ReadDouble( pAMRFile, &(ps[i]) );	fprintf( pOUTPUTFile, "%.16e\t", ps[i] );					// Position
 	    ReadDouble( pAMRFile, &(pds[i]) );	fprintf( pOUTPUTFile, "%.16e\t", pds[i] );					// Cell width
 
-	    ReadDouble( pAMRFile, &(prho[i]) );	fprintf( pOUTPUTFile, "%.16e\t", ELECTRON_MASS * pne[i] );			// Electron mass density
-						fprintf( pOUTPUTFile, "%.16e\t", prho[i] );					// Hydrogen mass density
+	    ReadDouble( pAMRFile, &(prho[i]) );	fprintf( pOUTPUTFile, "%.16e\t", ELECTRON_MASS * pne[i] );	// Electron mass density
+						fprintf( pOUTPUTFile, "%.16e\t", prho[i] );										// Hydrogen mass density
 
 	    ReadDouble( pAMRFile, &fBuffer );	fprintf( pOUTPUTFile, "%.16e\t", fBuffer );					// Momentum density
 
 	    ReadDouble( pAMRFile, &fBuffer );	fprintf( pOUTPUTFile, "%.16e\t", 1.5 * BOLTZMANN_CONSTANT * pne[i] * pT[i] );	// Electron energy density
 	    ReadDouble( pAMRFile, &fBuffer );	fprintf( pOUTPUTFile, "%.16e\t", fBuffer );					// Hydrogen energy density
 
-	    fscanf( pAMRFile, "%i", &iBuffer );	fprintf( pOUTPUTFile, "%i", iBuffer );			// Refinement level
+	    fscanf( pAMRFile, "%i", &iBuffer );	fprintf( pOUTPUTFile, "%i", iBuffer );						// Refinement level
 	    for( j=0; j<MAX_REFINEMENT_LEVEL; j++ )
 	    {
-		ReadDouble( pAMRFile, &fBuffer ); fprintf( pOUTPUTFile, "\t%i", (int)fBuffer );		// Unique cell identifier
+		ReadDouble( pAMRFile, &fBuffer ); fprintf( pOUTPUTFile, "\t%i", (int)fBuffer );					// Unique cell identifier
 	    }
 	    fprintf( pOUTPUTFile, "\r\n" );
 	}
@@ -1432,17 +1470,14 @@ void CalculateColumnMass( double fL, int iEntries, double *ps, double *prho, dou
     // Note that this is the column mass density, but a ratio of column masses appears in the calculation and so the area factor cancels
     iApex = i;
     pMc[iApex] = prho[iApex] * (ps[iApex] - ps[iApex-1]);
-
     
     // Left-hand leg
     for( i=iApex-1; i>=0; i-- )
         pMc[i] = pMc[i+1] + ( prho[i] * (ps[i+1] - ps[i]) );
-
     
     // Right-hand leg
     for( i=iApex+1; i<iEntries; i++ )
         pMc[i] = pMc[i-1] + ( prho[i] * (ps[i] - ps[i-1]) );
-
 }
 
 void GetZ_c( double TeZ_c, double *Z_c, int iEntries, double *ps, double *pTe )
@@ -1522,7 +1557,7 @@ int AMR2PHY( PARAMETERS Params )
 	ReadDouble( pAMRFile, &fBuffer );		// Timestamp
 	fscanf( pAMRFile, "%i", &iBuffer );		// File number
 	ReadDouble( pAMRFile, &fBuffer );		// Loop length
-	fscanf( pAMRFile, "%i", &iEntries );		// Number of grid cells
+	fscanf( pAMRFile, "%i", &iEntries );	// Number of grid cells
 
 	// Allocate memory to hold the quantities to store in the .phy file
 	pfs = (double*)malloc( sizeof(double) * iEntries );
@@ -1541,15 +1576,15 @@ int AMR2PHY( PARAMETERS Params )
 	for( i=0; i<iEntries; i++ )
 	{
 	    // .amr file
-	    ReadDouble( pAMRFile, &(pfs[i]) );		// Position
-	    ReadDouble( pAMRFile, &(pfds[i]) );		// Cell width
-	    ReadDouble( pAMRFile, &frho_e );		// Electron mass density
-	    ReadDouble( pAMRFile, &frho_H );		// Hydrogen mass density
+	    ReadDouble( pAMRFile, &(pfs[i]) );	// Position
+	    ReadDouble( pAMRFile, &(pfds[i]) );	// Cell width
+	    ReadDouble( pAMRFile, &frho_e );	// Electron mass density
+	    ReadDouble( pAMRFile, &frho_H );	// Hydrogen mass density
 	    ReadDouble( pAMRFile, &frhov );		// Momentum density
 	    ReadDouble( pAMRFile, &fE_e );		// Electron energy density
 	    ReadDouble( pAMRFile, &fE_H );		// Hydrogen energy density
 
-	    fscanf( pAMRFile, "%i", &iBuffer );		// Refinement level
+	    fscanf( pAMRFile, "%i", &iBuffer );	// Refinement level
 	    for( j=0; j<MAX_REFINEMENT_LEVEL; j++ )
 		ReadDouble( pAMRFile, &fBuffer );	// Unique cell identifier
 
@@ -1574,11 +1609,11 @@ int AMR2PHY( PARAMETERS Params )
     
 	i = 0; fprintf( pPHYFile, "%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\n", pfs[i], pfv[i], pfCs[i], pfne[i], pfnH[i], pfPe[i], pfPH[i], pfTe[i], pfTH[i], pfF_ce[i], pfF_cH[i] );
 	i = 1; fprintf( pPHYFile, "%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\n", pfs[i], pfv[i], pfCs[i], pfne[i], pfnH[i], pfPe[i], pfPH[i], pfTe[i], pfTH[i], pfF_ce[i], pfF_cH[i] );
-		flast_s = pfs[i]; flast_ne = pfne[i]; flast_nH = pfnH[i]; flast_Te = pfTe[i];
+	flast_s = pfs[i]; flast_ne = pfne[i]; flast_nH = pfnH[i]; flast_Te = pfTe[i];
 
 	iTotalSteps = 2;
 
-        for( i=2; i<iEntries-2; i++ )
+    for( i=2; i<iEntries-2; i++ )
 	{
 
 	    fDiff_ne[0] = fabs( pfne[i] - flast_ne ) / flast_ne;
@@ -1609,7 +1644,7 @@ int AMR2PHY( PARAMETERS Params )
 	        fprintf( pPHYFile, "%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\t%.8e\n", pfs[i], pfv[i], pfCs[i], pfne[i], pfnH[i], pfPe[i], pfPH[i], pfTe[i], pfTH[i], pfF_ce[i], pfF_cH[i] );
 			flast_s = pfs[i]; flast_ne = pfne[i]; flast_nH = pfnH[i]; flast_Te = pfTe[i];
 
-		iTotalSteps++;
+			iTotalSteps++;
 	    }
 	}
 	
