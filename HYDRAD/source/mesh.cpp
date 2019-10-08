@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 09/24/2019
+// * Date last modified: 10/08/2019
 // *
 // ****
 
@@ -147,10 +147,14 @@ for( i = 0; i < Params.iNumberOfCells; i++ )
 		pPreviousCell->SetPointer( RIGHT, pActiveCell );
 		pActiveCell->SetPointer( LEFT, pPreviousCell );
 		
-#if defined(OPTICALLY_THICK_RADIATION) || defined(BEAM_HEATING)	
+#if defined(OPTICALLY_THICK_RADIATION) || defined(BEAM_HEATING)
+#ifdef OPEN_FIELD
+		pCentreOfCurrentRow = pActiveCell;
+#else // OPEN_FIELD
 		// Identify the centre of the current row of grid cells
 		if( CellProperties.s[1] <= Params.L / 2.0 )
 			pCentreOfCurrentRow = pActiveCell;
+#endif // OPEN_FIELD
 #endif // OPTICALLY_THICK_RADIATION || BEAM_HEATING
     }
 	
@@ -1733,18 +1737,24 @@ while( pNextActiveCell )
     {
         pNewCell->SetPointer( LEFT, NULL );
 	
-	// Also, set the pointer to the left-most cell at the current time to this pointer and change
-	// the pointer to the start of the previous row accordingly
-	pStartOfPreviousRow = pStartOfCurrentRow;
-	pStartOfCurrentRow = pNewCell;
+		// Also, set the pointer to the left-most cell at the current time to this pointer and change
+		// the pointer to the start of the previous row accordingly
+		pStartOfPreviousRow = pStartOfCurrentRow;
+		pStartOfCurrentRow = pNewCell;
     }
     // This cell is not the left-most and so it will have a LEFT pointer
     else
     {
         // Set the RIGHT pointer of the previous cell to the new cell
-	pPreviousCell->SetPointer( RIGHT, pNewCell );
-	pNewCell->SetPointer( LEFT, pPreviousCell );
+		pPreviousCell->SetPointer( RIGHT, pNewCell );
+		pNewCell->SetPointer( LEFT, pPreviousCell );
     }
+	
+#if defined (OPTICALLY_THICK_RADIATION) || defined(BEAM_HEATING)
+	// Set the pointer to the centre of the current row
+	if( pActiveCell == pCentreOfCurrentRow )
+		pCentreOfCurrentRow = pNewCell;
+#endif // OPTICALLY_THICK_RADIATION || BEAM_HEATING
 
     pPreviousCell = pNewCell;
     pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
