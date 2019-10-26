@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 09/24/2019
+// * Date last modified: 10/26/2019
 // *
 // ****
 
@@ -31,7 +31,9 @@ class CAdaptiveMesh : private CEquations {
     void ZeroCellProperties( PCELLPROPERTIES pCellProperties );
 
     void Adapt( void );
+#ifdef OPEN_FIELD
 	void EnforceBoundaryConditions( void );
+#endif // OPEN_FIELD
 
     void FreeCurrentRow( void );
     void FreePreviousRow( void );

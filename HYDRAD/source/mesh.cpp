@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 10/08/2019
+// * Date last modified: 10/26/2019
 // *
 // ****
 
@@ -286,16 +286,16 @@ do {
     while( pNextActiveCell->pGetPointer( RIGHT ) )
     {
         pActiveCell = pNextActiveCell;
-	pActiveCell->GetCellProperties( &CellProperties );
+		pActiveCell->GetCellProperties( &CellProperties );
 
-	pRightCell = pActiveCell->pGetPointer( RIGHT );
-	pRightCell->GetCellProperties( &RightCellProperties );
+		pRightCell = pActiveCell->pGetPointer( RIGHT );
+		pRightCell->GetCellProperties( &RightCellProperties );
 
-	// Only neighbouring cells derived from the same parent cell can be merged
-	if( CellProperties.iRefinementLevel > 0 &&
+		// Only neighbouring cells derived from the same parent cell can be merged
+		if( CellProperties.iRefinementLevel > 0 &&
             CellProperties.iRefinementLevel == RightCellProperties.iRefinementLevel &&
             CellProperties.iUniqueID[CellProperties.iRefinementLevel] == RightCellProperties.iUniqueID[RightCellProperties.iRefinementLevel] )
-	{
+		{
 #ifdef REFINE_ON_DENSITY
             drho = 1.0 - ( min( CellProperties.rho[1], RightCellProperties.rho[1] ) / max( CellProperties.rho[1], RightCellProperties.rho[1] ) );
 #endif // REFINE_ON_DENSITY
@@ -315,53 +315,53 @@ do {
                 iProlonged = TRUE;
 				Params.iNumberOfCells--;
 				
-		ZeroCellProperties( &(NewCellProperties[0]) );
+				ZeroCellProperties( &(NewCellProperties[0]) );
 
 #ifdef NON_EQUILIBRIUM_RADIATION
-		// Create a new ionfrac object for the new cell
+				// Create a new ionfrac object for the new cell
                 if( CellProperties.pIonFrac )
                     NewCellProperties[0].pIonFrac = new CIonFrac( CellProperties.pIonFrac, 0, pRadiation );
 #endif // NON_EQUILIBRIUM_RADIATION
 
 #ifdef USE_KINETIC_MODEL
-		// Create a new kinetic object for the new cell
-		NewCellProperties[0].pKinetic = new CKinetic();
+				// Create a new kinetic object for the new cell
+				NewCellProperties[0].pKinetic = new CKinetic();
 #endif // USE_KINETIC_MODEL
 
-		NewCellProperties[0].iRefinementLevel = CellProperties.iRefinementLevel - 1;
+				NewCellProperties[0].iRefinementLevel = CellProperties.iRefinementLevel - 1;
 
-		for( j=1; j<=NewCellProperties[0].iRefinementLevel; j++ )
+				for( j=1; j<=NewCellProperties[0].iRefinementLevel; j++ )
                     NewCellProperties[0].iUniqueID[j] = CellProperties.iUniqueID[j];
 
-		NewCellProperties[0].cell_width = CellProperties.cell_width + RightCellProperties.cell_width;
+				NewCellProperties[0].cell_width = CellProperties.cell_width + RightCellProperties.cell_width;
 
-		NewCellProperties[0].s[0] = CellProperties.s[0];
-		NewCellProperties[0].s[1] = CellProperties.s[2];
-		NewCellProperties[0].s[2] = RightCellProperties.s[2];
+				NewCellProperties[0].s[0] = CellProperties.s[0];
+				NewCellProperties[0].s[1] = CellProperties.s[2];
+				NewCellProperties[0].s[2] = RightCellProperties.s[2];
 
 // ******************************************************************************
 // *    ENSURE MASS, MOMENTUM AND ENERGY IS CONSERVED                           *
 // ******************************************************************************
 
-		// Averaging the mass density, momentum density and energy density of the two grid cells to calculate the corresponding quantities for the merged cell guarantees conservation
+				// Averaging the mass density, momentum density and energy density of the two grid cells to calculate the corresponding quantities for the merged cell guarantees conservation
 
-		NewCellProperties[0].rho[1] = ( CellProperties.rho[1] + RightCellProperties.rho[1] ) / 2.0;
+				NewCellProperties[0].rho[1] = ( CellProperties.rho[1] + RightCellProperties.rho[1] ) / 2.0;
 		
-		pLeftCell = pActiveCell->pGetPointer( LEFT );
-		pFarRightCell = pRightCell->pGetPointer( RIGHT );
+				pLeftCell = pActiveCell->pGetPointer( LEFT );
+				pFarRightCell = pRightCell->pGetPointer( RIGHT );
 #ifdef OPEN_FIELD
-		if( pLeftCell )
+				if( pLeftCell )
 #else // OPEN_FIELD		
-		if( pLeftCell && pFarRightCell )
+				if( pLeftCell && pFarRightCell )
 #endif // OPEN_FIELD
-		    NewCellProperties[0].rho_v[1] = ( CellProperties.rho_v[1] + RightCellProperties.rho_v[1] ) / 2.0;
-		else
+		    		NewCellProperties[0].rho_v[1] = ( CellProperties.rho_v[1] + RightCellProperties.rho_v[1] ) / 2.0;
+				else
 // ******************************************************************************
 // *    IMPLEMENT HYDROSTATIC BOUNDARY CONDITIONS                               *
 // ******************************************************************************
-		    NewCellProperties[0].rho_v[1] = 0.0;
+		    		NewCellProperties[0].rho_v[1] = 0.0;
 
-		for( j=0; j<SPECIES; j++ )
+				for( j=0; j<SPECIES; j++ )
                     NewCellProperties[0].TE_KE[1][j] = ( CellProperties.TE_KE[1][j] + RightCellProperties.TE_KE[1][j] ) / 2.0;
 
 #ifdef NON_EQUILIBRIUM_RADIATION
@@ -377,40 +377,40 @@ do {
 
 #ifdef OPTICALLY_THICK_RADIATION
 #ifdef NLTE_CHROMOSPHERE
-		NewCellProperties[0].rho_e = ( CellProperties.rho_e + RightCellProperties.rho_e ) / 2.0;
+				NewCellProperties[0].rho_e = ( CellProperties.rho_e + RightCellProperties.rho_e ) / 2.0;
 #endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
 
-		pNewCell[0] = new CAdaptiveMeshCell( &(NewCellProperties[0]) );
+				pNewCell[0] = new CAdaptiveMeshCell( &(NewCellProperties[0]) );
 
-		if( pLeftCell )
-		{
+				if( pLeftCell )
+				{
                     pLeftCell->SetPointer( RIGHT, pNewCell[0] );
                     pNewCell[0]->SetPointer( LEFT, pLeftCell );
-		}
-		else
-		{
+				}
+				else
+				{
                     pNewCell[0]->SetPointer( LEFT, NULL );
                     pStartOfCurrentRow = pNewCell[0];
-		}
+				}
 
-		if( pFarRightCell )
-		{
+				if( pFarRightCell )
+				{
                     pNewCell[0]->SetPointer( RIGHT, pFarRightCell );
                     pFarRightCell->SetPointer( LEFT, pNewCell[0] );
                     pNextActiveCell = pFarRightCell;
-		}
-		else
-		{
+				}
+				else
+				{
                     pNewCell[0]->SetPointer( RIGHT, NULL );
 					pEndOfCurrentRow = pNewCell[0];
                     pNextActiveCell = pNewCell[0];
-		}
+				}
 		
 #if defined(OPTICALLY_THICK_RADIATION) || defined(BEAM_HEATING)
-		// Relocate the centre of the current row of grid cells
-		if( pActiveCell == pCentreOfCurrentRow || pRightCell == pCentreOfCurrentRow )
-			pCentreOfCurrentRow = pNewCell[0];
+				// Relocate the centre of the current row of grid cells
+				if( pActiveCell == pCentreOfCurrentRow || pRightCell == pCentreOfCurrentRow )
+					pCentreOfCurrentRow = pNewCell[0];
 #endif // OPTICALLY_THICK_RADIATION || BEAM_HEATING
 
 #ifdef NON_EQUILIBRIUM_RADIATION
@@ -422,22 +422,22 @@ do {
 #endif // NON_EQUILIBRIUM_RADIATION
 
 #ifdef USE_KINETIC_MODEL
-		delete CellProperties.pKinetic;
-		delete RightCellProperties.pKinetic;
+				delete CellProperties.pKinetic;
+				delete RightCellProperties.pKinetic;
 #endif // USE_KINETIC_MODEL
 
-		delete pActiveCell;
-		delete pRightCell;
+				delete pActiveCell;
+				delete pRightCell;
             }
             else
             {
                 pNextActiveCell = pRightCell;
             }
-	}
-	else
-	{
+		}
+		else
+		{
             pNextActiveCell = pRightCell;
-	}
+		}
     }
 } while ( iProlonged );
 
@@ -458,26 +458,26 @@ do {
     while( pNextActiveCell->pGetPointer( RIGHT ) )
     {
         pActiveCell = pNextActiveCell;
-	pActiveCell->GetCellProperties( &CellProperties );
+		pActiveCell->GetCellProperties( &CellProperties );
 
-	pRightCell = pActiveCell->pGetPointer( RIGHT );
-	pRightCell->GetCellProperties( &RightCellProperties );
+		pRightCell = pActiveCell->pGetPointer( RIGHT );
+		pRightCell->GetCellProperties( &RightCellProperties );
 #ifdef REFINE_ON_DENSITY
-	drho = 1.0 - ( min( CellProperties.rho[1], RightCellProperties.rho[1] ) / max( CellProperties.rho[1], RightCellProperties.rho[1] ) );
+		drho = 1.0 - ( min( CellProperties.rho[1], RightCellProperties.rho[1] ) / max( CellProperties.rho[1], RightCellProperties.rho[1] ) );
 #endif // REFINE_ON_DENSITY
 #ifdef REFINE_ON_ELECTRON_ENERGY
-	dTE_KEe = 1.0 - ( min( CellProperties.TE_KE[1][ELECTRON], RightCellProperties.TE_KE[1][ELECTRON] ) / max( CellProperties.TE_KE[1][ELECTRON], RightCellProperties.TE_KE[1][ELECTRON] ) );
+		dTE_KEe = 1.0 - ( min( CellProperties.TE_KE[1][ELECTRON], RightCellProperties.TE_KE[1][ELECTRON] ) / max( CellProperties.TE_KE[1][ELECTRON], RightCellProperties.TE_KE[1][ELECTRON] ) );
 #endif // REFINE_ON_ELECTRON_ENERGY
 #ifdef REFINE_ON_HYDROGEN_ENERGY
-	dTE_KEh = 1.0 - ( min( CellProperties.TE_KE[1][HYDROGEN], RightCellProperties.TE_KE[1][HYDROGEN] ) / max( CellProperties.TE_KE[1][HYDROGEN], RightCellProperties.TE_KE[1][HYDROGEN] ) );
+		dTE_KEh = 1.0 - ( min( CellProperties.TE_KE[1][HYDROGEN], RightCellProperties.TE_KE[1][HYDROGEN] ) / max( CellProperties.TE_KE[1][HYDROGEN], RightCellProperties.TE_KE[1][HYDROGEN] ) );
 #endif // REFINE_ON_HYDROGEN_ENERGY
 #if defined (OPTICALLY_THICK_RADIATION) && defined (NLTE_CHROMOSPHERE)
 #ifdef REFINE_ON_ELECTRON_DENSITY
-            drho_e = 1.0 - ( min( CellProperties.rho_e, RightCellProperties.rho_e ) / max( CellProperties.rho_e, RightCellProperties.rho_e ) );
+		drho_e = 1.0 - ( min( CellProperties.rho_e, RightCellProperties.rho_e ) / max( CellProperties.rho_e, RightCellProperties.rho_e ) );
 #endif // REFINE_ON_ELECTRON_DENSITY
 #endif // OPTICALLY_THICK_RADIATION && NLTE_CHROMOSPHERE
-	if( ( drho > MAX_FRAC_DIFF || dTE_KEe > MAX_FRAC_DIFF || dTE_KEh > MAX_FRAC_DIFF || drho_e > MAX_FRAC_DIFF || abs( CellProperties.iRefinementLevel - RightCellProperties.iRefinementLevel ) > 1 ) && ( CellProperties.iRefinementLevel < MAX_REFINEMENT_LEVEL || RightCellProperties.iRefinementLevel < MAX_REFINEMENT_LEVEL ) )
-	{
+		if( ( drho > MAX_FRAC_DIFF || dTE_KEe > MAX_FRAC_DIFF || dTE_KEh > MAX_FRAC_DIFF || drho_e > MAX_FRAC_DIFF || abs( CellProperties.iRefinementLevel - RightCellProperties.iRefinementLevel ) > 1 ) && ( CellProperties.iRefinementLevel < MAX_REFINEMENT_LEVEL || RightCellProperties.iRefinementLevel < MAX_REFINEMENT_LEVEL ) )
+		{
             iRestricted = TRUE;
 			Params.iNumberOfCells++;
 			
@@ -486,7 +486,7 @@ do {
                 // Refine the current cell
 
                 ZeroCellProperties( &(NewCellProperties[0]) );
-		ZeroCellProperties( &(NewCellProperties[1]) );
+				ZeroCellProperties( &(NewCellProperties[1]) );
 
 #ifdef NON_EQUILIBRIUM_RADIATION
                 if( CellProperties.pIonFrac )
@@ -498,34 +498,34 @@ do {
 #endif // NON_EQUILIBRIUM_RADIATION
 
 #ifdef USE_KINETIC_MODEL
-		// Create a new kinetic object for each new cell
-		NewCellProperties[0].pKinetic = new CKinetic();
-		NewCellProperties[1].pKinetic = new CKinetic();
+				// Create a new kinetic object for each new cell
+				NewCellProperties[0].pKinetic = new CKinetic();
+				NewCellProperties[1].pKinetic = new CKinetic();
 #endif // USE_KINETIC_MODEL
 
-		NewCellProperties[0].iRefinementLevel = CellProperties.iRefinementLevel + 1;
-		NewCellProperties[1].iRefinementLevel = NewCellProperties[0].iRefinementLevel;
+				NewCellProperties[0].iRefinementLevel = CellProperties.iRefinementLevel + 1;
+				NewCellProperties[1].iRefinementLevel = NewCellProperties[0].iRefinementLevel;
 
-		for( j=1; j<=CellProperties.iRefinementLevel; j++ )
-		{
+				for( j=1; j<=CellProperties.iRefinementLevel; j++ )
+				{
                     NewCellProperties[0].iUniqueID[j] = CellProperties.iUniqueID[j];
                     NewCellProperties[1].iUniqueID[j] = CellProperties.iUniqueID[j];
-		}
+				}
 
-		NewCellProperties[0].cell_width = 0.5 * CellProperties.cell_width;
-		NewCellProperties[1].cell_width = NewCellProperties[0].cell_width;
+				NewCellProperties[0].cell_width = 0.5 * CellProperties.cell_width;
+				NewCellProperties[1].cell_width = NewCellProperties[0].cell_width;
 
-		NewCellProperties[0].s[0] = CellProperties.s[0];
-		NewCellProperties[0].s[1] = NewCellProperties[0].s[0] + ( 0.5 * NewCellProperties[0].cell_width );
-		NewCellProperties[0].s[2] = CellProperties.s[1];
-		NewCellProperties[1].s[0] = CellProperties.s[1];
-		NewCellProperties[1].s[1] = NewCellProperties[1].s[0] + ( 0.5 * NewCellProperties[0].cell_width );
-		NewCellProperties[1].s[2] = CellProperties.s[2];
+				NewCellProperties[0].s[0] = CellProperties.s[0];
+				NewCellProperties[0].s[1] = NewCellProperties[0].s[0] + ( 0.5 * NewCellProperties[0].cell_width );
+				NewCellProperties[0].s[2] = CellProperties.s[1];
+				NewCellProperties[1].s[0] = CellProperties.s[1];
+				NewCellProperties[1].s[1] = NewCellProperties[1].s[0] + ( 0.5 * NewCellProperties[0].cell_width );
+				NewCellProperties[1].s[2] = CellProperties.s[2];
 		
-		pLeftCell = pActiveCell->pGetPointer( LEFT );
+				pLeftCell = pActiveCell->pGetPointer( LEFT );
 
-		if( pLeftCell )
-		{
+				if( pLeftCell )
+				{
                     pLeftCell->GetCellProperties( &LeftCellProperties );
 
                     do {
@@ -542,45 +542,45 @@ do {
 			
                     if( pFarLeftCell && pFarRightCell )
                     {
-			pFarLeftCell->GetCellProperties( &FarLeftCellProperties );
-			pFarRightCell->GetCellProperties( &FarRightCellProperties );
+						pFarLeftCell->GetCellProperties( &FarLeftCellProperties );
+						pFarRightCell->GetCellProperties( &FarRightCellProperties );
 
-			// NEW CELLS
+						// NEW CELLS
 
-			x[1] = FarLeftCellProperties.s[1];
-			x[2] = LeftCellProperties.s[1];
-			x[3] = CellProperties.s[1];
-			x[4] = RightCellProperties.s[1];
-			x[5] = FarRightCellProperties.s[1];
+						x[1] = FarLeftCellProperties.s[1];
+						x[2] = LeftCellProperties.s[1];
+						x[3] = CellProperties.s[1];
+						x[4] = RightCellProperties.s[1];
+						x[5] = FarRightCellProperties.s[1];
 
-			y[1] = FarLeftCellProperties.rho[1];
-			y[2] = LeftCellProperties.rho[1];
-			y[3] = CellProperties.rho[1];
-			y[4] = RightCellProperties.rho[1];
-			y[5] = FarRightCellProperties.rho[1];
+						y[1] = FarLeftCellProperties.rho[1];
+						y[2] = LeftCellProperties.rho[1];
+						y[3] = CellProperties.rho[1];
+						y[4] = RightCellProperties.rho[1];
+						y[5] = FarRightCellProperties.rho[1];
 #ifdef LINEAR_RESTRICTION
-			LinearFit( &(x[1]), &(y[1]), NewCellProperties[0].s[1], &(NewCellProperties[0].rho[1]) );
-			LinearFit( &(x[2]), &(y[2]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho[1]) );
+						LinearFit( &(x[1]), &(y[1]), NewCellProperties[0].s[1], &(NewCellProperties[0].rho[1]) );
+						LinearFit( &(x[2]), &(y[2]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho[1]) );
 #else
-			FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho[1]), &error );
-			FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho[1]), &error );
+						FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho[1]), &error );
+						FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho[1]), &error );
 #endif // LINEAR_RESTRICTION
 
-			y[1] = FarLeftCellProperties.rho_v[1];
-			y[2] = LeftCellProperties.rho_v[1];
-			y[3] = CellProperties.rho_v[1];
-			y[4] = RightCellProperties.rho_v[1];
-			y[5] = FarRightCellProperties.rho_v[1];
+						y[1] = FarLeftCellProperties.rho_v[1];
+						y[2] = LeftCellProperties.rho_v[1];
+						y[3] = CellProperties.rho_v[1];
+						y[4] = RightCellProperties.rho_v[1];
+						y[5] = FarRightCellProperties.rho_v[1];
 #ifdef LINEAR_RESTRICTION
-			LinearFit( &(x[1]), &(y[1]), NewCellProperties[0].s[1], &(NewCellProperties[0].rho_v[1]) );
-			LinearFit( &(x[2]), &(y[2]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_v[1]) );
+						LinearFit( &(x[1]), &(y[1]), NewCellProperties[0].s[1], &(NewCellProperties[0].rho_v[1]) );
+						LinearFit( &(x[2]), &(y[2]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_v[1]) );
 #else
-			FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho_v[1]), &error );
-			FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_v[1]), &error );
+						FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho_v[1]), &error );
+						FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_v[1]), &error );
 #endif // LINEAR_RESTRICTION
 
-			for( j=0; j<SPECIES; j++ )
-			{
+						for( j=0; j<SPECIES; j++ )
+						{
                             y[1] = FarLeftCellProperties.TE_KE[1][j];
                             y[2] = LeftCellProperties.TE_KE[1][j];
                             y[3] = CellProperties.TE_KE[1][j];
@@ -593,7 +593,7 @@ do {
                             FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].TE_KE[1][j]), &error );
                             FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].TE_KE[1][j]), &error );
 #endif // LINEAR_RESTRICTION
-			}
+						}
 
 #ifdef NON_EQUILIBRIUM_RADIATION
                         if( NewCellProperties[0].pIonFrac && NewCellProperties[1].pIonFrac )
@@ -612,15 +612,14 @@ do {
 #endif // LINEAR_RESTRICTION
                         }
 #endif // NON_EQUILIBRIUM_RADIATION
-                    
 
 #ifdef OPTICALLY_THICK_RADIATION
 #ifdef NLTE_CHROMOSPHERE
-			y[1] = FarLeftCellProperties.rho_e;
-			y[2] = LeftCellProperties.rho_e;
-			y[3] = CellProperties.rho_e;
-			y[4] = RightCellProperties.rho_e;
-			y[5] = FarRightCellProperties.rho_e;
+						y[1] = FarLeftCellProperties.rho_e;
+						y[2] = LeftCellProperties.rho_e;
+						y[3] = CellProperties.rho_e;
+						y[4] = RightCellProperties.rho_e;
+						y[5] = FarRightCellProperties.rho_e;
 #ifdef LINEAR_RESTRICTION
                         LinearFit( &(x[1]), &(y[1]), NewCellProperties[0].s[1], &(NewCellProperties[0].rho_e) );
                         LinearFit( &(x[2]), &(y[2]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_e) );
@@ -630,7 +629,7 @@ do {
 #endif // LINEAR_RESTRICTION
 #endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
-		    }
+		    		}
                     else if( !pFarLeftCell )
                     {
 // ******************************************************************************
@@ -642,7 +641,7 @@ do {
                         // Implement hydrostatic boundary conditions in the left-most of the two new cells
 
                         x[1] = LeftCellProperties.s[1];
-			x[2] = CellProperties.s[1];
+						x[2] = CellProperties.s[1];
 
                         y[1] = LeftCellProperties.rho[1];
                         y[2] = CellProperties.rho[1];
@@ -668,41 +667,41 @@ do {
 
 #ifdef OPTICALLY_THICK_RADIATION
 #ifdef NLTE_CHROMOSPHERE
-			y[1] = LeftCellProperties.rho_e;
+						y[1] = LeftCellProperties.rho_e;
                         y[2] = CellProperties.rho_e;
                         LinearFit( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho_e) );
 #endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
 
-			pFarRightCell->GetCellProperties( &FarRightCellProperties );
+						pFarRightCell->GetCellProperties( &FarRightCellProperties );
 
-			x[2] = LeftCellProperties.s[1];
-			x[3] = CellProperties.s[1];
-			x[4] = RightCellProperties.s[1];
-			x[5] = FarRightCellProperties.s[1];
+						x[2] = LeftCellProperties.s[1];
+						x[3] = CellProperties.s[1];
+						x[4] = RightCellProperties.s[1];
+						x[5] = FarRightCellProperties.s[1];
 						
-			y[2] = LeftCellProperties.rho[1];
-			y[3] = CellProperties.rho[1];
-			y[4] = RightCellProperties.rho[1];
-			y[5] = FarRightCellProperties.rho[1];
+						y[2] = LeftCellProperties.rho[1];
+						y[3] = CellProperties.rho[1];
+						y[4] = RightCellProperties.rho[1];
+						y[5] = FarRightCellProperties.rho[1];
 #ifdef LINEAR_RESTRICTION
-			LinearFit( &(x[2]), &(y[2]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho[1]) );
+						LinearFit( &(x[2]), &(y[2]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho[1]) );
 #else
-			FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho[1]), &error );
+						FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho[1]), &error );
 #endif // LINEAR_RESTRICTION
 
-			y[2] = LeftCellProperties.rho_v[1];
-			y[3] = CellProperties.rho_v[1];
-			y[4] = RightCellProperties.rho_v[1];
-			y[5] = FarRightCellProperties.rho_v[1];
+						y[2] = LeftCellProperties.rho_v[1];
+						y[3] = CellProperties.rho_v[1];
+						y[4] = RightCellProperties.rho_v[1];
+						y[5] = FarRightCellProperties.rho_v[1];
 #ifdef LINEAR_RESTRICTION
-			LinearFit( &(x[2]), &(y[2]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_v[1]) );
+						LinearFit( &(x[2]), &(y[2]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_v[1]) );
 #else
-			FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_v[1]), &error );
+						FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_v[1]), &error );
 #endif // LINEAR_RESTRICTION
 
-			for( j=0; j<SPECIES; j++ )
-			{
+						for( j=0; j<SPECIES; j++ )
+						{
                             y[2] = LeftCellProperties.TE_KE[1][j];
                             y[3] = CellProperties.TE_KE[1][j];
                             y[4] = RightCellProperties.TE_KE[1][j];
@@ -712,7 +711,7 @@ do {
 #else
                             FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].TE_KE[1][j]), &error );
 #endif // LINEAR_RESTRICTION
-			}
+						}
 
 #ifdef NON_EQUILIBRIUM_RADIATION
                         if( NewCellProperties[1].pIonFrac )
@@ -731,49 +730,49 @@ do {
 
 #ifdef OPTICALLY_THICK_RADIATION
 #ifdef NLTE_CHROMOSPHERE
-			y[2] = LeftCellProperties.rho_e;
-			y[3] = CellProperties.rho_e;
-			y[4] = RightCellProperties.rho_e;
-			y[5] = FarRightCellProperties.rho_e;
+						y[2] = LeftCellProperties.rho_e;
+						y[3] = CellProperties.rho_e;
+						y[4] = RightCellProperties.rho_e;
+						y[5] = FarRightCellProperties.rho_e;
 #ifdef LINEAR_RESTRICTION
-			LinearFit( &(x[2]), &(y[2]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_e) );
+						LinearFit( &(x[2]), &(y[2]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_e) );
 #else
-			FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_e), &error );
+						FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_e), &error );
 #endif // LINEAR_RESTRICTION
 #endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
                     }
                     else if( !pFarRightCell )
                     {
-			pFarLeftCell->GetCellProperties( &FarLeftCellProperties );
+						pFarLeftCell->GetCellProperties( &FarLeftCellProperties );
 
-			x[1] = FarLeftCellProperties.s[1];
-			x[2] = LeftCellProperties.s[1];
-			x[3] = CellProperties.s[1];
-			x[4] = RightCellProperties.s[1];
+						x[1] = FarLeftCellProperties.s[1];
+						x[2] = LeftCellProperties.s[1];
+						x[3] = CellProperties.s[1];
+						x[4] = RightCellProperties.s[1];
 
-			y[1] = FarLeftCellProperties.rho[1];
-			y[2] = LeftCellProperties.rho[1];
-			y[3] = CellProperties.rho[1];
-			y[4] = RightCellProperties.rho[1];
+						y[1] = FarLeftCellProperties.rho[1];
+						y[2] = LeftCellProperties.rho[1];
+						y[3] = CellProperties.rho[1];
+						y[4] = RightCellProperties.rho[1];
 #ifdef LINEAR_RESTRICTION
-			LinearFit( &(x[1]), &(y[1]), NewCellProperties[0].s[1], &(NewCellProperties[0].rho[1]) );
+						LinearFit( &(x[1]), &(y[1]), NewCellProperties[0].s[1], &(NewCellProperties[0].rho[1]) );
 #else
-			FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho[1]), &error );
+						FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho[1]), &error );
 #endif // LINEAR_RESTRICTION
 
-			y[1] = FarLeftCellProperties.rho_v[1];
-			y[2] = LeftCellProperties.rho_v[1];
-			y[3] = CellProperties.rho_v[1];
-			y[4] = RightCellProperties.rho_v[1];
+						y[1] = FarLeftCellProperties.rho_v[1];
+						y[2] = LeftCellProperties.rho_v[1];
+						y[3] = CellProperties.rho_v[1];
+						y[4] = RightCellProperties.rho_v[1];
 #ifdef LINEAR_RESTRICTION
-			LinearFit( &(x[1]), &(y[1]), NewCellProperties[0].s[1], &(NewCellProperties[0].rho_v[1]) );
+						LinearFit( &(x[1]), &(y[1]), NewCellProperties[0].s[1], &(NewCellProperties[0].rho_v[1]) );
 #else
-			FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho_v[1]), &error );
+						FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho_v[1]), &error );
 #endif // LINEAR_RESTRICTION
 
-			for( j=0; j<SPECIES; j++ )
-			{
+						for( j=0; j<SPECIES; j++ )
+						{
                             y[1] = FarLeftCellProperties.TE_KE[1][j];
                             y[2] = LeftCellProperties.TE_KE[1][j];
                             y[3] = CellProperties.TE_KE[1][j];
@@ -783,7 +782,7 @@ do {
 #else
                             FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].TE_KE[1][j]), &error );
 #endif // LINEAR_RESTRICTION
-			}
+						}
 
 #ifdef NON_EQUILIBRIUM_RADIATION
                         if( NewCellProperties[0].pIonFrac )
@@ -802,14 +801,14 @@ do {
 
 #ifdef OPTICALLY_THICK_RADIATION
 #ifdef NLTE_CHROMOSPHERE
-			y[1] = FarLeftCellProperties.rho_e;
-			y[2] = LeftCellProperties.rho_e;
-			y[3] = CellProperties.rho_e;
-			y[4] = RightCellProperties.rho_e;
+						y[1] = FarLeftCellProperties.rho_e;
+						y[2] = LeftCellProperties.rho_e;
+						y[3] = CellProperties.rho_e;
+						y[4] = RightCellProperties.rho_e;
 #ifdef LINEAR_RESTRICTION
-			LinearFit( &(x[1]), &(y[1]), NewCellProperties[0].s[1], &(NewCellProperties[0].rho_e) );
+						LinearFit( &(x[1]), &(y[1]), NewCellProperties[0].s[1], &(NewCellProperties[0].rho_e) );
 #else
-			FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho_e), &error );
+						FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho_e), &error );
 #endif // LINEAR_RESTRICTION
 #endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
@@ -859,9 +858,9 @@ do {
 #endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
                     }
-		}
-		else
-		{
+				}
+				else
+				{
                     do {
 
                         NewCellProperties[0].iUniqueID[NewCellProperties[0].iRefinementLevel] = rand();
@@ -879,7 +878,7 @@ do {
                     // NEW CELLS
 
                     x[1] = CellProperties.s[1];
-		    x[2] = RightCellProperties.s[1];
+		    		x[2] = RightCellProperties.s[1];
 
                     y[1] = CellProperties.rho[1];
                     y[2] = RightCellProperties.rho[1];
@@ -909,74 +908,74 @@ do {
 
 #ifdef OPTICALLY_THICK_RADIATION
 #ifdef NLTE_CHROMOSPHERE
-		    y[1] = CellProperties.rho_e;
+				    y[1] = CellProperties.rho_e;
                     y[2] = RightCellProperties.rho_e;
                     LinearFit( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho_e) );
                     LinearFit( x, y, NewCellProperties[1].s[1], &(NewCellProperties[1].rho_e) );
 #endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
-		}
+				}
 
 // ******************************************************************************
 // *    ENSURE MASS AND ENERGY IS CONSERVED BY THE RESTRICTION OPERATOR         *
 // ******************************************************************************
 #ifdef ENFORCE_CONSERVATION
-		// A correction is applied to the mass and energy densities in the event that the sum of the integrated quantities in the new cells does not equal the integrated quantity in the original cell
+				// A correction is applied to the mass and energy densities in the event that the sum of the integrated quantities in the new cells does not equal the integrated quantity in the original cell
 
-		fWeight = ( 2.0 * CellProperties.rho[1] ) / ( NewCellProperties[0].rho[1] + NewCellProperties[1].rho[1] );
-		NewCellProperties[0].rho[1] *= fWeight;
-		NewCellProperties[1].rho[1] *= fWeight;
+				fWeight = ( 2.0 * CellProperties.rho[1] ) / ( NewCellProperties[0].rho[1] + NewCellProperties[1].rho[1] );
+				NewCellProperties[0].rho[1] *= fWeight;
+				NewCellProperties[1].rho[1] *= fWeight;
 
-		if( NewCellProperties[0].rho_v[1] || NewCellProperties[1].rho_v[1] )
-		{
+				if( NewCellProperties[0].rho_v[1] || NewCellProperties[1].rho_v[1] )
+				{
                     temp1 = ( 2.0 * CellProperties.rho_v[1] ) - ( NewCellProperties[0].rho_v[1] + NewCellProperties[1].rho_v[1] );
                     temp2 = fabs( NewCellProperties[0].rho_v[1] );
                     temp3 = fabs( NewCellProperties[1].rho_v[1] );
                     temp4 = temp1 / ( temp2 + temp3 );
                     NewCellProperties[0].rho_v[1] += ( temp2 * temp4 );
                     NewCellProperties[1].rho_v[1] += ( temp3 * temp4 );
-		}
+				}
 
-		for( j=0; j<SPECIES; j++ )
-		{
-		    fWeight = ( 2.0 * CellProperties.TE_KE[1][j] ) / ( NewCellProperties[0].TE_KE[1][j] + NewCellProperties[1].TE_KE[1][j] );
-		    NewCellProperties[0].TE_KE[1][j] *= fWeight;
-		    NewCellProperties[1].TE_KE[1][j] *= fWeight;
-		}
+				for( j=0; j<SPECIES; j++ )
+				{
+				    fWeight = ( 2.0 * CellProperties.TE_KE[1][j] ) / ( NewCellProperties[0].TE_KE[1][j] + NewCellProperties[1].TE_KE[1][j] );
+				    NewCellProperties[0].TE_KE[1][j] *= fWeight;
+		    		NewCellProperties[1].TE_KE[1][j] *= fWeight;
+				}
 
 #ifdef OPTICALLY_THICK_RADIATION
 #ifdef NLTE_CHROMOSPHERE
-		fWeight = ( 2.0 * CellProperties.rho_e ) / ( NewCellProperties[0].rho_e + NewCellProperties[1].rho_e );
-		NewCellProperties[0].rho_e *= fWeight;
-		NewCellProperties[1].rho_e *= fWeight;
+				fWeight = ( 2.0 * CellProperties.rho_e ) / ( NewCellProperties[0].rho_e + NewCellProperties[1].rho_e );
+				NewCellProperties[0].rho_e *= fWeight;
+				NewCellProperties[1].rho_e *= fWeight;
 #endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
 #endif // ENFORCE_CONSERVATION
 
                 pNewCell[0] = new CAdaptiveMeshCell( &(NewCellProperties[0]) );
-		pNewCell[1] = new CAdaptiveMeshCell( &(NewCellProperties[1]) );
-                
-		if( pLeftCell )
-		{
+				pNewCell[1] = new CAdaptiveMeshCell( &(NewCellProperties[1]) );
+
+				if( pLeftCell )
+				{
                     pLeftCell->SetPointer( RIGHT, pNewCell[0] );
                     pNewCell[0]->SetPointer( LEFT, pLeftCell );
-		}
-		else
-		{
+				}
+				else
+				{
                     pNewCell[0]->SetPointer( LEFT, NULL );
                     pStartOfCurrentRow = pNewCell[0];
-		}
+				}
 
-		pNewCell[0]->SetPointer( RIGHT, pNewCell[1] );
-		pNewCell[1]->SetPointer( LEFT, pNewCell[0] );
+				pNewCell[0]->SetPointer( RIGHT, pNewCell[1] );
+				pNewCell[1]->SetPointer( LEFT, pNewCell[0] );
 
-		pNewCell[1]->SetPointer( RIGHT, pRightCell );
-		pRightCell->SetPointer( LEFT, pNewCell[1] );
+				pNewCell[1]->SetPointer( RIGHT, pRightCell );
+				pRightCell->SetPointer( LEFT, pNewCell[1] );
 
 #if defined(OPTICALLY_THICK_RADIATION) || defined(BEAM_HEATING)
-		// Relocate the centre of the current row of grid cells
-		if( pActiveCell == pCentreOfCurrentRow )
-			pCentreOfCurrentRow = pNewCell[1];
+				// Relocate the centre of the current row of grid cells
+				if( pActiveCell == pCentreOfCurrentRow )
+					pCentreOfCurrentRow = pNewCell[1];
 #endif // OPTICALLY_THICK_RADIATION || BEAM_HEATING
 
 #ifdef NON_EQUILIBRIUM_RADIATION
@@ -985,25 +984,25 @@ do {
 #endif // NON_EQUILIBRIUM_RADIATION
 
 #ifdef USE_KINETIC_MODEL
-        	delete CellProperties.pKinetic;
+        		delete CellProperties.pKinetic;
 #endif // USE_KINETIC_MODEL
 
-		delete pActiveCell;
+				delete pActiveCell;
 
-		pNextActiveCell = pNewCell[1];
+				pNextActiveCell = pNewCell[1];
             }
             else
             {
                 // Refine the right-hand cell
 
-		// First shift the left-hand and active cells to the right
-		pLeftCell = pActiveCell;
-		pLeftCell->GetCellProperties( &LeftCellProperties );
-		pActiveCell = pRightCell;
-		pActiveCell->GetCellProperties( &CellProperties );
+				// First shift the left-hand and active cells to the right
+				pLeftCell = pActiveCell;
+				pLeftCell->GetCellProperties( &LeftCellProperties );
+				pActiveCell = pRightCell;
+				pActiveCell->GetCellProperties( &CellProperties );
 
-		ZeroCellProperties( &(NewCellProperties[0]) );
-		ZeroCellProperties( &(NewCellProperties[1]) );
+				ZeroCellProperties( &(NewCellProperties[0]) );
+				ZeroCellProperties( &(NewCellProperties[1]) );
 
 #ifdef NON_EQUILIBRIUM_RADIATION
                 if( CellProperties.pIonFrac )
@@ -1015,34 +1014,34 @@ do {
 #endif // NON_EQUILIBRIUM_RADIATION
 
 #ifdef USE_KINETIC_MODEL
-		// Create a new kinetic object for each new cell
-		NewCellProperties[0].pKinetic = new CKinetic();
-		NewCellProperties[1].pKinetic = new CKinetic();
+				// Create a new kinetic object for each new cell
+				NewCellProperties[0].pKinetic = new CKinetic();
+				NewCellProperties[1].pKinetic = new CKinetic();
 #endif // USE_KINETIC_MODEL
 
-		NewCellProperties[0].iRefinementLevel = CellProperties.iRefinementLevel + 1;
-		NewCellProperties[1].iRefinementLevel = NewCellProperties[0].iRefinementLevel;
+				NewCellProperties[0].iRefinementLevel = CellProperties.iRefinementLevel + 1;
+				NewCellProperties[1].iRefinementLevel = NewCellProperties[0].iRefinementLevel;
 
-		for( j=1; j<=CellProperties.iRefinementLevel; j++ )
-		{
+				for( j=1; j<=CellProperties.iRefinementLevel; j++ )
+				{
                     NewCellProperties[0].iUniqueID[j] = CellProperties.iUniqueID[j];
                     NewCellProperties[1].iUniqueID[j] = CellProperties.iUniqueID[j];
-		}
+				}
 
-		NewCellProperties[0].cell_width = 0.5 * CellProperties.cell_width;
-		NewCellProperties[1].cell_width = NewCellProperties[0].cell_width;
+				NewCellProperties[0].cell_width = 0.5 * CellProperties.cell_width;
+				NewCellProperties[1].cell_width = NewCellProperties[0].cell_width;
 
-		NewCellProperties[0].s[0] = CellProperties.s[0];
-		NewCellProperties[0].s[1] = NewCellProperties[0].s[0] + ( 0.5 * NewCellProperties[0].cell_width );
-		NewCellProperties[0].s[2] = CellProperties.s[1];
-		NewCellProperties[1].s[0] = CellProperties.s[1];
-		NewCellProperties[1].s[1] = NewCellProperties[1].s[0] + ( 0.5 * NewCellProperties[0].cell_width );
-		NewCellProperties[1].s[2] = CellProperties.s[2];
+				NewCellProperties[0].s[0] = CellProperties.s[0];
+				NewCellProperties[0].s[1] = NewCellProperties[0].s[0] + ( 0.5 * NewCellProperties[0].cell_width );
+				NewCellProperties[0].s[2] = CellProperties.s[1];
+				NewCellProperties[1].s[0] = CellProperties.s[1];
+				NewCellProperties[1].s[1] = NewCellProperties[1].s[0] + ( 0.5 * NewCellProperties[0].cell_width );
+				NewCellProperties[1].s[2] = CellProperties.s[2];
 
-		pRightCell = pActiveCell->pGetPointer( RIGHT );
+				pRightCell = pActiveCell->pGetPointer( RIGHT );
 
                 if( pRightCell )
-		{
+				{
                     pRightCell->GetCellProperties( &RightCellProperties );
 
                     do {
@@ -1059,45 +1058,45 @@ do {
 			
                     if( pFarLeftCell && pFarRightCell )
                     {
-			pFarLeftCell->GetCellProperties( &FarLeftCellProperties );
-			pFarRightCell->GetCellProperties( &FarRightCellProperties );
+						pFarLeftCell->GetCellProperties( &FarLeftCellProperties );
+						pFarRightCell->GetCellProperties( &FarRightCellProperties );
 
-			// NEW CELLS
+						// NEW CELLS
 
-			x[1] = FarLeftCellProperties.s[1];
-			x[2] = LeftCellProperties.s[1];
-			x[3] = CellProperties.s[1];
-			x[4] = RightCellProperties.s[1];
-			x[5] = FarRightCellProperties.s[1];
+						x[1] = FarLeftCellProperties.s[1];
+						x[2] = LeftCellProperties.s[1];
+						x[3] = CellProperties.s[1];
+						x[4] = RightCellProperties.s[1];
+						x[5] = FarRightCellProperties.s[1];
 
-			y[1] = FarLeftCellProperties.rho[1];
-			y[2] = LeftCellProperties.rho[1];
-			y[3] = CellProperties.rho[1];
-			y[4] = RightCellProperties.rho[1];
-			y[5] = FarRightCellProperties.rho[1];
+						y[1] = FarLeftCellProperties.rho[1];
+						y[2] = LeftCellProperties.rho[1];
+						y[3] = CellProperties.rho[1];
+						y[4] = RightCellProperties.rho[1];
+						y[5] = FarRightCellProperties.rho[1];
 #ifdef LINEAR_RESTRICTION
-			LinearFit( &(x[1]), &(y[1]), NewCellProperties[0].s[1], &(NewCellProperties[0].rho[1]) );
-			LinearFit( &(x[2]), &(y[2]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho[1]) );
+						LinearFit( &(x[1]), &(y[1]), NewCellProperties[0].s[1], &(NewCellProperties[0].rho[1]) );
+						LinearFit( &(x[2]), &(y[2]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho[1]) );
 #else
-			FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho[1]), &error );
-			FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho[1]), &error );
+						FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho[1]), &error );
+						FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho[1]), &error );
 #endif // LINEAR_RESTRICTION
 
-			y[1] = FarLeftCellProperties.rho_v[1];
-			y[2] = LeftCellProperties.rho_v[1];
-			y[3] = CellProperties.rho_v[1];
-			y[4] = RightCellProperties.rho_v[1];
-			y[5] = FarRightCellProperties.rho_v[1];
+						y[1] = FarLeftCellProperties.rho_v[1];
+						y[2] = LeftCellProperties.rho_v[1];
+						y[3] = CellProperties.rho_v[1];
+						y[4] = RightCellProperties.rho_v[1];
+						y[5] = FarRightCellProperties.rho_v[1];
 #ifdef LINEAR_RESTRICTION
-			LinearFit( &(x[1]), &(y[1]), NewCellProperties[0].s[1], &(NewCellProperties[0].rho_v[1]) );
-			LinearFit( &(x[2]), &(y[2]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_v[1]) );
+						LinearFit( &(x[1]), &(y[1]), NewCellProperties[0].s[1], &(NewCellProperties[0].rho_v[1]) );
+						LinearFit( &(x[2]), &(y[2]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_v[1]) );
 #else
-			FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho_v[1]), &error );
-			FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_v[1]), &error );
+						FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho_v[1]), &error );
+						FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_v[1]), &error );
 #endif // LINEAR_RESTRICTION
 
-			for( j=0; j<SPECIES; j++ )
-			{
+						for( j=0; j<SPECIES; j++ )
+						{
                             y[1] = FarLeftCellProperties.TE_KE[1][j];
                             y[2] = LeftCellProperties.TE_KE[1][j];
                             y[3] = CellProperties.TE_KE[1][j];
@@ -1110,7 +1109,7 @@ do {
                             FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].TE_KE[1][j]), &error );
                             FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].TE_KE[1][j]), &error );
 #endif // LINEAR_RESTRICTION
-			}
+						}
 
 #ifdef NON_EQUILIBRIUM_RADIATION
                         if( NewCellProperties[0].pIonFrac && NewCellProperties[1].pIonFrac )
@@ -1132,17 +1131,17 @@ do {
 
 #ifdef OPTICALLY_THICK_RADIATION
 #ifdef NLTE_CHROMOSPHERE
-			y[1] = FarLeftCellProperties.rho_e;
-			y[2] = LeftCellProperties.rho_e;
-			y[3] = CellProperties.rho_e;
-			y[4] = RightCellProperties.rho_e;
-			y[5] = FarRightCellProperties.rho_e;
+						y[1] = FarLeftCellProperties.rho_e;
+						y[2] = LeftCellProperties.rho_e;
+						y[3] = CellProperties.rho_e;
+						y[4] = RightCellProperties.rho_e;
+						y[5] = FarRightCellProperties.rho_e;
 #ifdef LINEAR_RESTRICTION
-			LinearFit( &(x[1]), &(y[1]), NewCellProperties[0].s[1], &(NewCellProperties[0].rho_e) );
-			LinearFit( &(x[2]), &(y[2]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_e) );
+						LinearFit( &(x[1]), &(y[1]), NewCellProperties[0].s[1], &(NewCellProperties[0].rho_e) );
+						LinearFit( &(x[2]), &(y[2]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_e) );
 #else
-			FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho_e), &error );
-			FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_e), &error );
+						FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho_e), &error );
+						FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_e), &error );
 #endif // LINEAR_RESTRICTION
 #endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
@@ -1158,7 +1157,7 @@ do {
                         // Implement hydrostatic boundary conditions in the left-most of the two new cells
 
                         x[1] = LeftCellProperties.s[1];
-			x[2] = CellProperties.s[1];
+						x[2] = CellProperties.s[1];
 
                         y[1] = LeftCellProperties.rho[1];
                         y[2] = CellProperties.rho[1];
@@ -1190,35 +1189,35 @@ do {
 #endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
 
-			pFarRightCell->GetCellProperties( &FarRightCellProperties );
+						pFarRightCell->GetCellProperties( &FarRightCellProperties );
 
-			x[2] = LeftCellProperties.s[1];
-			x[3] = CellProperties.s[1];
-			x[4] = RightCellProperties.s[1];
-			x[5] = FarRightCellProperties.s[1];
+						x[2] = LeftCellProperties.s[1];
+						x[3] = CellProperties.s[1];
+						x[4] = RightCellProperties.s[1];
+						x[5] = FarRightCellProperties.s[1];
 						
-			y[2] = LeftCellProperties.rho[1];
-			y[3] = CellProperties.rho[1];
-			y[4] = RightCellProperties.rho[1];
-			y[5] = FarRightCellProperties.rho[1];
+						y[2] = LeftCellProperties.rho[1];
+						y[3] = CellProperties.rho[1];
+						y[4] = RightCellProperties.rho[1];
+						y[5] = FarRightCellProperties.rho[1];
 #ifdef LINEAR_RESTRICTION
-			LinearFit( &(x[2]), &(y[2]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho[1]) );
+						LinearFit( &(x[2]), &(y[2]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho[1]) );
 #else
-			FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho[1]), &error );
+						FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho[1]), &error );
 #endif // LINEAR_RESTRICTION
 
-			y[2] = LeftCellProperties.rho_v[1];
-			y[3] = CellProperties.rho_v[1];
-			y[4] = RightCellProperties.rho_v[1];
-			y[5] = FarRightCellProperties.rho_v[1];
+						y[2] = LeftCellProperties.rho_v[1];
+						y[3] = CellProperties.rho_v[1];
+						y[4] = RightCellProperties.rho_v[1];
+						y[5] = FarRightCellProperties.rho_v[1];
 #ifdef LINEAR_RESTRICTION
-			LinearFit( &(x[2]), &(y[2]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_v[1]) );
+						LinearFit( &(x[2]), &(y[2]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_v[1]) );
 #else
-			FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_v[1]), &error );
+						FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_v[1]), &error );
 #endif // LINEAR_RESTRICTION
 
-			for( j=0; j<SPECIES; j++ )
-			{
+						for( j=0; j<SPECIES; j++ )
+						{
                             y[2] = LeftCellProperties.TE_KE[1][j];
                             y[3] = CellProperties.TE_KE[1][j];
                             y[4] = RightCellProperties.TE_KE[1][j];
@@ -1228,7 +1227,7 @@ do {
 #else
                             FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].TE_KE[1][j]), &error );
 #endif // LINEAR_RESTRICTION
-			}
+						}
 
 #ifdef NON_EQUILIBRIUM_RADIATION
                         if( NewCellProperties[1].pIonFrac )
@@ -1247,49 +1246,49 @@ do {
 
 #ifdef OPTICALLY_THICK_RADIATION
 #ifdef NLTE_CHROMOSPHERE
-			y[2] = LeftCellProperties.rho_e;
-			y[3] = CellProperties.rho_e;
-			y[4] = RightCellProperties.rho_e;
-			y[5] = FarRightCellProperties.rho_e;
+						y[2] = LeftCellProperties.rho_e;
+						y[3] = CellProperties.rho_e;
+						y[4] = RightCellProperties.rho_e;
+						y[5] = FarRightCellProperties.rho_e;
 #ifdef LINEAR_RESTRICTION
-			LinearFit( &(x[2]), &(y[2]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_e) );
+						LinearFit( &(x[2]), &(y[2]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_e) );
 #else
-			FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_e), &error );
+						FitPolynomial4( &(x[1]), &(y[1]), NewCellProperties[1].s[1], &(NewCellProperties[1].rho_e), &error );
 #endif // LINEAR_RESTRICTION
 #endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
                     }
                     else if( !pFarRightCell )
                     {
-			pFarLeftCell->GetCellProperties( &FarLeftCellProperties );
+						pFarLeftCell->GetCellProperties( &FarLeftCellProperties );
 
-			x[1] = FarLeftCellProperties.s[1];
-			x[2] = LeftCellProperties.s[1];
-			x[3] = CellProperties.s[1];
-			x[4] = RightCellProperties.s[1];
+						x[1] = FarLeftCellProperties.s[1];
+						x[2] = LeftCellProperties.s[1];
+						x[3] = CellProperties.s[1];
+						x[4] = RightCellProperties.s[1];
 
                         y[1] = FarLeftCellProperties.rho[1];
-			y[2] = LeftCellProperties.rho[1];
-			y[3] = CellProperties.rho[1];
-			y[4] = RightCellProperties.rho[1];
+						y[2] = LeftCellProperties.rho[1];
+						y[3] = CellProperties.rho[1];
+						y[4] = RightCellProperties.rho[1];
 #ifdef LINEAR_RESTRICTION
-			LinearFit( &(x[1]), &(y[1]), NewCellProperties[0].s[1], &(NewCellProperties[0].rho[1]) );
+						LinearFit( &(x[1]), &(y[1]), NewCellProperties[0].s[1], &(NewCellProperties[0].rho[1]) );
 #else
-			FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho[1]), &error );
+						FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho[1]), &error );
 #endif // LINEAR_RESTRICTION
 
-			y[1] = FarLeftCellProperties.rho_v[1];
-			y[2] = LeftCellProperties.rho_v[1];
-			y[3] = CellProperties.rho_v[1];
-			y[4] = RightCellProperties.rho_v[1];
+						y[1] = FarLeftCellProperties.rho_v[1];
+						y[2] = LeftCellProperties.rho_v[1];
+						y[3] = CellProperties.rho_v[1];
+						y[4] = RightCellProperties.rho_v[1];
 #ifdef LINEAR_RESTRICTION
-			LinearFit( &(x[1]), &(y[1]), NewCellProperties[0].s[1], &(NewCellProperties[0].rho_v[1]) );
+						LinearFit( &(x[1]), &(y[1]), NewCellProperties[0].s[1], &(NewCellProperties[0].rho_v[1]) );
 #else
-			FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho_v[1]), &error );
+						FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho_v[1]), &error );
 #endif // LINEAR_RESTRICTION
 
-			for( j=0; j<SPECIES; j++ )
-			{
+						for( j=0; j<SPECIES; j++ )
+						{
                             y[1] = FarLeftCellProperties.TE_KE[1][j];
                             y[2] = LeftCellProperties.TE_KE[1][j];
                             y[3] = CellProperties.TE_KE[1][j];
@@ -1299,7 +1298,7 @@ do {
 #else
                             FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].TE_KE[1][j]), &error );
 #endif // LINEAR_RESTRICTION
-			}
+						}
 
 #ifdef NON_EQUILIBRIUM_RADIATION
                         if( NewCellProperties[0].pIonFrac )
@@ -1319,14 +1318,14 @@ do {
 #ifdef OPTICALLY_THICK_RADIATION
 #ifdef NLTE_CHROMOSPHERE
 
-			y[1] = FarLeftCellProperties.rho_e;
-			y[2] = LeftCellProperties.rho_e;
-			y[3] = CellProperties.rho_e;
-			y[4] = RightCellProperties.rho_e;
+						y[1] = FarLeftCellProperties.rho_e;
+						y[2] = LeftCellProperties.rho_e;
+						y[3] = CellProperties.rho_e;
+						y[4] = RightCellProperties.rho_e;
 #ifdef LINEAR_RESTRICTION
-			LinearFit( &(x[1]), &(y[1]), NewCellProperties[0].s[1], &(NewCellProperties[0].rho_e) );
+						LinearFit( &(x[1]), &(y[1]), NewCellProperties[0].s[1], &(NewCellProperties[0].rho_e) );
 #else
-			FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho_e), &error );
+						FitPolynomial4( x, y, NewCellProperties[0].s[1], &(NewCellProperties[0].rho_e), &error );
 #endif // LINEAR_RESTRICTION
 #endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
@@ -1376,9 +1375,9 @@ do {
 #endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
                     }
-		}
-		else
-		{
+				}
+				else
+				{
                     do {
 
                         NewCellProperties[0].iUniqueID[NewCellProperties[0].iRefinementLevel] = rand();
@@ -1437,68 +1436,68 @@ do {
                     LinearFit( x, y, NewCellProperties[1].s[1], &(NewCellProperties[1].rho_e) );
 #endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
-		}
+				}
 
 // ******************************************************************************
 // *    ENSURE MASS AND ENERGY IS CONSERVED BY THE RESTRICTION OPERATOR         *
 // ******************************************************************************
 #ifdef ENFORCE_CONSERVATION
-		// A correction is applied to the mass and energy densities in the event that the sum of the integrated quantities in the new cells does not equal the integrated quantity in the original cell
+				// A correction is applied to the mass and energy densities in the event that the sum of the integrated quantities in the new cells does not equal the integrated quantity in the original cell
 
-		fWeight = ( 2.0 * CellProperties.rho[1] ) / ( NewCellProperties[0].rho[1] + NewCellProperties[1].rho[1] );
-		NewCellProperties[0].rho[1] *= fWeight;
-		NewCellProperties[1].rho[1] *= fWeight;
+				fWeight = ( 2.0 * CellProperties.rho[1] ) / ( NewCellProperties[0].rho[1] + NewCellProperties[1].rho[1] );
+				NewCellProperties[0].rho[1] *= fWeight;
+				NewCellProperties[1].rho[1] *= fWeight;
 
-		if( NewCellProperties[0].rho_v[1] || NewCellProperties[1].rho_v[1] )
-		{
+				if( NewCellProperties[0].rho_v[1] || NewCellProperties[1].rho_v[1] )
+				{
                     temp1 = ( 2.0 * CellProperties.rho_v[1] ) - ( NewCellProperties[0].rho_v[1] + NewCellProperties[1].rho_v[1] );
                     temp2 = fabs( NewCellProperties[0].rho_v[1] );
                     temp3 = fabs( NewCellProperties[1].rho_v[1] );
                     temp4 = temp1 / ( temp2 + temp3 );
                     NewCellProperties[0].rho_v[1] += ( temp2 * temp4 );
                     NewCellProperties[1].rho_v[1] += ( temp3 * temp4 );
-		}
+				}
 
-		for( j=0; j<SPECIES; j++ )
-		{
-		    fWeight = ( 2.0 * CellProperties.TE_KE[1][j] ) / ( NewCellProperties[0].TE_KE[1][j] + NewCellProperties[1].TE_KE[1][j] );
-		    NewCellProperties[0].TE_KE[1][j] *= fWeight;
-		    NewCellProperties[1].TE_KE[1][j] *= fWeight;
-		}
+				for( j=0; j<SPECIES; j++ )
+				{
+		    		fWeight = ( 2.0 * CellProperties.TE_KE[1][j] ) / ( NewCellProperties[0].TE_KE[1][j] + NewCellProperties[1].TE_KE[1][j] );
+		    		NewCellProperties[0].TE_KE[1][j] *= fWeight;
+		    		NewCellProperties[1].TE_KE[1][j] *= fWeight;
+				}
 
 #ifdef OPTICALLY_THICK_RADIATION
 #ifdef NLTE_CHROMOSPHERE
-		fWeight = ( 2.0 * CellProperties.rho_e ) / ( NewCellProperties[0].rho_e + NewCellProperties[1].rho_e );
-		NewCellProperties[0].rho_e *= fWeight;
-		NewCellProperties[1].rho_e *= fWeight;
+				fWeight = ( 2.0 * CellProperties.rho_e ) / ( NewCellProperties[0].rho_e + NewCellProperties[1].rho_e );
+				NewCellProperties[0].rho_e *= fWeight;
+				NewCellProperties[1].rho_e *= fWeight;
 #endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
 #endif // ENFORCE_CONSERVATION
 
-		pNewCell[0] = new CAdaptiveMeshCell( &(NewCellProperties[0]) );
-		pNewCell[1] = new CAdaptiveMeshCell( &(NewCellProperties[1]) );
+				pNewCell[0] = new CAdaptiveMeshCell( &(NewCellProperties[0]) );
+				pNewCell[1] = new CAdaptiveMeshCell( &(NewCellProperties[1]) );
                     
-		pLeftCell->SetPointer( RIGHT, pNewCell[0] );
-		pNewCell[0]->SetPointer( LEFT, pLeftCell );
+				pLeftCell->SetPointer( RIGHT, pNewCell[0] );
+				pNewCell[0]->SetPointer( LEFT, pLeftCell );
 
-		pNewCell[0]->SetPointer( RIGHT, pNewCell[1] );
-		pNewCell[1]->SetPointer( LEFT, pNewCell[0] );
+				pNewCell[0]->SetPointer( RIGHT, pNewCell[1] );
+				pNewCell[1]->SetPointer( LEFT, pNewCell[0] );
 			
-		if( pRightCell )
-		{
+				if( pRightCell )
+				{
                     pNewCell[1]->SetPointer( RIGHT, pRightCell );
                     pRightCell->SetPointer( LEFT, pNewCell[1] );
-		}
-		else
-		{
+				}
+				else
+				{
                     pNewCell[1]->SetPointer( RIGHT, NULL );
 					pEndOfCurrentRow = pNewCell[1];
-		}
+				}
 
 #if defined(OPTICALLY_THICK_RADIATION) || defined(BEAM_HEATING)
-		// Relocate the centre of the current row of grid cells
-		if( pActiveCell == pCentreOfCurrentRow )
-			pCentreOfCurrentRow = pNewCell[0];
+				// Relocate the centre of the current row of grid cells
+				if( pActiveCell == pCentreOfCurrentRow )
+					pCentreOfCurrentRow = pNewCell[0];
 #endif // OPTICALLY_THICK_RADIATION || BEAM_HEATING
 
 #ifdef NON_EQUILIBRIUM_RADIATION
@@ -1507,29 +1506,36 @@ do {
 #endif // NON_EQUILIBRIUM_RADIATION
 
 #ifdef USE_KINETIC_MODEL
-		delete CellProperties.pKinetic;
+				delete CellProperties.pKinetic;
 #endif // USE_KINETIC_MODEL
 
-		delete pActiveCell;
+				delete pActiveCell;
 
-		pNextActiveCell = pNewCell[1];
+				pNextActiveCell = pNewCell[1];
             }
-	}
-	else
-	{
+		}
+		else
+		{
             pNextActiveCell = pRightCell;
-	}
+		}
     }
-
 } while( iRestricted );
 }
 #endif // ADAPT
 
+#ifdef OPEN_FIELD
+#define EPSILON_BC	0.1
 void CAdaptiveMesh::EnforceBoundaryConditions( void )
 {
 PCELL pNextActiveCell, pGhostCell[2];
 CELLPROPERTIES CellProperties[2], GhostCellProperties[2];
+int j;
 
+// This function is only called when OPEN_FIELD is defined. Otherwise, the left- and right-hand
+// boundaries are handled either by the original parameter values in the boundary cells and/or
+// the adaptive grid
+
+/*
 // Left-hand boundary
 pNextActiveCell = pStartOfCurrentRow;
 pActiveCell = pNextActiveCell;
@@ -1542,24 +1548,28 @@ pActiveCell = pNextActiveCell;
 pActiveCell->GetCellProperties( &(CellProperties[0]) );
 CellProperties[0].rho_v[1] = 0.0;
 pActiveCell->UpdateCellProperties( &(CellProperties[0]) );
+*/
 
 // Right-hand boundary
-pNextActiveCell = pEndOfCurrentRow->pGetPointer( LEFT );
-pGhostCell[0] = pNextActiveCell;
-pGhostCell[0]->GetCellProperties( &(GhostCellProperties[0]) );
 pNextActiveCell = pEndOfCurrentRow;
 pGhostCell[1] = pNextActiveCell;
 pGhostCell[1]->GetCellProperties( &(GhostCellProperties[1]) );
-#ifdef OPEN_FIELD
-	int j;
 
-	pNextActiveCell = pEndOfCurrentRow->pGetPointer( LEFT )->pGetPointer( LEFT );
-	pActiveCell = pNextActiveCell;
-	pActiveCell->GetCellProperties( &(CellProperties[1]) );
+pNextActiveCell = pGhostCell[1]->pGetPointer( LEFT );
+pGhostCell[0] = pNextActiveCell;
+pGhostCell[0]->GetCellProperties( &(GhostCellProperties[0]) );
+
+pNextActiveCell = pGhostCell[0]->pGetPointer( LEFT );
+pActiveCell = pNextActiveCell;
+pActiveCell->GetCellProperties( &(CellProperties[1]) );
+
+pNextActiveCell = pActiveCell->pGetPointer( LEFT );
+pActiveCell = pNextActiveCell;
+pActiveCell->GetCellProperties( &(CellProperties[0]) );
 
 #ifdef FORCE_SYMMETRY
 	GhostCellProperties[0].rho[1] = CellProperties[1].rho[1];
-	GhostCellProperties[1].rho[1] = GhostCellProperties[0].rho[1];
+	GhostCellProperties[1].rho[1] = CellProperties[0].rho[1];
 
 	GhostCellProperties[0].rho_v[1] = 0.0;
 	GhostCellProperties[1].rho_v[1] = 0.0;
@@ -1567,72 +1577,127 @@ pGhostCell[1]->GetCellProperties( &(GhostCellProperties[1]) );
 	for( j=0; j<SPECIES; j++ )
 	{
 		GhostCellProperties[0].TE_KE[1][j] = CellProperties[1].TE_KE[1][j];
-		GhostCellProperties[1].TE_KE[1][j] = GhostCellProperties[0].TE_KE[1][j];
+		GhostCellProperties[1].TE_KE[1][j] = CellProperties[0].TE_KE[1][j];
 	}
 
 #ifdef NON_EQUILIBRIUM_RADIATION
 	GhostCellProperties[0].pIonFrac->CopyAllIonFrac( CellProperties[1].pIonFrac );
-	GhostCellProperties[1].pIonFrac->CopyAllIonFrac( GhostCellProperties[0].pIonFrac );
+	GhostCellProperties[1].pIonFrac->CopyAllIonFrac( CellProperties[0].pIonFrac );
 #endif // NON_EQUILIBRIUM_RADIATION
 
 #ifdef OPTICALLY_THICK_RADIATION
 #ifdef NLTE_CHROMOSPHERE
 	GhostCellProperties[0].rho_e = CellProperties[1].rho_e;
-	GhostCellProperties[1].rho_e = GhostCellProperties[0].rho_e;
+	GhostCellProperties[1].rho_e = CellProperties[0].rho_e;
 #endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
 #else // FORCE_SYMMETRY
-	double x[3], y[3];
+	double L1, L2, A1, A2, v, dv, drho, drho_v, dTE_KE;
 
-	pNextActiveCell = pActiveCell->pGetPointer( LEFT );
-	pActiveCell = pNextActiveCell;
-	pActiveCell->GetCellProperties( &(CellProperties[0]) );
+// GHOST CELL 1
 
-	x[1] = CellProperties[0].s[1];
-	x[2] = CellProperties[1].s[1];
+	L1 = CellProperties[1].s[1] - CellProperties[0].s[1];
+	L2 = GhostCellProperties[0].s[1] - CellProperties[1].s[1];
+	A1 = CalculateCrossSection( CellProperties[0].s[1]/Params.L );
+	A2 = CalculateCrossSection( CellProperties[1].s[1]/Params.L );
+	v = CellProperties[1].rho_v[1] / CellProperties[1].rho[1];
+	// The factor (L2/L1) accounts for non-uniform grid cell widths
+	dv = ( L2 / L1 ) * ( (v*A2) - ( (CellProperties[0].rho_v[1] / CellProperties[0].rho[1])*A1 ) );
 
-	y[1] = CellProperties[0].rho[1];
-	y[2] = CellProperties[1].rho[1];
-	LinearFit( x, y, GhostCellProperties[0].s[1], &(GhostCellProperties[0].rho[1]) );
-	// Set a zero density gradient across the ghost cells
-	GhostCellProperties[1].rho[1] = GhostCellProperties[0].rho[1];
+	// Find the mass density by advecting this quantity from adjacent cells 
+	// using the steady-state conservation equation
+	drho = - CellProperties[1].rho[1] * ( dv / (v*A2) );
+	if( fabs(drho) / CellProperties[1].rho[1] > EPSILON_BC )
+		drho = (drho/fabs(drho)) * EPSILON_BC * CellProperties[1].rho[1];
+	GhostCellProperties[0].rho[1] = CellProperties[1].rho[1] + drho;
 
-	// Set the mass flux constant across the ghost cells
-	GhostCellProperties[0].rho_v[1] = CellProperties[1].rho_v[1];
-	GhostCellProperties[1].rho_v[1] = GhostCellProperties[0].rho_v[1];
+	// Find the momentum density by advecting this quantity from adjacent cells 
+	// using the steady-state conservation equation
+	drho_v = - CellProperties[1].rho[1] * ( dv / A2 );
+	if( fabs(drho_v/CellProperties[1].rho_v[1]) > EPSILON_BC )
+		drho_v = (drho_v/fabs(drho_v)) * EPSILON_BC * fabs(CellProperties[1].rho_v[1]);
+	GhostCellProperties[0].rho_v[1] = CellProperties[1].rho_v[1] + drho_v;
 
-	// Set the total energy flux constant across the ghost cells
+	// Find the energy densities by advecting these quantities from adjacent cells 
+	// using the steady-state conservation equation
 	for( j=0; j<SPECIES; j++ )
 	{
-		GhostCellProperties[0].TE_KE[1][j] = CellProperties[1].TE_KE[1][j] * ( CellProperties[1].rho_v[1] / GhostCellProperties[0].rho_v[1] ) * ( GhostCellProperties[0].rho[1] / CellProperties[1].rho[1] );
-		GhostCellProperties[1].TE_KE[1][j] = GhostCellProperties[0].TE_KE[1][j] * ( GhostCellProperties[0].rho_v[1] / GhostCellProperties[1].rho_v[1] ) * ( GhostCellProperties[1].rho[1] / GhostCellProperties[0].rho[1] );
-	}
+		dTE_KE = - CellProperties[1].TE_KE[1][j] * ( dv / (v*A2) );
+		if( fabs(dTE_KE) / CellProperties[1].TE_KE[1][j] > EPSILON_BC )
+			dTE_KE = (dTE_KE/fabs(dTE_KE)) * EPSILON_BC * CellProperties[1].TE_KE[1][j];
+		GhostCellProperties[0].TE_KE[1][j] = CellProperties[1].TE_KE[1][j] + dTE_KE;
+ 	}
+
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+	// Find the electron mass density by advecting this quantity from adjacent cells 
+	// using the steady-state conservation equation
+	drho = - CellProperties[1].rho_e * ( dv / (v*A2) );
+	if( fabs(drho) / CellProperties[1].rho_e > EPSILON_BC )
+		drho = (drho/fabs(drho)) * EPSILON_BC * CellProperties[1].rho_e;
+	GhostCellProperties[0].rho_e = CellProperties[1].rho_e + drho;
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
+
+// GHOST CELL 2
+
+	L1 = L2;
+	L2 = GhostCellProperties[1].s[1] - GhostCellProperties[0].s[1];
+	A1 = A2;
+	A2 = CalculateCrossSection( GhostCellProperties[1].s[1]/Params.L );
+	v = GhostCellProperties[0].rho_v[1] / GhostCellProperties[0].rho[1];
+	// The factor (L2/L1) accounts for non-uniform grid cell widths
+	dv = ( L2 / L1 ) * ( (v*A2) - ( (CellProperties[1].rho_v[1] / CellProperties[1].rho[1])*A1 ) );
+
+	// Find the mass density by advecting this quantity from adjacent cells 
+	// using the steady-state conservation equation
+	drho = - GhostCellProperties[0].rho[1] * ( dv / (v*A2) );
+	if( fabs(drho) / GhostCellProperties[0].rho[1] > EPSILON_BC )
+		drho = (drho/fabs(drho)) * EPSILON_BC * GhostCellProperties[0].rho[1];
+	GhostCellProperties[1].rho[1] = GhostCellProperties[0].rho[1] + drho;
+
+	// Find the momentum density by advecting this quantity from adjacent cells 
+	// using the steady-state conservation equation
+	drho_v = - GhostCellProperties[0].rho[1] * ( dv / A2 );
+	if( fabs(drho_v/GhostCellProperties[0].rho_v[1]) > EPSILON_BC )
+		drho_v = (drho_v/fabs(drho_v)) * EPSILON_BC * fabs(GhostCellProperties[0].rho_v[1]);
+	GhostCellProperties[1].rho_v[1] = GhostCellProperties[0].rho_v[1] + drho_v;
+
+	// Find the energy densities by advecting these quantities from adjacent cells 
+	// using the steady-state conservation equation
+	for( j=0; j<SPECIES; j++ )
+	{
+		dTE_KE = - GhostCellProperties[0].TE_KE[1][j] * ( dv / (v*A2) );
+		if( fabs(dTE_KE) / GhostCellProperties[0].TE_KE[1][j] > EPSILON_BC )
+			dTE_KE = (dTE_KE/fabs(dTE_KE)) * EPSILON_BC * GhostCellProperties[0].TE_KE[1][j];
+		GhostCellProperties[1].TE_KE[1][j] = GhostCellProperties[0].TE_KE[1][j] + dTE_KE;
+ 	}
+
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+	// Find the electron mass density by advecting this quantity from adjacent cells 
+	// using the steady-state conservation equation
+	drho = - GhostCellProperties[0].rho_e * ( dv / (v*A2) );
+	if( fabs(drho) / GhostCellProperties[0].rho_e > EPSILON_BC )
+		drho = (drho/fabs(drho)) * EPSILON_BC * GhostCellProperties[0].rho_e;
+	GhostCellProperties[1].rho_e = GhostCellProperties[0].rho_e + drho;
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
 
 #ifdef NON_EQUILIBRIUM_RADIATION
+	// Find the ion population by extrapolation from the two grid cells adjacent to the ghost cells
 	double **ppIonFrac[3];
    	ppIonFrac[1] = CellProperties[0].pIonFrac->ppGetIonFrac();
    	ppIonFrac[2] = CellProperties[1].pIonFrac->ppGetIonFrac();
    	GhostCellProperties[0].pIonFrac->InterpolateAllIonFrac( x, ppIonFrac, 2, GhostCellProperties[0].s[1] );
-	GhostCellProperties[1].pIonFrac->CopyAllIonFrac( GhostCellProperties[0].pIonFrac );
+   	GhostCellProperties[1].pIonFrac->InterpolateAllIonFrac( x, ppIonFrac, 2, GhostCellProperties[1].s[1] );
 #endif // NON_EQUILIBRIUM_RADIATION
-
-#ifdef OPTICALLY_THICK_RADIATION
-#ifdef NLTE_CHROMOSPHERE
-	y[1] = CellProperties[0].rho_e;
-	y[2] = CellProperties[1].rho_e;
-	LinearFit( x, y, GhostCellProperties[0].s[1], &(GhostCellProperties[0].rho_e) );
-	// Set a zero density gradient across the ghost cells
-	GhostCellProperties[1].rho_e = GhostCellProperties[0].rho_e;
-#endif // NLTE_CHROMOSPHERE
-#endif // OPTICALLY_THICK_RADIATION
 #endif // FORCE_SYMMETRY
-#else // OPEN_FIELD
-	GhostCellProperties[0].rho_v[1] = 0.0;
-	GhostCellProperties[1].rho_v[1] = 0.0;
-#endif // OPEN_FIELD
-	pGhostCell[0]->UpdateCellProperties( &(GhostCellProperties[0]) );
-	pGhostCell[1]->UpdateCellProperties( &(GhostCellProperties[1]) );
+
+pGhostCell[0]->UpdateCellProperties( &(GhostCellProperties[0]) );
+pGhostCell[1]->UpdateCellProperties( &(GhostCellProperties[1]) );
 }
+#endif // OPEN_FIELD
 
 void CAdaptiveMesh::Solve( void )
 {
@@ -1767,8 +1832,10 @@ while( pNextActiveCell )
 	pEndOfCurrentRow = pNewCell;
 }
 
-// Enforce the boundary conditions
-EnforceBoundaryConditions();
+#ifdef OPEN_FIELD
+	// Enforce the boundary conditions
+	EnforceBoundaryConditions();
+#endif // OPEN_FIELD
 
 // Calculate the physical quantities in the new cells
 CalculatePhysicalQuantities();
@@ -1790,9 +1857,6 @@ while( pNextActiveCell )
     pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
 }
 
-// Enforce the boundary conditions
-EnforceBoundaryConditions();
-
 #ifdef ADAPT
 // Adapt the mesh
 if( bAdapt )
@@ -1803,6 +1867,11 @@ if( bAdapt )
 #endif // OPENMP || USE_KINETIC_MODEL
 }
 #endif // ADAPT
+
+#ifdef OPEN_FIELD
+	// Enforce the boundary conditions
+	EnforceBoundaryConditions();
+#endif // OPEN_FIELD
 
 // Calculate the physical quantities
 CalculatePhysicalQuantities();
@@ -1906,13 +1975,6 @@ void CAdaptiveMesh::ShowProgress( clock_t *ptimer )
 	printf( "wall-time elapsed = %.4e %c; ~ wall-time remaining = %.4e %c\n", fTime[1], cUnitLabel[iUnits[1]], fTime[3], cUnitLabel[iUnits[3]] );
 	printf( "\twall-time/%i steps = %.4e %c; wall-time/second = %.4e %c\n",  OUTPUT_EVERY_N_TIME_STEPS, fTime[0], cUnitLabel[iUnits[0]], fTime[2], cUnitLabel[iUnits[2]] );
 	printf( "\trefinement level = %i/%i; total grid cells = %i\n\n", GetMaxRL(), MAX_REFINEMENT_LEVEL, Params.iNumberOfCells );
-	/*
-	printf( "model-time elapsed = %.4e s; wall-time elapsed = %.4e %c\n", mesh_time, fTime[1], cUnitLabel[iUnits[1]] );
-	printf( "\tdt = %.4e s; refinement level = %i/%i; total grid cells = %i;\n", mesh_delta_t, GetMaxRL(), MAX_REFINEMENT_LEVEL, GetNumCells() );
-    	printf( "\twall-time/%i steps = %.4e %c; ",  OUTPUT_EVERY_N_TIME_STEPS, fTime[0], cUnitLabel[iUnits[0]] );
-	printf( "wall-time/second = %.4e %c; ", fTime[2], cUnitLabel[iUnits[2]] );
-	printf( "~ wall-time remaining = %.4e %c\n\n", fTime[3], cUnitLabel[iUnits[3]] );
-	*/
 }
 		void FindTemporalUnits( double *pfTime, int *piUnits )
 		{
