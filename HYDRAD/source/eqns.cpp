@@ -1915,7 +1915,11 @@ while( pNextActiveCell->pGetPointer( RIGHT ) )
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
 		term1 = ( CellProperties.cell_width * CellProperties.cell_width ) / ( 2.0 * RELATIVE_VISCOUS_TIME_SCALE * ( CellProperties.advection_delta_t / SAFETY_ADVECTION ) );
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+		CellProperties.Fnumerical[0] = term1 * ( ( rho_v[1] - rho_v[0] ) / (CalculateCrossSection( CellProperties.s[0]/Params.L )*CellProperties.cell_width) );
+#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
 		CellProperties.Fnumerical[0] = term1 * ( ( rho_v[1] - rho_v[0] ) / CellProperties.cell_width );
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
         LeftCellProperties.Fnumerical[2] = CellProperties.Fnumerical[0];
 #endif // NUMERICAL_VISCOSITY
