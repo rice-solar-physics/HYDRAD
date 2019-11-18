@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 10/08/2019
+// * Date last modified: 11/18/2019
 // *
 // ****
 
@@ -1907,7 +1907,12 @@ while( pNextActiveCell->pGetPointer( RIGHT ) )
 		y[3] = CellProperties.rho_v[1];
 		y[4] = RightCellProperties.rho_v[1];
 		FitPolynomial4( x, y, ( CellProperties.s[1] - CellProperties.cell_width ), &(rho_v[0]), &error );
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+		rho_v[0] *= CalculateCrossSection( (CellProperties.s[1] - CellProperties.cell_width)/Params.L );
+		rho_v[1] = CellProperties.rho_v[1] * CalculateCrossSection( CellProperties.s[1]/Params.L );
+#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
 		rho_v[1] = CellProperties.rho_v[1];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
 		term1 = ( CellProperties.cell_width * CellProperties.cell_width ) / ( 2.0 * RELATIVE_VISCOUS_TIME_SCALE * ( CellProperties.advection_delta_t / SAFETY_ADVECTION ) );
 		CellProperties.Fnumerical[0] = term1 * ( ( rho_v[1] - rho_v[0] ) / CellProperties.cell_width );
