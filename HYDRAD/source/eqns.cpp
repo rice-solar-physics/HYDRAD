@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/18/2019
+// * Date last modified: 12/18/2019
 // *
 // ****
 
@@ -1907,20 +1907,10 @@ while( pNextActiveCell->pGetPointer( RIGHT ) )
 		y[3] = CellProperties.rho_v[1];
 		y[4] = RightCellProperties.rho_v[1];
 		FitPolynomial4( x, y, ( CellProperties.s[1] - CellProperties.cell_width ), &(rho_v[0]), &error );
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-		rho_v[0] *= CalculateCrossSection( (CellProperties.s[1] - CellProperties.cell_width)/Params.L );
-		rho_v[1] = CellProperties.rho_v[1] * CalculateCrossSection( CellProperties.s[1]/Params.L );
-#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
 		rho_v[1] = CellProperties.rho_v[1];
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
 		term1 = ( CellProperties.cell_width * CellProperties.cell_width ) / ( 2.0 * RELATIVE_VISCOUS_TIME_SCALE * ( CellProperties.advection_delta_t / SAFETY_ADVECTION ) );
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-		CellProperties.Fnumerical[0] = term1 * ( ( rho_v[1] - rho_v[0] ) / (CalculateCrossSection( CellProperties.s[0]/Params.L )*CellProperties.cell_width) );
-#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
 		CellProperties.Fnumerical[0] = term1 * ( ( rho_v[1] - rho_v[0] ) / CellProperties.cell_width );
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
-
         LeftCellProperties.Fnumerical[2] = CellProperties.Fnumerical[0];
 #endif // NUMERICAL_VISCOSITY
     }
@@ -2128,15 +2118,9 @@ while( pNextActiveCell->pGetPointer( RIGHT )->pGetPointer( RIGHT ) )
 // *    PRESSURE GRADIENT                                                      *
 // *****************************************************************************
 
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-    LowerValue = ( CellProperties.P[0][ELECTRON] + CellProperties.P[0][HYDROGEN] ) * fCrossSection[0];
-    UpperValue = ( CellProperties.P[2][ELECTRON] + CellProperties.P[2][HYDROGEN] ) * fCrossSection[2];
-    CellProperties.rho_v_term[1] = - ( UpperValue - LowerValue ) / fCellVolume;
-#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
     LowerValue = CellProperties.P[0][ELECTRON] + CellProperties.P[0][HYDROGEN];
     UpperValue = CellProperties.P[2][ELECTRON] + CellProperties.P[2][HYDROGEN];
     CellProperties.rho_v_term[1] = - ( UpperValue - LowerValue ) / CellProperties.cell_width;
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
 // *****************************************************************************
 // *    GRAVITY                                                                *
@@ -2355,13 +2339,7 @@ CellProperties.TE_KE_term[5][ELECTRON] = - SMALLEST_DOUBLE;
     // Derived from qnEv = v dP/ds
     // The term added to the electron energy equation is (e)nEv = v dPe/ds
     // The term added to the hydrogen energy equation is (-e)nEv = -v dPe/ds
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-    LowerValue = CellProperties.P[0][ELECTRON] * fCrossSection[0];
-    UpperValue = CellProperties.P[2][ELECTRON] * fCrossSection[2];
-    CellProperties.TE_KE_term[6][ELECTRON] = CellProperties.v[1] * ( ( UpperValue - LowerValue ) / fCellVolume );
-#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
     CellProperties.TE_KE_term[6][ELECTRON] = CellProperties.v[1] * ( ( CellProperties.P[2][ELECTRON] - CellProperties.P[0][ELECTRON] ) / CellProperties.cell_width );
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
     CellProperties.TE_KE_term[6][HYDROGEN] = -CellProperties.TE_KE_term[6][ELECTRON];
 
     for( j=0; j<SPECIES; j++ )
