@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 07/16/2019
+// * Date last modified: 12/19/2019
 // *
 // ****
 
@@ -63,16 +63,6 @@ A = CalcCrossSection( s, pfMagneticFieldCoefficients );
 return ( -((A*A)/Lfull) * dBbydx );
 }
 
-double CalcdPbyds( double s, double n, double P, double Lfull, double *pfGravityCoefficients, double *pfMagneticFieldCoefficients )
-{
-double term1, term2;
-
-term1 = AVERAGE_PARTICLE_MASS * n * CalcSolarGravity( s/Lfull, pfGravityCoefficients );
-term2 = - ( P / CalcCrossSection( s/Lfull, pfMagneticFieldCoefficients ) ) * CalcdAbyds( s/Lfull, Lfull, pfMagneticFieldCoefficients );
-
-return ( term1 + term2 );
-}
-
 double CalcdFcbyds( double s, double EH, double ER, double Fc, double Lfull, double *pfMagneticFieldCoefficients )
 {
 double term1;
@@ -82,16 +72,16 @@ term1 = - ( Fc / CalcCrossSection( s/Lfull, pfMagneticFieldCoefficients ) ) * Ca
 return ( EH + ER + term1 );
 }
 #else // USE_POLY_FIT_TO_MAGNETIC_FIELD
-double CalcdPbyds( double s, double n, double Lfull, double *pfGravityCoefficients )
-{
-return AVERAGE_PARTICLE_MASS * n * CalcSolarGravity( s/Lfull, pfGravityCoefficients );
-}
-
 double CalcdFcbyds( double EH, double ER )
 {
 return ( EH + ER );
 }
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
+
+double CalcdPbyds( double s, double n, double Lfull, double *pfGravityCoefficients )
+{
+return AVERAGE_PARTICLE_MASS * n * CalcSolarGravity( s/Lfull, pfGravityCoefficients );
+}
 
 double CalcdTbyds( double Fc, double T )
 {
