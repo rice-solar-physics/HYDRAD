@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 12/18/2019
+// * Date last modified: 12/24/2019
 // *
 // ****
 
@@ -2366,7 +2366,11 @@ CellProperties.TE_KE_term[5][ELECTRON] = - SMALLEST_DOUBLE;
     ppni4 = FarRightCellProperties.pIonFrac->ppGetIonFrac();
    
     ppdnibydt = CellProperties.pIonFrac->ppGetdnibydt();
-    pRadiation->GetAlldnibydt( log10( CellProperties.T[ELECTRON] ), log10( CellProperties.n[ELECTRON] ), ppni0, ppni1, ppni2, ppni3, ppni4, ps, CellProperties.s, CellProperties.v, CellProperties.cell_width, ppdnibydt, &(CellProperties.atomic_delta_t) );
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+    pRadiation->GetAlldnibydt( log10( CellProperties.T[ELECTRON] ), log10( CellProperties.n[ELECTRON] ), ppni0, ppni1, ppni2, ppni3, ppni4, ps, CellProperties.s, CellProperties.v, fCrossSection, fCellVolume, ppdnibydt, &(CellProperties.atomic_delta_t) );
+#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
+	pRadiation->GetAlldnibydt( log10( CellProperties.T[ELECTRON] ), log10( CellProperties.n[ELECTRON] ), ppni0, ppni1, ppni2, ppni3, ppni4, ps, CellProperties.s, CellProperties.v, CellProperties.cell_width, ppdnibydt, &(CellProperties.atomic_delta_t) );
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 #endif // NON_EQUILIBRIUM_RADIATION
 
 #ifdef OPTICALLY_THICK_RADIATION
@@ -2376,8 +2380,11 @@ CellProperties.TE_KE_term[5][ELECTRON] = - SMALLEST_DOUBLE;
    pHstate2 = CellProperties.Hstate;
    pHstate3 = RightCellProperties.Hstate;
    pHstate4 = FarRightCellProperties.Hstate;
-
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+   pRadiativeRates->GetAllDel_Hstate_dot_v( pHstate0, pHstate1, pHstate2, pHstate3, pHstate4, ps, CellProperties.s, CellProperties.v, fCrossSection, fCellVolume, CellProperties.Del_Hstate_dot_v );
+#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
    pRadiativeRates->GetAllDel_Hstate_dot_v( pHstate0, pHstate1, pHstate2, pHstate3, pHstate4, ps, CellProperties.s, CellProperties.v, CellProperties.cell_width, CellProperties.Del_Hstate_dot_v );
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 #endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
 
