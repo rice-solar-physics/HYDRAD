@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/16/2017
+// * Date last modified: 12/24/2019
 // *
 // ****
 
@@ -78,8 +78,13 @@ class CRadiation {
     double GetRadiation( double flog_10T, double fne, double fnH );
 
     // Functions to calculate the rate of change with respect to time of the fractional populations of the ions and the characteristic time-scale
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+    void Getdnibydt( int iZ, double flog_10T, double flog_10n, double *pni0, double *pni1, double *pni2, double *pni3, double *pni4, double *s, double *s_pos, double *pv, double *cross_section, double cell_volume, double *pdnibydt, double *pTimeScale );
+    void GetAlldnibydt( double flog_10T, double flog_10n, double **ppni0, double **ppni1, double **ppni2, double **ppni3, double **ppni4, double *s, double *s_pos, double *pv, double *cross_section, double cell_volume, double **ppdnibydt, double *pTimeScale );
+#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
     void Getdnibydt( int iZ, double flog_10T, double flog_10n, double *pni0, double *pni1, double *pni2, double *pni3, double *pni4, double *s, double *s_pos, double *pv, double delta_s, double *pdnibydt, double *pTimeScale );
     void GetAlldnibydt( double flog_10T, double flog_10n, double **ppni0, double **ppni1, double **ppni2, double **ppni3, double **ppni4, double *s, double *s_pos, double *pv, double delta_s, double **ppdnibydt, double *pTimeScale );
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
     // Functions to calculate the amount of energy radiated in nonequilibrium
     double GetRadiation( int iZ, int iIon, double flog_10T, double fne, double fnH, double ni );

@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 02/14/2017
+// * Date last modified: 12/24/2019
 // *
 // ****
 
@@ -14,7 +14,6 @@
 #include <math.h>
 
 #include "element.h"
-#include "config.h"
 #include "../../Resources/source/file.h"
 #include "../../Resources/source/fitpoly.h"
 #include "../../Resources/source/constants.h"
@@ -947,7 +946,11 @@ if( result < 0.0 ) result = 0.0;
 return result;
 }
 
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+void CElement::Getdnibydt( double flog_10T, double flog_10n, double *pni0, double *pni1, double *pni2, double *pni3, double *pni4, double *s, double *s_pos, double *pv, double *cross_section, double cell_volume, double *pdnibydt, double *pTimeScale )
+#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
 void CElement::Getdnibydt( double flog_10T, double flog_10n, double *pni0, double *pni1, double *pni2, double *pni3, double *pni4, double *s, double *s_pos, double *pv, double delta_s, double *pdnibydt, double *pTimeScale )
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 {
 double ne, IonRate[2], RecRate[2], term1, term2, term3, term4, term5, delta_t1, delta_t2, TimeScale, SmallestTimeScale;
 int iIndex, iSpecNum;
@@ -977,42 +980,40 @@ for( iIndex=0; iIndex<=Z; iIndex++ )
     if( pv[0] > 0.0 )
     {
         // Calculate the ion fraction
-	    
         x[1] = s[0];
-	x[2] = s[1];
-	y[1] = pni0[iIndex];
-	y[2] = pni1[iIndex];
-	LinearFit( x, y, s_pos[0], &Q1 );
+		x[2] = s[1];
+		y[1] = pni0[iIndex];
+		y[2] = pni1[iIndex];
+		LinearFit( x, y, s_pos[0], &Q1 );
 
-	x[1] = s[1];
-	x[2] = s[2];
-	y[1] = pni1[iIndex];
-	y[2] = pni2[iIndex];
-	LinearFit( x, y, s_pos[0], &Q2 );
+		x[1] = s[1];
+		x[2] = s[2];
+		y[1] = pni1[iIndex];
+		y[2] = pni2[iIndex];
+		LinearFit( x, y, s_pos[0], &Q2 );
 
-	Q3 = pni1[iIndex];
+		Q3 = pni1[iIndex];
 
-	if( pni2[iIndex] <= pni1[iIndex] )
-	{
+		if( pni2[iIndex] <= pni1[iIndex] )
+		{
             QT = max( Q1, Q2 );
             if( Q3 < QT )
                 ni0 = Q3;
             else
                 ni0 = QT;
-	}
-	else
-	{
+		}
+		else
+		{
             QT = min( Q1, Q2 );
             if( Q3 > QT )
                 ni0 = Q3;
             else
                 ni0 = QT;
-	}
+		}
     }
     else
     {
         // Calculate the ion fraction
-	        
         x[1] = s[2];
         x[2] = s[3];
         y[1] = pni2[iIndex];
@@ -1048,43 +1049,41 @@ for( iIndex=0; iIndex<=Z; iIndex++ )
     if( pv[2] > 0.0 )
     {
         // Calculate the ion fraction
-	    
-	x[1] = s[1];
-	x[2] = s[2];
-	y[1] = pni1[iIndex];
-	y[2] = pni2[iIndex];
-	LinearFit( x, y, s_pos[2], &Q1 );
+		x[1] = s[1];
+		x[2] = s[2];
+		y[1] = pni1[iIndex];
+		y[2] = pni2[iIndex];
+		LinearFit( x, y, s_pos[2], &Q1 );
 
-	x[1] = s[2];
-	x[2] = s[3];
-	y[1] = pni2[iIndex];
-	y[2] = pni3[iIndex];
-	LinearFit( x, y, s_pos[2], &Q2 );
+		x[1] = s[2];
+		x[2] = s[3];
+		y[1] = pni2[iIndex];
+		y[2] = pni3[iIndex];
+		LinearFit( x, y, s_pos[2], &Q2 );
 
-	Q3 = pni2[iIndex];
+		Q3 = pni2[iIndex];
 
-	if( pni3[iIndex] <= pni2[iIndex] )
-	{
+		if( pni3[iIndex] <= pni2[iIndex] )
+		{
             QT = max( Q1, Q2 );
             if( Q3 < QT )
                 ni2 = Q3;
             else
                 ni2 = QT;
-	}
-	else
-	{
+		}
+		else
+		{
             QT = min( Q1, Q2 );
             if( Q3 > QT )
                 ni2 = Q3;
             else
                 ni2 = QT;
-	}
+		}
     }
     else
     {
         // Calculate the ion fraction
-	        
-	x[1] = s[3];
+		x[1] = s[3];
         x[2] = s[4];
         y[1] = pni3[iIndex];
         y[2] = pni4[iIndex];
@@ -1116,7 +1115,11 @@ for( iIndex=0; iIndex<=Z; iIndex++ )
         }
     }
 
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+    term1 = - ( ( ni2 * pv[2] * cross_section[2] ) - ( ni0 * pv[0] * cross_section[0] ) ) / cell_volume;
+#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
     term1 = - ( ( ni2 * pv[2] ) - ( ni0 * pv[0] ) ) / delta_s;
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
     if( iSpecNum > 1 )
     {
@@ -1168,7 +1171,7 @@ for( iIndex=0; iIndex<=Z; iIndex++ )
         if( TimeScale < MINIMUM_COLLISIONAL_COUPLING_TIME_SCALE )
         {
             term5 *= ( TimeScale / MINIMUM_COLLISIONAL_COUPLING_TIME_SCALE );
-	    TimeScale = MINIMUM_COLLISIONAL_COUPLING_TIME_SCALE;
+		    TimeScale = MINIMUM_COLLISIONAL_COUPLING_TIME_SCALE;
         }
     }
     else

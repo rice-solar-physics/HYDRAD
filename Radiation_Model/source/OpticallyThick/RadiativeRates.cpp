@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 09/07/2018
+// * Date last modified: 12/24/2019
 // *
 // ****
 
@@ -554,7 +554,6 @@ pBBRatesFile = fopen( pszBBRatesFile, "r" );
 			ReadDouble( pBBRatesFile, &(ppfBB_ul[j][i]) );	
 	}
 fclose( pBBRatesFile );
-
 }
 
 void CRadiativeRates::GetBFRates( char *pszBFRatesFile )
@@ -636,7 +635,6 @@ pFBRatesFile = fopen( pszFBRatesFile, "r" );
 			for( i=0; i<iFB_radTvals; i++ )
 				ReadDouble( pFBRatesFile, &(pppfFB[j][i][h]) );	
 fclose( pFBRatesFile );
-
 }
 
 void CRadiativeRates::GetCollRates( char *pszCollRatesFile )
@@ -700,7 +698,6 @@ int i, j;
 			ReadDouble( pCollRatesFile, &(ppfColl_rec[j][i]) );
 	}
 fclose( pCollRatesFile );
-
 }
 
 void CRadiativeRates::GetBoundBoundRates( double *pfBB_lu, double *pfBB_ul, double *pflog10T )
@@ -1126,7 +1123,11 @@ void CRadiativeRates::SolveHIIFraction( double *pfHstate, double *pfColl_ex_lu, 
 */
 }
 
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+void CRadiativeRates::GetAllDel_Hstate_dot_v( double *pHstate0, double *pHstate1, double *pHstate2, double *pHstate3, double *pHstate4, double *s, double *s_pos, double *pv, double *cross_section, double cell_volume, double *pDel_Hstate_dot_v )
+#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
 void CRadiativeRates::GetAllDel_Hstate_dot_v( double *pHstate0, double *pHstate1, double *pHstate2, double *pHstate3, double *pHstate4, double *s, double *s_pos, double *pv, double delta_s, double *pDel_Hstate_dot_v )
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 {
 // Variables used for interpolation
 double x[3], y[3];
@@ -1144,42 +1145,40 @@ iLevel = 5;
     if( pv[0] > 0.0 )
     {
         // Calculate the level population fraction
-	    
         x[1] = s[0];
-	x[2] = s[1];
-	y[1] = pHstate0[iLevel];
-	y[2] = pHstate1[iLevel];
-	LinearFit( x, y, s_pos[0], &Q1 );
+		x[2] = s[1];
+		y[1] = pHstate0[iLevel];
+		y[2] = pHstate1[iLevel];
+		LinearFit( x, y, s_pos[0], &Q1 );
 
-	x[1] = s[1];
-	x[2] = s[2];
-	y[1] = pHstate1[iLevel];
-	y[2] = pHstate2[iLevel];
-	LinearFit( x, y, s_pos[0], &Q2 );
+		x[1] = s[1];
+		x[2] = s[2];
+		y[1] = pHstate1[iLevel];
+		y[2] = pHstate2[iLevel];
+		LinearFit( x, y, s_pos[0], &Q2 );
 
-	Q3 = pHstate1[iLevel];
+		Q3 = pHstate1[iLevel];
 
-	if( pHstate2[iLevel] <= pHstate1[iLevel] )
-	{
+		if( pHstate2[iLevel] <= pHstate1[iLevel] )
+		{
             QT = max( Q1, Q2 );
             if( Q3 < QT )
                 Hstate0 = Q3;
             else
                 Hstate0 = QT;
-	}
-	else
-	{
+		}
+		else
+		{
             QT = min( Q1, Q2 );
             if( Q3 > QT )
                 Hstate0 = Q3;
             else
                 Hstate0 = QT;
-	}
+		}
     }
     else
     {
         // Calculate the level population fraction
-	        
         x[1] = s[2];
         x[2] = s[3];
         y[1] = pHstate2[iLevel];
@@ -1215,43 +1214,41 @@ iLevel = 5;
     if( pv[2] > 0.0 )
     {
         // Calculate the level population fraction
-	    
-	x[1] = s[1];
-	x[2] = s[2];
-	y[1] = pHstate1[iLevel];
-	y[2] = pHstate2[iLevel];
-	LinearFit( x, y, s_pos[2], &Q1 );
+		x[1] = s[1];
+		x[2] = s[2];
+		y[1] = pHstate1[iLevel];
+		y[2] = pHstate2[iLevel];
+		LinearFit( x, y, s_pos[2], &Q1 );
 
-	x[1] = s[2];
-	x[2] = s[3];
-	y[1] = pHstate2[iLevel];
-	y[2] = pHstate3[iLevel];
-	LinearFit( x, y, s_pos[2], &Q2 );
+		x[1] = s[2];
+		x[2] = s[3];
+		y[1] = pHstate2[iLevel];
+		y[2] = pHstate3[iLevel];
+		LinearFit( x, y, s_pos[2], &Q2 );
 
-	Q3 = pHstate2[iLevel];
+		Q3 = pHstate2[iLevel];
 
-	if( pHstate3[iLevel] <= pHstate2[iLevel] )
-	{
+		if( pHstate3[iLevel] <= pHstate2[iLevel] )
+		{
             QT = max( Q1, Q2 );
             if( Q3 < QT )
                 Hstate2 = Q3;
             else
                 Hstate2 = QT;
-	}
-	else
-	{
+		}
+		else
+		{
             QT = min( Q1, Q2 );
             if( Q3 > QT )
                 Hstate2 = Q3;
             else
                 Hstate2 = QT;
-	}
+		}
     }
     else
     {
         // Calculate the level population fraction
-	        
-	x[1] = s[3];
+		x[1] = s[3];
         x[2] = s[4];
         y[1] = pHstate3[iLevel];
         y[2] = pHstate4[iLevel];
@@ -1282,9 +1279,11 @@ iLevel = 5;
                 Hstate2 = QT;
         }
     }
-
-    // pDel_Hstate_dot_v[iLevel] = - ( ( Hstate2 * pv[2] ) - ( Hstate0 * pv[0] ) ) / delta_s;
-    pDel_Hstate_dot_v[iLevel] = ( ( Hstate0 * pv[0] ) - ( Hstate2 * pv[2] ) ) / delta_s;
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+    pDel_Hstate_dot_v[iLevel] = - ( ( Hstate2 * pv[2] * cross_section[2] ) - ( Hstate0 * pv[0] * cross_section[0] ) ) / cell_volume;
+#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
+    pDel_Hstate_dot_v[iLevel] = - ( ( Hstate2 * pv[2] ) - ( Hstate0 * pv[0] ) ) / delta_s;
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 }
 }
 
