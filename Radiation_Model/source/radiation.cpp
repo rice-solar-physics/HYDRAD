@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 12/24/2019
+// * Date last modified: 02/04/2020
 // *
 // ****
 
@@ -186,6 +186,32 @@ for( i=0; i<NumElements; i++ )
 if( i == NumElements ) return 0.0;
 
 return ppElements[i]->GetAbundance();
+}
+
+void CRadiation::GetRates( int iZ, int iIon, double flog_10T, double *pfIonRate, double *pfRecRate )
+{
+int i;
+
+// Find the required element
+for( i=0; i<NumElements; i++ )
+    if( iZ == pZ[i] ) break;
+
+if( i == NumElements ) return;
+
+ppElements[i]->GetRates( iIon, flog_10T, pfIonRate, pfRecRate );
+}
+
+void CRadiation::GetRates( int iZ, int iIon, double flog_10T, double flog_10n, double *pfIonRate, double *pfRecRate )
+{
+int i;
+
+// Find the required element
+for( i=0; i<NumElements; i++ )
+    if( iZ == pZ[i] ) break;
+
+if( i == NumElements ) return;
+
+ppElements[i]->GetRates( iIon, flog_10T, flog_10n, pfIonRate, pfRecRate );
 }
 
 void CRadiation::GetEquilIonFrac( int iZ, double *pni, double flog_10T )
