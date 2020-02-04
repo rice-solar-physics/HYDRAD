@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 09/05/2018
+// * Date last modified: 02/04/2020
 // *
 // ****
 
@@ -25,8 +25,8 @@
 #define HYDROGEN		1		// The array index to reference the hydrogen species
 
 #define MASS_TERMS		1		// The number of terms in the mass conservation equation
-#define MOMENTUM_TERMS          5		// The number of terms in the momentum conservation equation
-#define ENERGY_TERMS            9		// The number of terms in the energy conservation equations
+#define MOMENTUM_TERMS  5		// The number of terms in the momentum conservation equation
+#define ENERGY_TERMS    10		// The number of terms in the energy conservation equations
 
 
 // **** ADAPTIVE MESH CELL PROPERTIES ****

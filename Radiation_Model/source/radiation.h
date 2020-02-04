@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 12/24/2019
+// * Date last modified: 02/04/2020
 // *
 // ****
 
@@ -59,7 +59,11 @@ class CRadiation {
     // Function to return the abundance of a specified element
     double GetAbundance( int iZ );
 
-    // Function to return the ion fractional populations of a particular element at a specified temperature and density in equilibrium
+	// Functions to return the ionization and recombination rates of a particular element and ion, at a specified temperature and density
+	void GetRates( int iZ, int iIon, double flog_10T, double *pfIonRate, double *pfRecRate );
+	void GetRates( int iZ, int iIon, double flog_10T, double flog_10n, double *pfIonRate, double *pfRecRate );
+
+    // Functions to return the ion fractional populations of a particular element at a specified temperature and density in equilibrium
     void GetEquilIonFrac( int iZ, double *pni, double flog_10T );
     void GetEquilIonFrac( int iZ, double *pni, double flog_10T, double flog_10n );
 

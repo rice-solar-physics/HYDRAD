@@ -5,7 +5,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 04/05/2019
+// * Date last modified: 02/04/2020
 // *
 // ****
 
@@ -71,22 +71,21 @@ class CEquations {
     PRADIATION pRadiation, pRadiation2;
 
 #if defined(OPTICALLY_THICK_RADIATION) || defined(BEAM_HEATING)
-
 #ifdef OPTICALLY_THICK_RADIATION
     // Pointers to the ions for which optically-thick radiative emission
     // will be calculated
     POPTICALLYTHICKION pHI, pMgII, pCaII;
-
 #ifdef NLTE_CHROMOSPHERE
     // Pointer to the radiative rates for the 6-level hydrogen atom
     PRADIATIVERATES pRadiativeRates;
 #endif // NLTE_CHROMOSPHERE
-
 #endif // OPTICALLY_THICK_RADIATION
-
+#ifdef BEAM_HEATING
+	// Pointers to the particular radiation objects which contain the models for hydrogen and helium
+	PRADIATION pRadiation_H, pRadiation_He;
+#endif // BEAM_HEATING
     // Pointer to the centre of the row at the current time (approx. the loop apex)
     PCELL pCentreOfCurrentRow;
-
 #endif // OPTICALLY_THICK_RADIATION || BEAM_HEATING
 
     // Pointer to the left-most cell at the previous time (the start of the previous row)
