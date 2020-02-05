@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 02/04/2020
+// * Date last modified: 02/05/2020
 // *
 // ****
 
@@ -622,7 +622,7 @@ int i, j;
 	{
 		term1 = TIME_STEP_LIMIT / tau_JB;
 		term2 = pow( 0.1, term1 );
-		Tc = old_TC * term2;
+		Tc = old_Tc * term2;
 	}
 	old_Tc = Tc;
 #endif // USE_JB
@@ -1236,7 +1236,7 @@ iMaxRL = 0;
 	{
 		term1 = TIME_STEP_LIMIT / tau_JB;
 		term2 = pow( 0.1, term1 );
-		Tc = old_TC * term2;
+		Tc = old_Tc * term2;
 	}
 	old_Tc = Tc;
 #endif // USE_JB
