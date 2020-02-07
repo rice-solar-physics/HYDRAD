@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 10/26/2019
+// * Date last modified: 02/06/2020
 // *
 // ****
 
@@ -1701,7 +1701,11 @@ pGhostCell[1]->UpdateCellProperties( &(GhostCellProperties[1]) );
 
 void CAdaptiveMesh::Solve( void )
 {
+#ifdef OPENMP
+double timer[3];
+#else // OPENMP
 clock_t timer[3];
+#endif // OPENMP
 double fNextOutputTime;
 int iOutputStepCount = 0;
 #ifdef ADAPT
@@ -1714,16 +1718,28 @@ printf( "\nSolving...\n\n" );
 fNextOutputTime = mesh_time + Params.OutputPeriod;
 
 // Now time-step the mesh
+#ifdef OPENMP
+timer[0] = timer[1] = omp_get_wtime();
+#else // OPENMP
 timer[0] = timer[1] = clock();
+#endif // OPENMP
 while( mesh_time <= Params.Duration )
 {
     iOutputStepCount++;
     if( iOutputStepCount == OUTPUT_EVERY_N_TIME_STEPS )
     {
-		timer[2] =clock();
+#ifdef OPENMP
+		timer[2] = omp_get_wtime();
+#else // OPENMP
+		timer[2] = clock();
+#endif // OPENMP
 		ShowProgress( timer );
 		iOutputStepCount = 0;
+#ifdef OPENMP
+		timer[1] = omp_get_wtime();
+#else // OPENMP
 		timer[1] = clock();
+#endif // OPENMP
     }
 
 #ifdef ADAPT
@@ -1948,7 +1964,11 @@ while( pNextActiveCell )
 }
 }
 
+#ifdef OPENMP
+void CAdaptiveMesh::ShowProgress( double *ptimer )
+#else // OPENMP
 void CAdaptiveMesh::ShowProgress( clock_t *ptimer )
+#endif // OPENMP
 {
 	void FindTemporalUnits( double *pfTime, int *piUnits );
 	double fTime[4];
@@ -1956,11 +1976,8 @@ void CAdaptiveMesh::ShowProgress( clock_t *ptimer )
 	char cUnitLabel[6] = {'s','m','h','d','w','y'};
 
 #ifdef OPENMP
-	int iDivisor;
-	#pragma omp parallel
-		iDivisor = CLOCKS_PER_SEC * omp_get_num_threads();
-	fTime[0] =  ((double)(ptimer[2]-ptimer[1])) / iDivisor;
-	fTime[1] = ((double)(clock() - ptimer[0])) / iDivisor;
+	fTime[0] = ptimer[2]-ptimer[1];
+	fTime[1] = omp_get_wtime() - ptimer[0];
 #else // OPENMP
 	fTime[0] =  ((double)(ptimer[2]-ptimer[1])) / CLOCKS_PER_SEC;
 	fTime[1] = ((double)(clock() - ptimer[0])) / CLOCKS_PER_SEC;

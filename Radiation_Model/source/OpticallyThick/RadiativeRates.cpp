@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 12/24/2019
+// * Date last modified: 02/06/2020
 // *
 // ****
 
@@ -202,8 +202,172 @@ free( ppScaledTrt );
 free( pTrt );
 }
 
-// Given a matrix a[1..m][1..n], this routine computes its singular value decomposition, A = U �W �V T . The matrix U replaces a on output.
-// The diagonal matrix of singular values W is output as a vector w[1..n]. The matrix V (not the transpose V T ) is output as v[1..n][1..n].
+#ifdef USE_LOWER_UPPER_DECOMPOSITION
+// Solves a linear set of equations for a matrix equation A x = b using LU decomposition
+// Based on Numerical Recipes in C, but adapted from the version in the RH code written by Han Uitenbroek
+void CRadiativeRates::SolveLinearEq(double **A, int n, double *b, bool improve)
+{
+    int i, j;
+    int *index;
+    double d, **A_copy, *b_copy, *residual;
+/*  
+	If improve == TRUE improve the solution of the set of linear equations by evaluating 
+	the residual and correcting the initial solution
+	See: Press, Flannery, Teukolsky and Vetterling, Numerical Recipes: The Art of Scientific Computing 1986, p. 41
+*/
+	index = (int*)alloca(n * sizeof(int));
+    
+    // Copy matrix and source vector    
+    if (improve)
+    {
+        residual = (double*)alloca(n * sizeof(double));
+        b_copy = (double*)alloca(n * sizeof(double));
+        A_copy = (double**)alloca(n * sizeof(double*));
+        for( i = 0; i < n; i++ )
+        {
+            A_copy[i] = (double*)alloca(n * sizeof(double));
+            b_copy[i] = b[i];
+            for( j = 0; j < n; j++ )
+                A_copy[i][j] = A[i][j];
+        }
+    }
+    
+    // Initial solution
+    LUdcmp(A, n, index, &d);
+    LUbksb(A, n, index, b);
+    
+    if (improve)
+    {
+        for( i = 0; i < n; i++ )
+        {
+            residual[i] = b_copy[i];
+            for( j = 0; j < n; j++ )
+                residual[i] -= A_copy[i][j] * b[j];
+        }
+        
+        LUbksb(A, n, index, residual);
+        
+        // Correct the initial solution
+        for( i = 0; i < n; i++ )
+        {
+            b[i] += residual[i];
+        }
+    }
+}
+
+// LU decomposition
+// Decomposes an n x n matrix into lower(L) and upper(U) diagonal matrices (LU)
+void CRadiativeRates::LUdcmp(double **A, int n, int *index, double *d)
+{
+    int i, j, k;
+    int imax = 0;
+    double big, dum, sum, temp, *vv;
+    const double TINY = 1.0e-20;
+    
+    vv = (double*)alloca(n * sizeof(double));
+    *d = 1.0;
+    
+    for( i = 0; i < n; i++ )
+    {
+        big = 0.0;
+        for( j = 0; j < n; j++ )
+            if((temp = fabs(A[i][j])) > big)
+                big = temp;
+        if( big == 0.0 )
+        {
+            // Throw an error here!
+            fprintf(stderr, "Singular matrix in LUdcmp!\n");
+            return;
+        }
+        vv[i] = 1.0 / big;
+    }
+    
+    for( j = 0; j < n; j++ )
+    {
+        for( i = 0; i < j; i++ )
+        {
+            sum = A[i][j];
+            for( k = 0; k < i; k++ )
+                sum -= A[i][k] * A[k][j];
+            A[i][j] = sum;
+        }
+        
+        big = 0.0;
+        for( i = j; i < n; i++ )
+        {
+            sum = A[i][j];
+            for( k = 0; k < j; k++ )
+                sum -= A[i][k] * A[k][j];
+            A[i][j] = sum;
+            if((dum = vv[i]*fabs(sum)) >= big)
+            {
+                big = dum;
+                imax = i;
+            }
+        }
+        
+        if( j != imax )
+        {
+            for( k = 0; k < n; k++ )
+            {
+                dum = A[imax][k];
+                A[imax][k] = A[j][k];
+                A[j][k] = dum;
+            }
+            *d = -(*d);
+            vv[imax] = vv[j];
+        }
+        
+        index[j] = imax;
+        if( A[j][j] == 0.0 )
+            A[j][j] = TINY;
+        if( j != n )
+        {
+            dum = 1.0 / A[j][j];
+            for( i = j+1; i < n; i++ )
+                A[i][j] *= dum;
+        }
+    }
+}
+
+// LU back substitution
+// Uses the LU decomposition to then solve the matrix equation directly
+void CRadiativeRates::LUbksb(double **A, int n, int *index, double *b)
+{
+    int i, j, ip;
+    int ii = -1;
+    double sum;
+    
+    for( i = 0; i < n; i++ )
+    {
+        ip = index[i];
+        sum = b[ip];
+        b[ip] = b[i];
+        if( ii >= 0 )
+        {
+            for( j = ii; j < i; j++ )
+                sum -= A[i][j] * b[j];
+        }
+        else if( sum )
+        {
+            ii = i;
+        }
+        b[i] = sum;
+    }
+    
+    for( i = n-1; i >= 0; i-- )
+    {
+        sum = b[i];
+        for( j = i+1; j < n; j++ )
+            sum -= A[i][j] * b[j];
+        b[i] = sum / A[i][i];
+    }
+}
+#endif // USE_LOWER_UPPER_DECOMPOSITION
+
+#ifdef USE_SINGLE_VALUE_DECOMPOSITION
+// Given a matrix a[1..m][1..n], this routine computes its singular value decomposition, A = U W V T . The matrix U replaces a on output
+// The diagonal matrix of singular values W is output as a vector w[1..n]. The matrix V (not the transpose V T ) is output as v[1..n][1..n]
 int CRadiativeRates::svdcmp(double **a, int m, int n, double *w, double **v)
 {
     int flag, i, its, j, jj, k, l, nm;
@@ -217,12 +381,12 @@ int CRadiativeRates::svdcmp(double **a, int m, int n, double *w, double **v)
         return(0);
     }
     
-    rv1 = (double *)malloc((unsigned int) n*sizeof(double));
+    rv1 = (double*)alloca((unsigned int) n*sizeof(double));
     
-    /* Householder reduction to bidiagonal form */
+    // Householder reduction to bidiagonal form
     for (i = 0; i < n; i++)
     {
-        /* left-hand reduction */
+        // Left-hand reduction
         l = i + 1;
         rv1[i] = scale * g;
         g = s = scale = 0.0;
@@ -258,7 +422,7 @@ int CRadiativeRates::svdcmp(double **a, int m, int n, double *w, double **v)
         }
         w[i] = (float)(scale * g);
         
-        /* right-hand reduction */
+        // Right-hand reduction
         g = s = scale = 0.0;
         if (i < m && i != n - 1)
         {
@@ -294,7 +458,7 @@ int CRadiativeRates::svdcmp(double **a, int m, int n, double *w, double **v)
         anorm = fmax(anorm, (fabs((double)w[i]) + fabs(rv1[i])));
     }
     
-    /* accumulate the right-hand transformation */
+    // Accumulate the right-hand transformation
     for (i = n - 1; i >= 0; i--)
     {
         if (i < n - 1)
@@ -303,7 +467,7 @@ int CRadiativeRates::svdcmp(double **a, int m, int n, double *w, double **v)
             {
                 for (j = l; j < n; j++)
                     v[j][i] = (double)(((double)a[i][j] / (double)a[i][l]) / g);
-                /* double division to avoid underflow */
+                // Double division to avoid underflow
                 for (j = l; j < n; j++)
                 {
                     for (s = 0.0, k = l; k < n; k++)
@@ -320,7 +484,7 @@ int CRadiativeRates::svdcmp(double **a, int m, int n, double *w, double **v)
         l = i;
     }
     
-    /* accumulate the left-hand transformation */
+    // Accumulate the left-hand transformation
     for (i = n - 1; i >= 0; i--)
     {
         l = i + 1;
@@ -353,14 +517,14 @@ int CRadiativeRates::svdcmp(double **a, int m, int n, double *w, double **v)
         ++a[i][i];
     }
     
-    /* diagonalize the bidiagonal form */
+    // Diagonalize the bidiagonal form
     for (k = n - 1; k >= 0; k--)
-    {                             /* loop over singular values */
+    {                             		// Loop over singular values
         for (its = 0; its < 30; its++)
-        {                         /* loop over allowed iterations */
+        {                         		// Loop over allowed iterations
             flag = 1;
             for (l = k; l >= 0; l--)
-            {                     /* test for splitting */
+            {                     		// Test for splitting
                 nm = l - 1;
                 if (fabs(rv1[l]) + anorm == anorm)
                 {
@@ -397,9 +561,9 @@ int CRadiativeRates::svdcmp(double **a, int m, int n, double *w, double **v)
             }
             z = (double)w[k];
             if (l == k)
-            {                  /* convergence */
+            {                  // Convergence
                 if (z < 0.0)
-                {              /* make singular value nonnegative */
+                {              // Make singular value nonnegative
                     w[k] = (double)(-z);
                     for (j = 0; j < n; j++)
                         v[j][k] = (-v[j][k]);
@@ -412,7 +576,7 @@ int CRadiativeRates::svdcmp(double **a, int m, int n, double *w, double **v)
                 return(0);
             }
             
-            /* shift from bottom 2 x 2 minor */
+            // Shift from bottom 2 x 2 minor
             x = (double)w[l];
             nm = k - 1;
             y = (double)w[nm];
@@ -422,7 +586,7 @@ int CRadiativeRates::svdcmp(double **a, int m, int n, double *w, double **v)
             g = pythag(f, 1.0);
             f = ((x - z) * (x + z) + h * ((y / (f + SIGN(g, f))) - h)) / x;
             
-            /* next QR transformation */
+            // Next QR transformation
             c = s = 1.0;
             for (j = l; j <= nm; j++)
             {
@@ -469,17 +633,17 @@ int CRadiativeRates::svdcmp(double **a, int m, int n, double *w, double **v)
             w[k] = (double)x;
         }
     }
-    free((void*) rv1);
     return 0;
 }
 
-// Solves A�X = B for a vector X, where A is specified by the arrays u[1..m][1..n], w[1..n], v[1..n][1..n] as returned by svdcmp. m and n are the dimensions of a, and will be equal for square matrices.
-// b[1..m] is the input right-hand side. x[1..n] is the output solution vector. No input quantities are destroyed, so the routine may be called sequentially with different b�s.
+// Solves A x = B for a vector x, where A is specified by the arrays u[1..m][1..n], w[1..n], v[1..n][1..n] as returned by svdcmp. m and n are the dimensions of a, and will be equal for square matrices
+// b[1..m] is the input right-hand side. x[1..n] is the output solution vector. No input quantities are destroyed, so the routine may be called sequentially with different b's
 void CRadiativeRates::svbksb(double **u, double *w, double **v, int m, int n, double *b, double *x)
 {
     int jj,j,i;
     double s,*tmp;
-    tmp=(double *)malloc((unsigned int) n*sizeof(double));
+
+    tmp=(double*)alloca((unsigned int) n*sizeof(double));
     
     for( j=0; j<n; j++ )
     {
@@ -504,11 +668,9 @@ void CRadiativeRates::svbksb(double **u, double *w, double **v, int m, int n, do
         
         x[j] = s;
     }  
-    
-    free((void*) tmp);
 }
 
-// Computes (a2 + b2)1/2 without destructive underflow or overflow.
+// Computes (a2 + b2)1/2 without destructive underflow or overflow
 double CRadiativeRates::pythag(double a, double b)
 {
     double at = fabs(a), bt = fabs(b), ct, result;
@@ -518,6 +680,7 @@ double CRadiativeRates::pythag(double a, double b)
     else result = 0.0;
     return(result);
 }
+#endif // USE_SINGLE_VALUE_DECOMPOSITION
 
 void CRadiativeRates::GetBBRates( char *pszBBRatesFile )
 {
@@ -970,26 +1133,148 @@ for( j=0; j<iColl_ionTRvals; j++ )
 }
 }
 
+#ifdef USE_LOWER_UPPER_DECOMPOSITION
+// Solves the 6x6 matrix equation A x = b, for the level populations of hydrogen x (where the vector x contains the level populations)
 void CRadiativeRates::SolveHIIFraction( double *pfHstate, double *pfColl_ex_lu, double *pfColl_ex_ul, double *pfColl_ion, double *pfColl_rec, double *pfBB_lu, double *pfBB_ul, double *pfBF, double *pfFB )
 {
-    // Solves the 7x6 matrix equation M x = b, for the level populations of hydrogen x
-    // (where the vector x contains the level populations)
+    int i, j;
+    int imax = 0;
+    double Hmax = 0.0;
+    double fSum;
+    double **A, *b;
+
+    A = (double**)alloca( sizeof(double*) * 6 );
+    for( i=0; i<6; i++ )
+        A[i] = (double*)alloca( sizeof(double) * 6 );
+
+    b = (double*)alloca( sizeof(double) * 6 );
     
+    // Row 1:
+    fSum = 0.0;
+    fSum += pfColl_ex_lu[0] + pfColl_ex_lu[1] + pfColl_ex_lu[2] + pfColl_ex_lu[3];
+    fSum += pfColl_ion[0];
+    A[0][0] = -fSum;
+    
+    A[0][1] = pfColl_ex_ul[0];
+    A[0][2] = pfColl_ex_ul[1];
+    A[0][3] = pfColl_ex_ul[2];
+    A[0][4] = pfColl_ex_ul[3];
+    A[0][5] = pfColl_rec[0];
+    
+    // Row 2:
+    fSum = 0.0;
+    fSum += pfColl_ex_ul[0];
+    fSum += pfBB_lu[0] + pfBB_lu[1] + pfBB_lu[2];
+    fSum += pfColl_ex_lu[4] + pfColl_ex_lu[5] + pfColl_ex_lu[6];
+    fSum += pfBF[0];
+    fSum += pfColl_ion[1];
+    A[1][1] = -fSum;
+    
+    A[1][0] = pfColl_ex_lu[0];
+    A[1][2] = pfBB_ul[0] + pfColl_ex_ul[4];
+    A[1][3] = pfBB_ul[1] + pfColl_ex_ul[5];
+    A[1][4] = pfBB_ul[2] + pfColl_ex_ul[6];
+    A[1][5] = pfFB[0] + pfColl_rec[1];
+    
+    // Row 3:
+    fSum = 0.0;
+    fSum += pfColl_ex_ul[1] + pfColl_ex_ul[4];
+    fSum += pfBB_ul[0];
+    fSum += pfBB_lu[3] + pfBB_lu[4];
+    fSum += pfColl_ex_lu[7] + pfColl_ex_lu[8];
+    fSum += pfBF[1];
+    fSum += pfColl_ion[2];
+    A[2][2] = -fSum;
+    
+    A[2][0] = pfColl_ex_lu[1];
+    A[2][1] = pfColl_ex_lu[4] + pfBB_lu[0];
+    A[2][3] = pfColl_ex_ul[7] + pfBB_ul[3];
+    A[2][4] = pfColl_ex_ul[8] + pfBB_ul[4];
+    A[2][5] = pfFB[1] + pfColl_rec[2];
+    
+    // Row 4:
+    fSum = 0.0;
+    fSum += pfColl_ex_ul[2] + pfColl_ex_ul[5] + pfColl_ex_ul[7];
+    fSum += pfBB_ul[1] + pfBB_ul[3];
+    fSum += pfBB_lu[5];
+    fSum += pfColl_ex_lu[9];
+    fSum += pfBF[2];
+    fSum += pfColl_ion[3];
+    A[3][3] = -fSum;
+    
+    A[3][0] = pfColl_ex_lu[2];
+    A[3][1] = pfColl_ex_lu[5] + pfBB_lu[1];
+    A[3][2] = pfColl_ex_lu[7] + pfBB_lu[3];
+    A[3][4] = pfColl_ex_ul[9] + pfBB_ul[5];
+    A[3][5] = pfFB[2] + pfColl_rec[3];
+    
+    // Row 5:
+    fSum = 0.0;
+    fSum += pfColl_ex_ul[3] + pfColl_ex_ul[6] + pfColl_ex_ul[8] + pfColl_ex_ul[9];
+    fSum += pfBB_ul[2] + pfBB_ul[4] + pfBB_ul[5];
+    fSum += pfBF[3];
+    fSum += pfColl_ion[4];
+    A[4][4] = -fSum;
+    
+    A[4][0] = pfColl_ex_lu[3];
+    A[4][1] = pfColl_ex_lu[6] + pfBB_lu[2];
+    A[4][2] = pfColl_ex_lu[8] + pfBB_lu[4];
+    A[4][3] = pfColl_ex_lu[9] + pfBB_lu[5];
+    A[4][5] = pfFB[3] + pfColl_rec[4];
+    
+    // Row 6:
+    fSum = 0.0;
+    fSum += pfColl_rec[0] + pfColl_rec[1] + pfColl_rec[2] + pfColl_rec[3] + pfColl_rec[4];
+    fSum += pfFB[0] + pfFB[1] + pfFB[2] + pfFB[3];
+    A[5][5] = -fSum;
+    
+    A[5][0] = pfColl_ion[0];
+    A[5][1] = pfColl_ion[1] + pfBF[0];
+    A[5][2] = pfColl_ion[2] + pfBF[1];
+    A[5][3] = pfColl_ion[3] + pfBF[2];
+    A[5][4] = pfColl_ion[4] + pfBF[3];
+    
+    // Initialize the vector b
+    for( i = 0; i < 6; i++ )
+    {
+        // Find the row with the maximum level population which we will eliminate from the matrix
+        if( pfHstate[i] > Hmax )
+        {
+            Hmax = pfHstate[i];
+            imax = i;
+        }
+        b[i] = 0.0;
+    }
+    b[imax] = 1.0;
+
+    for( j = 0; j < 6; j++ )
+        A[imax][j] = 1.0;
+
+    SolveLinearEq(A, 6, b, true);
+    
+    for( i = 0; i < 6; i++ )
+        pfHstate[i] = b[i];
+    
+    // Normalize the sum of all levels to 1
+    fSum = 0.0;
+    for( i=0; i<6; i++)
+    {
+		if( pfHstate[i] <= 0.0 ) pfHstate[i] = 1E-300;
+        fSum += pfHstate[i];
+    }
+    for( i=0; i<6; i++)
+        pfHstate[i] /= fSum;
+}
+#endif // USE_LOWER_UPPER_DECOMPOSITION
+
+#ifdef USE_SINGLE_VALUE_DECOMPOSITION
+// Solves the 7x6 matrix equation M x = b, for the level populations of hydrogen x (where the vector x contains the level populations)
+void CRadiativeRates::SolveHIIFraction( double *pfHstate, double *pfColl_ex_lu, double *pfColl_ex_ul, double *pfColl_ion, double *pfColl_rec, double *pfBB_lu, double *pfBB_ul, double *pfBF, double *pfFB )
+{
     int i;
     double fSum;
     double **M, *w, **V, *b;
-/*
-    M = (double**)malloc( sizeof(double*) * (7) );
-    for( i=0; i<7; i++ )
-        M[i] = (double*)malloc( sizeof(double) * 6 );
-    
-    V = (double**)malloc( sizeof(double*) * (6) );
-    for( i=0; i<6; i++ )
-        V[i] = (double*)malloc( sizeof(double) * 6 );
-    
-    w = (double*)malloc( sizeof(double) * 6 );
-    b = (double*)malloc( sizeof(double) * 7 );
-*/
+
     M = (double**)alloca( sizeof(double*) * 7 );
     for( i=0; i<7; i++ )
         M[i] = (double*)alloca( sizeof(double) * 6 );
@@ -1001,7 +1286,7 @@ void CRadiativeRates::SolveHIIFraction( double *pfHstate, double *pfColl_ex_lu, 
     w = (double*)alloca( sizeof(double) * 6 );
     b = (double*)alloca( sizeof(double) * 7 );
     
-    // row 1:
+    // Row 1:
     fSum = 0.0;
     fSum += pfColl_ex_lu[0] + pfColl_ex_lu[1] + pfColl_ex_lu[2] + pfColl_ex_lu[3];
     fSum += pfColl_ion[0];
@@ -1013,7 +1298,7 @@ void CRadiativeRates::SolveHIIFraction( double *pfHstate, double *pfColl_ex_lu, 
     M[0][4] = pfColl_ex_ul[3];
     M[0][5] = pfColl_rec[0];
     
-    // row 2:
+    // Row 2:
     fSum = 0.0;
     fSum += pfColl_ex_ul[0];
     fSum += pfBB_lu[0] + pfBB_lu[1] + pfBB_lu[2];
@@ -1028,7 +1313,7 @@ void CRadiativeRates::SolveHIIFraction( double *pfHstate, double *pfColl_ex_lu, 
     M[1][4] = pfBB_ul[2] + pfColl_ex_ul[6];
     M[1][5] = pfFB[0] + pfColl_rec[1];
     
-    // row 3:
+    // Row 3:
     fSum = 0.0;
     fSum += pfColl_ex_ul[1] + pfColl_ex_ul[4];
     fSum += pfBB_ul[0];
@@ -1044,7 +1329,7 @@ void CRadiativeRates::SolveHIIFraction( double *pfHstate, double *pfColl_ex_lu, 
     M[2][4] = pfColl_ex_ul[8] + pfBB_ul[4];
     M[2][5] = pfFB[1] + pfColl_rec[2];
     
-    // row 4:
+    // Row 4:
     fSum = 0.0;
     fSum += pfColl_ex_ul[2] + pfColl_ex_ul[5] + pfColl_ex_ul[7];
     fSum += pfBB_ul[1] + pfBB_ul[3];
@@ -1060,7 +1345,7 @@ void CRadiativeRates::SolveHIIFraction( double *pfHstate, double *pfColl_ex_lu, 
     M[3][4] = pfColl_ex_ul[9] + pfBB_ul[5];
     M[3][5] = pfFB[2] + pfColl_rec[3];
     
-    // row 5:
+    // Row 5:
     fSum = 0.0;
     fSum += pfColl_ex_ul[3] + pfColl_ex_ul[6] + pfColl_ex_ul[8] + pfColl_ex_ul[9];
     fSum += pfBB_ul[2] + pfBB_ul[4] + pfBB_ul[5];
@@ -1074,7 +1359,7 @@ void CRadiativeRates::SolveHIIFraction( double *pfHstate, double *pfColl_ex_lu, 
     M[4][3] = pfColl_ex_lu[9] + pfBB_lu[5];
     M[4][5] = pfFB[3] + pfColl_rec[4];
     
-    // row 6:
+    // Row 6:
     fSum = 0.0;
     fSum += pfColl_rec[0] + pfColl_rec[1] + pfColl_rec[2] + pfColl_rec[3] + pfColl_rec[4];
     fSum += pfFB[0] + pfFB[1] + pfFB[2] + pfFB[3];
@@ -1086,11 +1371,11 @@ void CRadiativeRates::SolveHIIFraction( double *pfHstate, double *pfColl_ex_lu, 
     M[5][3] = pfColl_ion[3] + pfBF[2];
     M[5][4] = pfColl_ion[4] + pfBF[3];
     
-    // row 7:
+    // Row 7:
     for( i=0; i<6; i++ )
         M[6][i] = 1.0;
 
-    // Singular value decomposition of the matrix:
+    // Singular value decomposition of the matrix
     i = svdcmp( M, 7, 6, w, V );
     
     // Initialize the vector b
@@ -1098,7 +1383,7 @@ void CRadiativeRates::SolveHIIFraction( double *pfHstate, double *pfColl_ex_lu, 
         b[i] = 0.0;
     b[6] = 1.0;
 
-    // Back substitution:
+    // Back substitution
     svbksb( M, w, V, 7, 6, b, pfHstate );
     
     // Normalize the sum of all levels to 1
@@ -1110,18 +1395,8 @@ void CRadiativeRates::SolveHIIFraction( double *pfHstate, double *pfColl_ex_lu, 
     }
     for( i=0; i<6; i++)
         pfHstate[i] /= fSum;
-/*
-    // Free memory
-    for( i=0; i<7; i++ )
-        free( M[i] );
-    free( M );
-    for( i=0; i<6; i++ )
-        free( V[i] );
-    free( V );
-    free( w );
-    free( b );
-*/
 }
+#endif // USE_SINGLE_VALUE_DECOMPOSITION
 
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
 void CRadiativeRates::GetAllDel_Hstate_dot_v( double *pHstate0, double *pHstate1, double *pHstate2, double *pHstate3, double *pHstate4, double *s, double *s_pos, double *pv, double *cross_section, double cell_volume, double *pDel_Hstate_dot_v )
