@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 12/24/2019
+// * Date last modified: 02/06/2020
 // *
 // ****
 
@@ -12,6 +12,13 @@
 
 #ifdef OPTICALLY_THICK_RADIATION
 #ifdef NLTE_CHROMOSPHERE
+
+// Use this pre-processor directive to select the method to invert the matrix equation for the hydrogen level populations
+// LU decomposition seems to be faster in most cases and is the most stable
+// #define USE_SINGLE_VALUE_DECOMPOSITION
+#ifndef USE_SINGLE_VALUE_DECOMPOSITION
+	#define USE_LOWER_UPPER_DECOMPOSITION
+#endif // USE_SINGLE_VALUE_DECOMPOSITION
 
 // Definitions for the temperature at which the foot-point density, used to scale T_b^top as a function of time, is defined in the NLTE chromosphere
 // and the foot-point density itself (scaled by the quantities defined below for each transition)
@@ -73,15 +80,26 @@ class CRadiativeRates {
     double *pTrt, **ppScaledTrt, *pnu0, *pTeZ_c, *pZ_c_LEFT, *pZ_c_RIGHT, *pMcZ_c_LEFT, *pMcZ_c_RIGHT;
     double *pterm1, *pterm2, *pH;
 
+#ifdef USE_LOWER_UPPER_DECOMPOSITION
+    // Functions to calculate the LU decomposition of a square matrix A and back-substitute to solve a matrix equation A x = b
+    void SolveLinearEq(double **a, int n, double *b, bool improve);
+    // LU decomposition of matrix A of size n x n
+	void LUdcmp(double **a, int n, int *index, double *d);
+	// Back substitution of the LU decomposition to solve for vector x
+    void LUbksb(double **a, int n, int *index, double *b);
+#endif // USE_LOWER_UPPER_DECOMPOSITION
+
+#ifdef USE_SINGLE_VALUE_DECOMPOSITION
     // Functions to calculate the singular value decomposition of a matrix A and back-substitute to solve a matrix equation A x = b
     // (Used by SolveHIIFraction)
-        // Singular value decomposition of matrix A of size m x n
+    // Singular value decomposition of matrix A of size m x n
 	int svdcmp(double **a, int m, int n, double *w, double **v);
 	// Back substitution of the singular value decomposition to solve for vector x
 	void svbksb(double **u, double *w, double **v, int m, int n, double *b, double *x);
 	// Pythagorean distance
 	double pythag(double a, double b);
-
+#endif // USE_SINGLE_VALUE_DECOMPOSITION
+	
     void GetBBRates( char *pszBBRatesFile );
     void GetBFRates( char *pszBFRatesFile );
     void GetFBRates( char *pszFBRatesFile );
