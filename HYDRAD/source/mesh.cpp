@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 02/06/2020
+// * Date last modified: 02/10/2020
 // *
 // ****
 
@@ -2325,7 +2325,7 @@ char *pszCurrentTime;
 tCurrentTime = time( NULL );
 pszCurrentTime = ctime(&tCurrentTime);
 
-pHYDRADConfigFile = fopen( "HYDRAD/config/HYDRAD.cfg", "w" );
+pHYDRADConfigFile = fopen( "HYDRAD/config/hydrad.cfg", "w" );
 	fprintf( pHYDRADConfigFile, "Results/profile%i.amr\r\n", iFileNumber-1 );	// Note: WriteToFile() increments the file number counter
 	fprintf( pHYDRADConfigFile, "%s\r\n", Params.GravityFilename );
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
