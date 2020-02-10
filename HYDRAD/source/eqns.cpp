@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 02/05/2020
+// * Date last modified: 02/09/2020
 // *
 // ****
 
@@ -84,7 +84,7 @@ int i, iTemp;
 #endif // OPENMP || USE_KINETIC_MODEL
 
 	// Get the HYDRAD initial conditions
-	pFile = fopen( "HYDRAD/config/HYDRAD.cfg", "r" );
+	pFile = fopen( "HYDRAD/config/hydrad.cfg", "r" );
 		// Get the initial profiles
 		fscanf( pFile, "%s", Params.Profiles );
 		// Get the gravity polynomial-fit coefficients filename
