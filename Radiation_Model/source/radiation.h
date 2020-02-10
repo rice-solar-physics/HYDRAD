@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 02/04/2020
+// * Date last modified: 02/09/2020
 // *
 // ****
 
@@ -33,6 +33,11 @@ class CRadiation {
     // Pointer to the factor total phi( ne, T ) for all of the elements
     double *pTotalPhi;
 
+#ifdef USE_RADIATION_LOOKUP_TABLE
+	int iLookupTableLength;
+	double fMaptoIndex[2], **ppfRadiationLookupTable;
+#endif // USE_RADIATION_LOOKUP_TABLE
+
     // Function to initialise the radiation object with a set of elements
     void Initialise( char *szFilename );
 
@@ -41,6 +46,12 @@ class CRadiation {
 
     // Function to calculate the factor total phi( ne, T ), which is multiplied by ne x nH to calculate the radiated energy
     void CalculateTotalPhi( void );
+
+#ifdef USE_RADIATION_LOOKUP_TABLE
+	void OpenRadiationLookupTable( void );
+	// This function is private because it hijacks GetPowerLawRad
+	double GetRadiationFromLookupTable( double flog_10T, double fne, double fnH );
+#endif // USE_RADIATION_LOOKUP_TABLE
 
     // Function to free all allocated memory
     void FreeAll( void );
@@ -98,7 +109,7 @@ class CRadiation {
     // Functions to calculate energy radiated based upon power-laws
     double GetPowerLawRad( double flog_10T, double fne, double fnH );
     double GetFreeFreeRad( double flog_10T, double fne, double fnH );
-
+	
 };
 
 typedef CRadiation* PRADIATION;
