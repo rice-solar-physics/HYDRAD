@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 02/04/2020
+// * Date last modified: 02/09/2020
 // *
 // ****
 
@@ -14,7 +14,6 @@
 #include <math.h>
 
 #include "radiation.h"
-#include "config.h"
 #include "../../Resources/source/file.h"
 #include "../../Resources/source/fitpoly.h"
 #include "../../Resources/source/constants.h"
@@ -86,6 +85,10 @@ OpenRangesFile( szRangesFilename );
 
 // Calculate the total phi of all radiating elements as a function of temperature and density
 CalculateTotalPhi();
+
+#ifdef USE_RADIATION_LOOKUP_TABLE
+	OpenRadiationLookupTable();
+#endif // USE_RADIATION_LOOKUP_TABLE
 }
 
 void CRadiation::OpenRangesFile( char *szRangesFilename )
@@ -153,9 +156,41 @@ for( k=0; k<NumDen; k++ )
     }
 }
 
+#ifdef USE_RADIATION_LOOKUP_TABLE
+void CRadiation::OpenRadiationLookupTable( void )
+{
+	FILE *pFile;
+	int i;
+
+	// Open the data file
+	pFile = fopen( RADIATION_LOOKUP_TABLE, "r" );
+		// Get the length (number of data points) in the lookup table
+		fscanf( pFile, "%i", &iLookupTableLength);
+		// Get the coefficients for the linear mapping from (log_10) temperature to array index for fast lookup
+		ReadDouble( pFile, (&fMaptoIndex[0]) );
+		ReadDouble( pFile, (&fMaptoIndex[1]) );
+		// Allocate memory and read the data from the file
+		ppfRadiationLookupTable = (double**)malloc( sizeof(double*) * iLookupTableLength );
+		for( i=0; i<iLookupTableLength; i++ ) {
+			ppfRadiationLookupTable[i] = (double*)malloc( sizeof(double) * 2 );
+			ReadDouble( pFile, (&ppfRadiationLookupTable[i][0]) );
+			ReadDouble( pFile, (&ppfRadiationLookupTable[i][1]) );
+		}
+	// Close the data file
+	fclose( pFile );
+}
+#endif // USE_RADIATION_LOOKUP_TABLE
+
 void CRadiation::FreeAll( void )
 {
 int i;
+
+#ifdef USE_RADIATION_LOOKUP_TABLE
+	for( i=0; i<iLookupTableLength; i++ ) {
+		free( ppfRadiationLookupTable[i] );
+	}
+	free( ppfRadiationLookupTable );
+#endif // USE_RADIATION_LOOKUP_TABLE
 
 free( pTotalPhi );
 
@@ -581,6 +616,12 @@ return ( fne * fnH ) * fEmiss;
 
 double CRadiation::GetPowerLawRad( double flog_10T, double fne, double fnH )
 {
+#ifdef USE_RADIATION_LOOKUP_TABLE
+	// If a lookup table is being used then hijack this function to avoid further complicating the calculation of the 
+	// radiation term in CEquations::EvaluateTerms. Either power laws or a lookup table can be used to find the radiative
+	// losses, but not both at the same time, and so this should avoid introducing any bugs / conditions not accounted for 
+	return GetRadiationFromLookupTable( flog_10T, fne, fnH );
+#else // USE_RADIATION_LOOKUP_TABLE
 double chi, alpha, fEmiss;
 
 // The formulation used here is based on the calculations of John Raymond (1994, private communication) and twice the coronal abundances of Meyer (1985)
@@ -635,6 +676,7 @@ if( fne > MAX_OPTICALLY_THIN_DENSITY )
 
 return ( fne * fnH ) * fEmiss;
 // NOTE: free-free radiation is included in the parameter values for log_10 T > 7.63
+#endif // USE_RADIATION_LOOKUP_TABLE
 }
 
 double CRadiation::GetFreeFreeRad( double flog_10T, double fne, double fnH )
@@ -652,3 +694,35 @@ if( fne > MAX_OPTICALLY_THIN_DENSITY )
 
 return ( fne * fnH ) * (1.96e-27) * pow( 10.0, (0.5*flog_10T) );
 }
+
+#ifdef USE_RADIATION_LOOKUP_TABLE
+double CRadiation::GetRadiationFromLookupTable( double flog_10T, double fne, double fnH )
+{
+	double x[5], y[5], result;
+	int i;
+	
+	// Calculate the array index from (log_10) temperature using the linear mapping
+	i = (int)(( fMaptoIndex[0] * flog_10T ) + fMaptoIndex[1]);
+	
+	// Check for array indices that are out-of-bounds
+	if( i < 0 ) i = 0;
+	else if ( i > iLookupTableLength - 2 ) i = iLookupTableLength - 2;
+	
+	x[1] = ppfRadiationLookupTable[i][0];
+	x[2] = ppfRadiationLookupTable[i+1][0];
+
+	y[1] = ppfRadiationLookupTable[i][1];
+	y[2] = ppfRadiationLookupTable[i+1][1];
+
+	LinearFit( x, y, flog_10T, &result );
+
+	if( fne > MAX_OPTICALLY_THIN_DENSITY )
+	{
+    	fne = MAX_OPTICALLY_THIN_DENSITY;
+    	if( fnH > fne )
+		fnH = fne;
+	}
+	
+	return ( fne * fnH ) * pow( 10.0, result );
+}
+#endif // USE_RADIATION_LOOKUP_TABLE
