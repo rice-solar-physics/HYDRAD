@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 02/09/2020
+// * Date last modified: 02/17/2020
 // *
 // ****
 
@@ -1474,6 +1474,40 @@ double x[5], y[5], UpperValue, LowerValue, error;
 double term1, term2;
 int j;
 
+// Macros needed for OpenMP pragma on the loop that calculates the terms of the equations
+#ifdef OPENMP
+	#if defined (NON_EQUILIBRIUM_RADIATION) || ( defined(OPTICALLY_THICK_RADIATION) && defined (NLTE_CHROMOSPHERE) )
+		#define FAR_RIGHT_CELL_VARS pFarRightCell, FarRightCellProperties, ps,
+	#else // (NON_EQUILIBRIUM_RADIATION) || ( defined(OPTICALLY_THICK_RADIATION) && defined (NLTE_CHROMOSPHERE) )
+		#define FAR_RIGHT_CELL_VARS
+	#endif // (NON_EQUILIBRIUM_RADIATION) || ( defined(OPTICALLY_THICK_RADIATION) && defined (NLTE_CHROMOSPHERE) )
+	#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+		#define USE_POLY_FIT_VARS fCrossSection, fCellVolume,
+	#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
+		#define USE_POLY_FIT_VARS
+	#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
+	#ifdef NON_EQUILIBRIUM_RADIATION
+		#define NLTE_VARS_2 ppni0, ppni1, ppni2, ppni3, ppni4, ppdnibydt,
+	#else // NON_EQUILIBRIUM_RADIATION
+		#define NLTE_VARS_2
+	#endif // NON_EQUILIBRIUM_RADIATION
+	#ifdef NLTE_CHROMOSPHERE
+		#define NLTE_CHR_VARS_2 pHstate0, pHstate1, pHstate2, pHstate3, pHstate4,
+	#else // NLTE_CHROMOSPHERE
+		#define NLTE_CHR_VARS_2
+	#endif // NLTE_CHROMOSPHERE
+	#ifdef USE_JB
+		#define USE_JB_VARS Tmin, Tc, term2,
+	#else // USE_JB
+		#define USE_JB_VARS
+	#endif // USE_JB
+	#ifdef BEAM_HEATING
+		#define BEAM_HEATING_VARS pHydrogen, pHelium, HI_IonRate, HI_RecRate, AbHe, HeI_IonRate, HeI_RecRate, HeII_IonRate, HeII_RecRate, tau_IR,
+	#else // BEAM_HEATING
+		#define BEAM_HEATING_VARS
+	#endif // BEAM_HEATING
+#endif // OPENMP
+
 // *****************************************************************************
 // *                                                                           *
 // *    CALCULATE THE CELL-INTERFACE TERMS                                     *
@@ -2027,8 +2061,38 @@ int j;
 // *    TERMS OF THE CONSERVATION EQUATIONS                                    *
 // *****************************************************************************
 
-	pNextActiveCell = pStartOfCurrentRow->pGetPointer( RIGHT )->pGetPointer( RIGHT );
+#ifdef OPENMP
+	PCELL pLocalActiveCell;
+	int iCounter, iLocalNumberOfCells = Params.iNumberOfCells;
+#pragma omp parallel shared( ppCellList, iLocalNumberOfCells )		\
+   	                 private(	FAR_RIGHT_CELL_VARS					\
+					 			USE_POLY_FIT_VARS					\
+								NLTE_VARS_2							\
+								NLTE_CHR_VARS_2						\
+								USE_JB_VARS							\
+								BEAM_HEATING_VARS					\
+								iCounter,							\
+								pActiveCell, CellProperties,  		\
+                             	pLeftCell, LeftCellProperties,      \
+                             	pRightCell, RightCellProperties,    \
+                             	pFarLeftCell, FarLeftCellProperties,\
+                             	LowerValue, UpperValue,             \
+                             	term1, j ) 
+	{
+#pragma omp for schedule(dynamic, CHUNK_SIZE)						\
+   	            lastprivate(pLocalActiveCell)
+	for( iCounter=2; iCounter<iLocalNumberOfCells-2; iCounter++ )
+	{
+		pLocalActiveCell = ppCellList[iCounter];
+		pLocalActiveCell->GetCellProperties( &CellProperties );
 
+	    pLeftCell = pLocalActiveCell->pGetPointer( LEFT );
+    	pLeftCell->GetCellProperties( &LeftCellProperties );
+
+	    pRightCell = pLocalActiveCell->pGetPointer( RIGHT );
+	    pRightCell->GetCellProperties( &RightCellProperties );
+#else // OPENMP
+	pNextActiveCell = pStartOfCurrentRow->pGetPointer( RIGHT )->pGetPointer( RIGHT );
 	while( pNextActiveCell->pGetPointer( RIGHT )->pGetPointer( RIGHT ) )
 	{
 	    pActiveCell = pNextActiveCell;
@@ -2039,6 +2103,7 @@ int j;
 
 	    pRightCell = pActiveCell->pGetPointer( RIGHT );
 	    pRightCell->GetCellProperties( &RightCellProperties );
+#endif // OPENMP
 
 #if defined (NON_EQUILIBRIUM_RADIATION) || ( defined(OPTICALLY_THICK_RADIATION) && defined (NLTE_CHROMOSPHERE) )
 	    pFarLeftCell = pLeftCell->pGetPointer( LEFT );
@@ -2424,9 +2489,15 @@ int j;
 
 #endif // NON_EQUILIBRIUM_RADIATION || ( OPTICALLY_THICK_RADIATION && NLTE_CHROMOSPHERE )
 
+#ifdef OPENMP
+		pLocalActiveCell->UpdateCellProperties( &CellProperties );
+	}
+	}
+#else // OPENMP
 	    pActiveCell->UpdateCellProperties( &CellProperties );
 		pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
 	}
+#endif // OPENMP
 
 	// Find the smallest characteristic time-scale
 	GetSmallestTimeScale( delta_t, iFirstStep );
