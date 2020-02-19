@@ -5,7 +5,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 12/19/2019
+// * Date last modified: 02/18/2020
 // *
 // ****
 
@@ -684,7 +684,7 @@ int AddChromospheres( int iTRplusCoronaplusTRSteps, double *s, double *P, double
 double GetVALTemperature( double s, int iVALTemperatureDP, double **ppVALTemperature );
 
 double ds, max_ds;
-double P2, T2, nT, ne2, nH2;
+double P2, T2, nT, nH2;	// ne2
 double dPbyds;
 double FracDiff;
 int i, iStep, iCHRSteps, iTotalSteps;
@@ -751,7 +751,7 @@ for( ;; ) {
         T2 = GetVALTemperature( s[iStep]+(ds/2.0), iVALTemperatureDP, ppVALTemperature );
         nT = P2 / ( BOLTZMANN_CONSTANT * T2 );
         nH2 = ( 1.0 / ( 1.0 + ( 1.0 - pHI->GetIonFrac( log10(T2) ) ) ) ) * nT;
-        ne2 = nT - ( ( 1.0 - 1.44e-4 ) * nH2 );
+        // ne2 = nT - ( ( 1.0 - 1.44e-4 ) * nH2 );
 
 // *****************************************************************************
 // *    STEP 2                                                                 *
@@ -829,7 +829,7 @@ for( ;; ) {
         T2 = GetVALTemperature( Params.Lfull - ( s[iStep]+(ds/2.0) ), iVALTemperatureDP, ppVALTemperature );
         nT = P2 / ( BOLTZMANN_CONSTANT * T2 );
         nH2 = ( 1.0 / ( 1.0 + ( 1.0 - pHI->GetIonFrac( log10(T2) ) ) ) ) * nT;
-        ne2 = nT - ( ( 1.0 - 1.44e-4 ) * nH2 );
+        // ne2 = nT - ( ( 1.0 - 1.44e-4 ) * nH2 );
 
 // *****************************************************************************
 // *    STEP 2                                                                 *
@@ -1626,10 +1626,10 @@ void RecalculateChromosphericHeating( PARAMETERS Params, int number_of_lines )
     int i, j, k;
 
     PRADIATION pRadiation_EQ;
-    pRadiation_EQ = new CRadiation( "Radiation_Model/config/elements_eq.cfg" );
+    pRadiation_EQ = new CRadiation( (char *)"Radiation_Model/config/elements_eq.cfg" );
 #if defined (DECOUPLE_IONISATION_STATE_SOLVER) || defined (NON_EQUILIBRIUM_RADIATION)
     PRADIATION pRadiation_NEQ;
-    pRadiation_NEQ = new CRadiation( "Radiation_Model/config/elements_neq.cfg" );
+    pRadiation_NEQ = new CRadiation( (char *)"Radiation_Model/config/elements_neq.cfg" );
 #endif // DECOUPLE_IONISATION_STATE_SOLVER || NON_EQUILIBRIUM_RADIATION
 
     COpticallyThickIon *pHI, *pMgII,*pCaII;   
