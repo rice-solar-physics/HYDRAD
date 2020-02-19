@@ -633,6 +633,11 @@ int i, j;
 void CEquations::CalculatePhysicalQuantities( void )
 {
 #ifdef OPENMP
+	#ifdef OPTICALLY_THICK_RADIATION
+	#ifdef NLTE_CHROMOSPHERE
+		PCELL pNextActiveCell;
+	#endif // NLTE_CHROMOSPHERE
+	#endif // OPTICALLY_THICK_RADIATION
 #else // OPENMP
 	PCELL pNextActiveCell;
 #endif // OPENMP
