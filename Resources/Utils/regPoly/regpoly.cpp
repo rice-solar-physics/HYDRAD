@@ -6,7 +6,7 @@
 // *
 // * Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 01/12/2016
+// * Date last modified: 02/18/2020
 // *
 // ****
 
@@ -31,7 +31,7 @@ beta=matrix(1,ma,1,1);
 afunc=vector(1,ma);
 for (j=1;j<=ma;j++)
 	if (ia[j]) mfit++;
-if (mfit == 0) nrerror("lfit: no parameters to be fitted");
+if (mfit == 0) nrerror((char*)"lfit: no parameters to be fitted");
 for (j=1;j<=mfit;j++) {
 	for (k=1;k<=mfit;k++) covar[j][k]=0.0;
 	beta[j][1]=0.0;
@@ -95,7 +95,7 @@ void gaussj(double **a, int n, double **b, int m)
 {
 int *indxc,*indxr,*ipiv;
 int i,icol,irow,j,k,l,ll;
-double big,dum,pivinv,temp;
+double big,dum,pivinv;
 double swap;
 
 indxc=ivector(1,n);
@@ -122,7 +122,7 @@ for (i=1;i<=n;i++) {
 	}
 	indxr[i]=irow;
 	indxc[i]=icol;
-	if (a[icol][icol] == 0.0) nrerror("gaussj: Singular Matrix");
+	if (a[icol][icol] == 0.0) nrerror((char*)"gaussj: Singular Matrix");
 	pivinv=1.0/a[icol][icol];
 	a[icol][icol]=1.0;
 	for (l=1;l<=n;l++) a[icol][l] *= pivinv;
@@ -181,7 +181,7 @@ free_vector(b,1,ndata);
 }
 
 
-// ** Solves A·X = B for a vector X, where A is specified by the arrays u[1..m][1..n], w[1..n], v[1..n][1..n] as returned by svdcmp. m and n are the dimensions of a, and will be equal for square matrices. b[1..m] is the input right-hand side. x[1..n] is the output solution vector. No input quantities are destroyed, so the routine may be called sequentially with different b’s **
+// ** Solves Aï¿½X = B for a vector X, where A is specified by the arrays u[1..m][1..n], w[1..n], v[1..n][1..n] as returned by svdcmp. m and n are the dimensions of a, and will be equal for square matrices. b[1..m] is the input right-hand side. x[1..n] is the output solution vector. No input quantities are destroyed, so the routine may be called sequentially with different bï¿½s **
 void svbksb(double **u, double w[], double **v, int m, int n, double b[], double x[])
 {
 int jj,j,i;
@@ -205,7 +205,7 @@ free_vector(tmp,1,n);
 }
 
 
-// ** Given a matrix a[1..m][1..n], this routine computes its singular value decomposition, A = U ·W ·V T . The matrix U replaces a on output. The diagonal matrix of singular values W is output as a vector w[1..n]. The matrix V (not the transpose V T ) is output as v[1..n][1..n] **
+// ** Given a matrix a[1..m][1..n], this routine computes its singular value decomposition, A = U ï¿½W ï¿½V T . The matrix U replaces a on output. The diagonal matrix of singular values W is output as a vector w[1..n]. The matrix V (not the transpose V T ) is output as v[1..n][1..n] **
 void svdcmp(double **a, int m, int n, double w[], double **v)
 {
 double pythag(double a, double b);
@@ -331,7 +331,7 @@ for (k=n;k>=1;k--) {
 		}
 		break;
 	}
-	if (its == 30) nrerror("no convergence in 30 svdcmp iterations");
+	if (its == 30) nrerror((char*)"no convergence in 30 svdcmp iterations");
 	x=w[l];
 	nm=k-1;
 	y=w[nm];

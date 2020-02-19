@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 02/17/2020
+// * Date last modified: 02/18/2020
 // *
 // ****
 
@@ -205,6 +205,12 @@ double flog10_Trad[10];
 double fBB_lu[6], fBB_ul[6], fBF[4], fFB[4], fColl_ex_lu[10], fColl_ex_ul[10], fColl_ion[5], fColl_rec[5];
 double term1, term2, x[3], y[3];
 int i, j;
+
+#ifdef USE_JB
+	double old_s = 0.0, old_T = 0.0, tau_JB = 1.0, L_T;
+	Tc = 0.0;
+	Te_max = 0.0;
+#endif // USE_JB
 
 #ifdef BEAM_HEATING
 	double fQbeam, fLambda1, fLambda2, log_fAvgEE;
@@ -426,13 +432,7 @@ int i, j;
 #endif // OPEN_FIELD
 	}
 
-#ifdef USE_JB
-	double old_s = 0.0, old_T = 0.0, tau_JB = 1.0, L_T;
-	Tc = 0.0;
-	Te_max = 0.0;
-#endif // USE_JB
 	iMaxRL = 0;
-
 	pNextActiveCell = pStartOfCurrentRow;
 	while( pNextActiveCell )
 	{
@@ -632,12 +632,21 @@ int i, j;
 
 void CEquations::CalculatePhysicalQuantities( void )
 {
-PCELL pNextActiveCell;
+#ifdef OPENMP
+#else // OPENMP
+	PCELL pNextActiveCell;
+#endif // OPENMP
 CELLPROPERTIES CellProperties;
 
 // General variables
 double term1, term2;
 int j;
+
+#ifdef USE_JB
+	double old_s = 0.0, old_T = 0.0, tau_JB = 1.0, L_T;
+	Tc = 0.0;
+	Te_max = 0.0;
+#endif // USE_JB
 
 #ifdef OPTICALLY_THICK_RADIATION
 #ifdef NLTE_CHROMOSPHERE
@@ -662,6 +671,8 @@ int iNumElements, *piA;
 int i;
 #ifdef BEAM_HEATING
 	double fQbeam, fLambda1, fLambda2, log_fAvgEE;
+	log_fAvgEE = log( pHeat->GetAvgEE() );
+	fLambda2 = 25.1 + log_fAvgEE;
 #endif // BEAM_HEATING
 
 	memset( &CellProperties, 0, sizeof(CELLPROPERTIES) );	// Avoids a warning that variables might be used undefined
@@ -874,14 +885,17 @@ int i;
 		}
 #endif // OPEN_FIELD
 	}
+#ifdef NON_EQUILIBRIUM_RADIATION
+	double *pfZ;
+#endif // NON_EQUILIBRIUM_RADIATION
 #endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
 
 #ifdef OPENMP
 	PCELL pLocalActiveCell;
-	int iCounter, iLocalNumberOfCells = Params.iNumberOfCells;
+	int iCounter, iLocalMaxRL = 0, iLocalNumberOfCells = Params.iNumberOfCells;
+	#define REDUCTION_VAR reduction(max: iLocalMaxRL)
 	#if defined (OPTICALLY_THICK_RADIATION) || defined (BEAM_HEATING)
-		#define REDUCTION_VAR reduction(max: iMaxRL)
 		#ifdef NLTE_CHROMOSPHERE
 			#ifdef BEAM_HEATING
 				#define NLTE_VARS  frho_c, NLTE_CHR_VARS, fH, fnu, fTrt, fMcZ_c, fA, fZ, fTeZ_c, fZ_c, fElement, fSum, flog10_Trad, fPreviousIteration, fBB_lu, fBB_ul, fBF, fFB, fColl_ex_lu, fColl_ex_ul, fColl_ion, fColl_rec, x, y, iNumElements, piA, i, fQbeam, fLambda1, fLambda2, log_fAvgEE,
@@ -892,50 +906,29 @@ int i;
 			#define NLTE_VARS
 		#endif //NLTE_CHROMOSPHERE
 	#else // OPTICALLY_THICK_RADIATION || BEAM_HEATING
-		#define REDUCTION_VAR reduction(max: iMaxRL)
 		#define NLTE_VARS
 	#endif // OPTICALLY_THICK_RADIATION || BEAM_HEATING
 
 #pragma omp parallel shared( ppCellList, iLocalNumberOfCells )	\
    	                 private( iCounter, term1, term2, j, NLTE_VARS CellProperties )
 	{
-#endif // OPENMP
-
-#ifdef OPTICALLY_THICK_RADIATION
-	#ifdef NLTE_CHROMOSPHERE
-		#ifdef NON_EQUILIBRIUM_RADIATION
-			double *pfZ;
-		#endif // NON_EQUILIBRIUM_RADIATION
-		#ifdef BEAM_HEATING
-			log_fAvgEE = log( pHeat->GetAvgEE() );
-			fLambda2 = 25.1 + log_fAvgEE;
-		#endif // BEAM_HEATING
-	#endif // NLTE_CHROMOSPHERE
-#endif // OPTICALLY_THICK_RADIATION
-
-#ifdef USE_JB
-	double old_s = 0.0, old_T = 0.0, tau_JB = 1.0, L_T;
-	Tc = 0.0;
-	Te_max = 0.0;
-#endif // USE_JB
-iMaxRL = 0;
-
-#ifdef OPENMP
-	#pragma omp for schedule(dynamic, CHUNK_SIZE)		\
-    	            lastprivate(pLocalActiveCell)		\
+#pragma omp for schedule(dynamic, CHUNK_SIZE)		\
+    	            lastprivate(pLocalActiveCell)	\
         	        REDUCTION_VAR
 	for( iCounter=0; iCounter<iLocalNumberOfCells; iCounter++ )
 	{
 		pLocalActiveCell = ppCellList[iCounter];
-	#ifdef USE_JB
+#ifdef USE_JB
 		if( pLocalActiveCell->pGetPointer( LEFT ) )
 		{
 			old_s = CellProperties.s[1];
 			old_T = CellProperties.T[ELECTRON];
 		}
-	#endif // USE_JB
+#endif // USE_JB
 		pLocalActiveCell->GetCellProperties( &CellProperties );
+		if( iLocalMaxRL < CellProperties.iRefinementLevel ) iLocalMaxRL = CellProperties.iRefinementLevel;
 #else // OPENMP
+	iMaxRL = 0;
 	pNextActiveCell = pStartOfCurrentRow;
 	while( pNextActiveCell )
 	{
@@ -948,9 +941,8 @@ iMaxRL = 0;
 		}
 #endif // USE_JB
    		pActiveCell->GetCellProperties( &CellProperties );
-#endif // OPENMP
-
 		if( iMaxRL < CellProperties.iRefinementLevel ) iMaxRL = CellProperties.iRefinementLevel;
+#endif // OPENMP
 
 // *****************************************************************************
 // *                                                                           *
@@ -1228,6 +1220,10 @@ iMaxRL = 0;
 	pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
 #endif // OPENMP
 	}
+
+#ifdef OPENMP
+	iMaxRL = iLocalMaxRL;
+#endif // OPENMP
 	
 #ifdef USE_JB
 	// Prevent the critical temperature for the TRAC method decreasing by more than 10% over any 1 second interval
