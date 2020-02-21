@@ -899,39 +899,32 @@ int j;
 #ifdef OPENMP
 	PCELL pLocalActiveCell;
 	int iCounter, iLocalMaxRL = 0, iLocalNumberOfCells = Params.iNumberOfCells;
-	#if defined (OPTICALLY_THICK_RADIATION) || defined (BEAM_HEATING)
-		#ifdef NLTE_CHROMOSPHERE
-			#ifdef OPEN_FIELD
-				#define OPEN_FIELD_VARS frho_c, fLeftFPn_H,
-			#else // OPEN_FIELD
-				#define OPEN_FIELD_VARS frho_c, fLeftFPn_H, fRightFPn_H,
-			#endif // OPEN_FIELD
-			#define LTE_VARS_1 iNumElements, piA, fZ, fElement, fSum,
-			#ifdef NON_EQUILIBRIUM_RADIATION
-				#define NLTE_VARS_1 pfZ,
-			#else // NON_EQUILIBRIUM_RADIATION
-				#define NLTE_VARS_1
-			#endif // NON_EQUILIBRIUM_RADIATION
-			#define NLTE_CHR_VARS_1 fH, fnu, fTrt, fMcZ_c, fA, fTeZ_c, fZ_c, flog10_Trad, fPreviousIteration, fBB_lu, fBB_ul, fBF, fFB, fColl_ex_lu, fColl_ex_ul, fColl_ion, fColl_rec,
-			#ifdef BEAM_HEATING
-				#define BEAM_HEATING_VARS_1 fQbeam, fLambda1, fLambda2, log_fAvgEE,
-			#else // BEAM_HEATING
-				#define BEAM_HEATING_VARS_1
-			#endif // BEAM_HEATING
-		#else // NLTE_CHROMOSPHERE
-			#define OPEN_FIELD_VARS
-			#define LTE_VARS_1
+	#ifdef OPTICALLY_THICK_RADIATION
+	#ifdef NLTE_CHROMOSPHERE
+		#define LTE_VARS_1 iNumElements, piA, fZ, fElement, fSum,
+		#ifdef NON_EQUILIBRIUM_RADIATION
+			#define NLTE_VARS_1 pfZ,
+		#else // NON_EQUILIBRIUM_RADIATION
 			#define NLTE_VARS_1
-			#define NLTE_CHR_VARS_1
+		#endif // NON_EQUILIBRIUM_RADIATION
+		#define NLTE_CHR_VARS_1 fH, fnu, fTrt, fMcZ_c, fA, fTeZ_c, fZ_c, flog10_Trad, fPreviousIteration, fBB_lu, fBB_ul, fBF, fFB, fColl_ex_lu, fColl_ex_ul, fColl_ion, fColl_rec, i,
+		#ifdef BEAM_HEATING
+			#define BEAM_HEATING_VARS_1 fQbeam, fLambda1, fLambda2, log_fAvgEE,
+		#else // BEAM_HEATING
 			#define BEAM_HEATING_VARS_1
-		#endif //NLTE_CHROMOSPHERE
-	#else // OPTICALLY_THICK_RADIATION || BEAM_HEATING
-		#define OPEN_FIELD_VARS
+		#endif // BEAM_HEATING
+	#else // NLTE_CHROMOSPHERE
 		#define LTE_VARS_1
 		#define NLTE_VARS_1
 		#define NLTE_CHR_VARS_1
 		#define BEAM_HEATING_VARS_1
-	#endif // OPTICALLY_THICK_RADIATION || BEAM_HEATING
+	#endif //NLTE_CHROMOSPHERE
+	#else // OPTICALLY_THICK_RADIATION
+		#define LTE_VARS_1
+		#define NLTE_VARS_1
+		#define NLTE_CHR_VARS_1
+		#define BEAM_HEATING_VARS_1
+	#endif // OPTICALLY_THICK_RADIATION
 
 	#ifdef USE_JB
 		#define USE_JB_VARS_1 old_s, old_T, L_T,
@@ -942,15 +935,14 @@ int j;
 	#endif // USE_JB
 
 #pragma omp parallel shared( ppCellList, iLocalNumberOfCells )	\
-					private(	OPEN_FIELD_VARS					\
-								LTE_VARS_1						\
+					private(	LTE_VARS_1						\
 							 	NLTE_VARS_1						\
 							 	NLTE_CHR_VARS_1					\
 							 	BEAM_HEATING_VARS_1				\
 								USE_JB_VARS_1					\
-							 	iCounter, 						\
+								iCounter,						\
 								CellProperties,					\
-								i, j, term1, term2 )
+								j, term1, term2 )
 	{
 #pragma omp for schedule(dynamic, CHUNK_SIZE)		\
     	            lastprivate(pLocalActiveCell)	\
@@ -1521,11 +1513,6 @@ int j;
 
 // Macros needed for OpenMP pragma on the loop that calculates the terms of the equations
 #ifdef OPENMP
-	#if defined (NON_EQUILIBRIUM_RADIATION) || ( defined(OPTICALLY_THICK_RADIATION) && defined (NLTE_CHROMOSPHERE) )
-		#define FAR_RIGHT_CELL_VARS pFarRightCell, FarRightCellProperties, ps,
-	#else // (NON_EQUILIBRIUM_RADIATION) || ( defined(OPTICALLY_THICK_RADIATION) && defined (NLTE_CHROMOSPHERE) )
-		#define FAR_RIGHT_CELL_VARS
-	#endif // (NON_EQUILIBRIUM_RADIATION) || ( defined(OPTICALLY_THICK_RADIATION) && defined (NLTE_CHROMOSPHERE) )
 	#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
 		#define USE_POLY_FIT_VARS fCrossSection, fCellVolume,
 	#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
@@ -1536,11 +1523,29 @@ int j;
 	#else // NON_EQUILIBRIUM_RADIATION
 		#define NLTE_VARS_2
 	#endif // NON_EQUILIBRIUM_RADIATION
+	#ifdef OPTICALLY_THICK_RADIATION
 	#ifdef NLTE_CHROMOSPHERE
 		#define NLTE_CHR_VARS_2 pHstate0, pHstate1, pHstate2, pHstate3, pHstate4,
 	#else // NLTE_CHROMOSPHERE
 		#define NLTE_CHR_VARS_2
 	#endif // NLTE_CHROMOSPHERE
+	#endif // OPTICALLY_THICK_RADIATION
+	#ifdef BEAM_HEATING
+		#define BEAM_HEATING_VARS_2 pHydrogen, pHelium, HI_IonRate, HI_RecRate, AbHe, HeI_IonRate, HeI_RecRate, HeII_IonRate, HeII_RecRate, tau_IR,
+	#else // BEAM_HEATING
+		#define BEAM_HEATING_VARS_2
+	#endif // BEAM_HEATING
+	#if defined (NON_EQUILIBRIUM_RADIATION) || ( defined(OPTICALLY_THICK_RADIATION) && defined (NLTE_CHROMOSPHERE) )
+		#define LEFT_CELL_VARS pLeftCell, LeftCellProperties,
+		#define RIGHT_CELL_VARS pRightCell, RightCellProperties,
+		#define FAR_LEFT_CELL_VARS pFarLeftCell, FarLeftCellProperties,
+		#define FAR_RIGHT_CELL_VARS pFarRightCell, FarRightCellProperties, ps,
+	#else // (NON_EQUILIBRIUM_RADIATION) || ( defined(OPTICALLY_THICK_RADIATION) && defined (NLTE_CHROMOSPHERE) )
+		#define LEFT_CELL_VARS
+		#define RIGHT_CELL_VARS
+		#define FAR_LEFT_CELL_VARS
+		#define FAR_RIGHT_CELL_VARS
+	#endif // (NON_EQUILIBRIUM_RADIATION) || ( defined(OPTICALLY_THICK_RADIATION) && defined (NLTE_CHROMOSPHERE) )
 #endif // OPENMP
 
 // *****************************************************************************
@@ -2129,15 +2134,16 @@ int j;
 	PCELL pLocalActiveCell;
 	int iCounter, iLocalNumberOfCells = Params.iNumberOfCells;
 #pragma omp parallel shared( ppCellList, iLocalNumberOfCells )		\
-   	                 private(	FAR_RIGHT_CELL_VARS					\
-					 			USE_POLY_FIT_VARS					\
+   	                 private(	USE_POLY_FIT_VARS					\
 								NLTE_VARS_2							\
 								NLTE_CHR_VARS_2						\
+								BEAM_HEATING_VARS_2					\
+                             	LEFT_CELL_VARS					    \
+                             	RIGHT_CELL_VARS					    \
+                             	FAR_LEFT_CELL_VARS					\
+								FAR_RIGHT_CELL_VARS					\
 								iCounter,							\
 								CellProperties,				  		\
-                             	pLeftCell, LeftCellProperties,      \
-                             	pRightCell, RightCellProperties,    \
-                             	pFarLeftCell, FarLeftCellProperties,\
                              	LowerValue, UpperValue,             \
                              	j, term1, term2 ) 
 	{
@@ -2148,11 +2154,19 @@ int j;
 		pLocalActiveCell = ppCellList[iCounter];
 		pLocalActiveCell->GetCellProperties( &CellProperties );
 
-	    pLeftCell = pLocalActiveCell->pGetPointer( LEFT );
-    	pLeftCell->GetCellProperties( &LeftCellProperties );
+		#if defined (NON_EQUILIBRIUM_RADIATION) || ( defined(OPTICALLY_THICK_RADIATION) && defined (NLTE_CHROMOSPHERE) )
+	    	pLeftCell = pLocalActiveCell->pGetPointer( LEFT );
+    		pLeftCell->GetCellProperties( &LeftCellProperties );
 
-	    pRightCell = pLocalActiveCell->pGetPointer( RIGHT );
-	    pRightCell->GetCellProperties( &RightCellProperties );
+	    	pRightCell = pLocalActiveCell->pGetPointer( RIGHT );
+	    	pRightCell->GetCellProperties( &RightCellProperties );
+
+	    	pFarLeftCell = pLeftCell->pGetPointer( LEFT );
+    		pFarLeftCell->GetCellProperties( &FarLeftCellProperties );
+
+	    	pFarRightCell = pRightCell->pGetPointer( RIGHT );
+    		pFarRightCell->GetCellProperties( &FarRightCellProperties );
+		#endif // NON_EQUILIBRIUM_RADIATION || ( OPTICALLY_THICK_RADIATION && NLTE_CHROMOSPHERE )
 #else // OPENMP
 	pNextActiveCell = pStartOfCurrentRow->pGetPointer( RIGHT )->pGetPointer( RIGHT );
 	while( pNextActiveCell->pGetPointer( RIGHT )->pGetPointer( RIGHT ) )
@@ -2160,20 +2174,20 @@ int j;
 	    pActiveCell = pNextActiveCell;
 		pActiveCell->GetCellProperties( &CellProperties );
 
-	    pLeftCell = pActiveCell->pGetPointer( LEFT );
-    	pLeftCell->GetCellProperties( &LeftCellProperties );
+		#if defined (NON_EQUILIBRIUM_RADIATION) || ( defined(OPTICALLY_THICK_RADIATION) && defined (NLTE_CHROMOSPHERE) )
+	    	pLeftCell = pActiveCell->pGetPointer( LEFT );
+    		pLeftCell->GetCellProperties( &LeftCellProperties );
 
-	    pRightCell = pActiveCell->pGetPointer( RIGHT );
-	    pRightCell->GetCellProperties( &RightCellProperties );
+	    	pRightCell = pActiveCell->pGetPointer( RIGHT );
+	    	pRightCell->GetCellProperties( &RightCellProperties );
+
+	    	pFarLeftCell = pLeftCell->pGetPointer( LEFT );
+    		pFarLeftCell->GetCellProperties( &FarLeftCellProperties );
+
+	    	pFarRightCell = pRightCell->pGetPointer( RIGHT );
+    		pFarRightCell->GetCellProperties( &FarRightCellProperties );
+		#endif // NON_EQUILIBRIUM_RADIATION || ( OPTICALLY_THICK_RADIATION && NLTE_CHROMOSPHERE )
 #endif // OPENMP
-
-#if defined (NON_EQUILIBRIUM_RADIATION) || ( defined(OPTICALLY_THICK_RADIATION) && defined (NLTE_CHROMOSPHERE) )
-	    pFarLeftCell = pLeftCell->pGetPointer( LEFT );
-    	pFarLeftCell->GetCellProperties( &FarLeftCellProperties );
-
-	    pFarRightCell = pRightCell->pGetPointer( RIGHT );
-    	pFarRightCell->GetCellProperties( &FarRightCellProperties );
-#endif // NON_EQUILIBRIUM_RADIATION || ( OPTICALLY_THICK_RADIATION && NLTE_CHROMOSPHERE )
 
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
     	fCrossSection[0] = CalculateCrossSection( CellProperties.s[0]/Params.L );
