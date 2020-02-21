@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 02/18/2020
+// * Date last modified: 02/20/2020
 // *
 // ****
 
@@ -194,6 +194,16 @@ void CEquations::CalculateInitialPhysicalQuantities( void )
 PCELL pNextActiveCell;
 CELLPROPERTIES CellProperties, NextCellProperties;
 
+#ifdef USE_JB
+	Tc = 0.0;
+	Te_max = 0.0;
+	double old_s = 0.0, old_T = 0.0, tau_JB = 1.0, L_T;
+#endif // USE_JB
+
+// General variables
+double term1, term2, x[3], y[3];
+int i, j;
+
 double frho_c, fLeftFPn_H;
 #ifdef OPEN_FIELD
 #else // OPEN_FIELD
@@ -203,14 +213,6 @@ double fH, fnu, fTrt[2], fMcZ_c, fA;
 double fTeZ_c, fZ_c;
 double flog10_Trad[10];
 double fBB_lu[6], fBB_ul[6], fBF[4], fFB[4], fColl_ex_lu[10], fColl_ex_ul[10], fColl_ion[5], fColl_rec[5];
-double term1, term2, x[3], y[3];
-int i, j;
-
-#ifdef USE_JB
-	double old_s = 0.0, old_T = 0.0, tau_JB = 1.0, L_T;
-	Tc = 0.0;
-	Te_max = 0.0;
-#endif // USE_JB
 
 #ifdef BEAM_HEATING
 	double fQbeam, fLambda1, fLambda2, log_fAvgEE;
@@ -519,7 +521,6 @@ int i, j;
 		{
 			fLambda1 = 66.0 + ( 1.5 * log_fAvgEE ) - ( 0.5 * log( CellProperties.n[ELECTRON] ) );
 			term1 = fQbeam * ( fLambda2 /  ( ( fLambda1 * CellProperties.n[ELECTRON] ) + ( fLambda2 * CellProperties.n[HYDROGEN] ) ) );
-
 			fColl_ex_lu[0] += 2.94E10 * term1;
 			fColl_ex_lu[1] += 5.35E9 * term1;
 			fColl_ex_lu[2] += 1.91E9 * term1;
@@ -638,42 +639,41 @@ void CEquations::CalculatePhysicalQuantities( void )
 		PCELL pNextActiveCell;
 	#endif // NLTE_CHROMOSPHERE
 	#endif // OPTICALLY_THICK_RADIATION
+	#ifdef USE_JB
+		double localTe_max = 0.0, localTc = 0.0;
+	#endif // USE_JB
 #else // OPENMP
 	PCELL pNextActiveCell;
+	#ifdef USE_JB
+		Te_max = 0.0;
+		Tc = 0.0;
+	#endif // USE_JB
 #endif // OPENMP
 CELLPROPERTIES CellProperties;
+
+#ifdef USE_JB
+	double old_s = 0.0, old_T = 0.0, tau_JB = 1.0, L_T;
+#endif // USE_JB
 
 // General variables
 double term1, term2;
 int j;
-
-#ifdef USE_JB
-	double old_s = 0.0, old_T = 0.0, tau_JB = 1.0, L_T;
-	Tc = 0.0;
-	Te_max = 0.0;
-#endif // USE_JB
 
 #ifdef OPTICALLY_THICK_RADIATION
 #ifdef NLTE_CHROMOSPHERE
 	CELLPROPERTIES NextCellProperties;
 	double frho_c, fLeftFPn_H;
 #ifdef OPEN_FIELD
-	#ifdef OPENMP
-		#define NLTE_CHR_VARS fLeftFPn_H
-	#endif // OPENMP
 #else // OPEN_FIELD
 	double fRightFPn_H;
-	#ifdef OPENMP
-		#define NLTE_CHR_VARS fLeftFPn_H, fRightFPn_H
-	#endif // OPENMP
 #endif // OPEN_FIELD
-double fH, fnu, fTrt[2], fMcZ_c, fA, fZ[31];
-double fTeZ_c, fZ_c;
-double fElement, fSum, flog10_Trad[10], fPreviousIteration;
-double fBB_lu[6], fBB_ul[6], fBF[4], fFB[4], fColl_ex_lu[10], fColl_ex_ul[10], fColl_ion[5], fColl_rec[5];
-double x[3], y[3];
-int iNumElements, *piA;
-int i;
+	double fH, fnu, fTrt[2], fMcZ_c, fA, fZ[31];
+	double fTeZ_c, fZ_c;
+	double fElement, fSum, flog10_Trad[10], fPreviousIteration;
+	double fBB_lu[6], fBB_ul[6], fBF[4], fFB[4], fColl_ex_lu[10], fColl_ex_ul[10], fColl_ion[5], fColl_rec[5];
+	double x[3], y[3];
+	int iNumElements, *piA;
+	int i;
 #ifdef BEAM_HEATING
 	double fQbeam, fLambda1, fLambda2, log_fAvgEE;
 	log_fAvgEE = log( pHeat->GetAvgEE() );
@@ -899,27 +899,62 @@ int i;
 #ifdef OPENMP
 	PCELL pLocalActiveCell;
 	int iCounter, iLocalMaxRL = 0, iLocalNumberOfCells = Params.iNumberOfCells;
-	#define REDUCTION_VAR reduction(max: iLocalMaxRL)
 	#if defined (OPTICALLY_THICK_RADIATION) || defined (BEAM_HEATING)
 		#ifdef NLTE_CHROMOSPHERE
+			#ifdef OPEN_FIELD
+				#define OPEN_FIELD_VARS frho_c, fLeftFPn_H,
+			#else // OPEN_FIELD
+				#define OPEN_FIELD_VARS frho_c, fLeftFPn_H, fRightFPn_H,
+			#endif // OPEN_FIELD
+			#define LTE_VARS_1 iNumElements, piA, fZ, fElement, fSum,
+			#ifdef NON_EQUILIBRIUM_RADIATION
+				#define NLTE_VARS_1 pfZ,
+			#else // NON_EQUILIBRIUM_RADIATION
+				#define NLTE_VARS_1
+			#endif // NON_EQUILIBRIUM_RADIATION
+			#define NLTE_CHR_VARS_1 fH, fnu, fTrt, fMcZ_c, fA, fTeZ_c, fZ_c, flog10_Trad, fPreviousIteration, fBB_lu, fBB_ul, fBF, fFB, fColl_ex_lu, fColl_ex_ul, fColl_ion, fColl_rec,
 			#ifdef BEAM_HEATING
-				#define NLTE_VARS  frho_c, NLTE_CHR_VARS, fH, fnu, fTrt, fMcZ_c, fA, fZ, fTeZ_c, fZ_c, fElement, fSum, flog10_Trad, fPreviousIteration, fBB_lu, fBB_ul, fBF, fFB, fColl_ex_lu, fColl_ex_ul, fColl_ion, fColl_rec, x, y, iNumElements, piA, i, fQbeam, fLambda1, fLambda2, log_fAvgEE,
+				#define BEAM_HEATING_VARS_1 fQbeam, fLambda1, fLambda2, log_fAvgEE,
 			#else // BEAM_HEATING
-				#define NLTE_VARS  frho_c, NLTE_CHR_VARS, fH, fnu, fTrt, fMcZ_c, fA, fZ, fTeZ_c, fZ_c, fElement, fSum, flog10_Trad, fPreviousIteration, fBB_lu, fBB_ul, fBF, fFB, fColl_ex_lu, fColl_ex_ul, fColl_ion, fColl_rec, x, y, iNumElements, piA, i,
+				#define BEAM_HEATING_VARS_1
 			#endif // BEAM_HEATING
 		#else // NLTE_CHROMOSPHERE
-			#define NLTE_VARS
+			#define OPEN_FIELD_VARS
+			#define LTE_VARS_1
+			#define NLTE_VARS_1
+			#define NLTE_CHR_VARS_1
+			#define BEAM_HEATING_VARS_1
 		#endif //NLTE_CHROMOSPHERE
 	#else // OPTICALLY_THICK_RADIATION || BEAM_HEATING
-		#define NLTE_VARS
+		#define OPEN_FIELD_VARS
+		#define LTE_VARS_1
+		#define NLTE_VARS_1
+		#define NLTE_CHR_VARS_1
+		#define BEAM_HEATING_VARS_1
 	#endif // OPTICALLY_THICK_RADIATION || BEAM_HEATING
 
+	#ifdef USE_JB
+		#define USE_JB_VARS_1 old_s, old_T, L_T,
+		#define REDUCTION_VARS reduction(max: iLocalMaxRL), reduction(max: localTe_max), reduction(max: localTc)
+	#else // USE_JB
+		#define USE_JB_VARS_1
+		#define REDUCTION_VARS reduction(max: iLocalMaxRL)
+	#endif // USE_JB
+
 #pragma omp parallel shared( ppCellList, iLocalNumberOfCells )	\
-   	                 private( iCounter, term1, term2, j, NLTE_VARS CellProperties )
+					private(	OPEN_FIELD_VARS					\
+								LTE_VARS_1						\
+							 	NLTE_VARS_1						\
+							 	NLTE_CHR_VARS_1					\
+							 	BEAM_HEATING_VARS_1				\
+								USE_JB_VARS_1					\
+							 	iCounter, 						\
+								CellProperties,					\
+								i, j, term1, term2 )
 	{
 #pragma omp for schedule(dynamic, CHUNK_SIZE)		\
     	            lastprivate(pLocalActiveCell)	\
-        	        REDUCTION_VAR
+        	        REDUCTION_VARS
 	for( iCounter=0; iCounter<iLocalNumberOfCells; iCounter++ )
 	{
 		pLocalActiveCell = ppCellList[iCounter];
@@ -1011,7 +1046,7 @@ int i;
 		}
 
 	    // Calculate the contribution to the electron density from elements other than hydrogen:
- 	   fSum = 0.0;
+ 	   	fSum = 0.0;
 
 #ifdef NON_EQUILIBRIUM_RADIATION
     	piA = CellProperties.pIonFrac->pGetElementInfo( &iNumElements );
@@ -1162,9 +1197,14 @@ int i;
     	CellProperties.M = fabs( CellProperties.v[1] / CellProperties.Cs );
 
 #ifdef USE_JB
-    	L_T = (0.5 * (old_T + CellProperties.T[ELECTRON])) / fabs( (CellProperties.T[ELECTRON] - old_T) / (CellProperties.s[1] - old_s) );
-    	if( CellProperties.T[ELECTRON] > Te_max ) Te_max = CellProperties.T[ELECTRON];
-    	if( (CellProperties.cell_width/L_T) > 0.5 && CellProperties.T[ELECTRON] > Tc ) Tc = CellProperties.T[ELECTRON];
+	   	L_T = (0.5 * (old_T + CellProperties.T[ELECTRON])) / fabs( (CellProperties.T[ELECTRON] - old_T) / (CellProperties.s[1] - old_s) );
+		#ifdef OPENMP
+	    	if( CellProperties.T[ELECTRON] > localTe_max ) localTe_max = CellProperties.T[ELECTRON];
+	    	if( (CellProperties.cell_width/L_T) > 0.5 && CellProperties.T[ELECTRON] > localTc ) localTc = CellProperties.T[ELECTRON];
+		#else // OPENMP
+	    	if( CellProperties.T[ELECTRON] > Te_max ) Te_max = CellProperties.T[ELECTRON];
+	    	if( (CellProperties.cell_width/L_T) > 0.5 && CellProperties.T[ELECTRON] > Tc ) Tc = CellProperties.T[ELECTRON];
+		#endif // OPENMP
 #endif // USE_JB
 
 // *****************************************************************************
@@ -1231,6 +1271,10 @@ int i;
 #endif // OPENMP
 	
 #ifdef USE_JB
+	#ifdef OPENMP
+		Te_max = localTe_max;
+		Tc = localTc;
+	#endif // OPENMP
 	// Prevent the critical temperature for the TRAC method decreasing by more than 10% over any 1 second interval
 	// (See equation A.4 in Johnston et al. 2020)
 	if( old_Tc && Tc < old_Tc )
@@ -1497,16 +1541,6 @@ int j;
 	#else // NLTE_CHROMOSPHERE
 		#define NLTE_CHR_VARS_2
 	#endif // NLTE_CHROMOSPHERE
-	#ifdef USE_JB
-		#define USE_JB_VARS Tmin, Tc, term2,
-	#else // USE_JB
-		#define USE_JB_VARS
-	#endif // USE_JB
-	#ifdef BEAM_HEATING
-		#define BEAM_HEATING_VARS pHydrogen, pHelium, HI_IonRate, HI_RecRate, AbHe, HeI_IonRate, HeI_RecRate, HeII_IonRate, HeII_RecRate, tau_IR,
-	#else // BEAM_HEATING
-		#define BEAM_HEATING_VARS
-	#endif // BEAM_HEATING
 #endif // OPENMP
 
 // *****************************************************************************
@@ -1955,12 +1989,12 @@ int j;
 
 // *****************************************************************************
 // *                                                                           *
-// *    CALCULATE THE CELL-CENTERED TERMS                                      *
+// *    CALCULATE THE FIELD LINE INTEGRATED TERMS                              *
 // *                                                                           *
 // *****************************************************************************
 
 // *****************************************************************************
-// *    COLUMN NUMBER AND MASS DENSITIES                                       *
+// *    COLUMN NUMBER AND MASS DENSITIES								       *
 // *****************************************************************************
 
 #if defined(OPTICALLY_THICK_RADIATION) || defined(BEAM_HEATING)
@@ -1981,15 +2015,6 @@ int j;
     	pActiveCell = pNextActiveCell;
     	pActiveCell->GetCellProperties( &CellProperties );
 
-#ifdef BEAM_HEATING
-		Lambda1 = 66.0 + ( 1.50 * log(avg_energy) ) - ( 0.5 * log(CellProperties.n[ELECTRON]) );
-		Lambda2 = 25.1 + log(avg_energy);		
-		fColumnDensity += CellProperties.n[HYDROGEN] * CellProperties.cell_width;
-		fColumnDensitystar += ( ( (Lambda1*(1.0-CellProperties.HI)) + (Lambda2*CellProperties.HI) ) / Lambda1 ) * CellProperties.n[HYDROGEN] * CellProperties.cell_width;
-		CellProperties.nH_c = fColumnDensity;
-		CellProperties.nH_star_c = fColumnDensitystar;
-#endif // BEAM_HEATING
-        
 #ifdef OPTICALLY_THICK_RADIATION
     	if( CellProperties.T[ELECTRON] < OPTICALLY_THICK_TEMPERATURE )
     	{
@@ -2003,6 +2028,15 @@ int j;
 #endif // NLTE_CHROMOSPHERE
     	}
 #endif // OPTICALLY_THICK_RADIATION
+
+#ifdef BEAM_HEATING
+		Lambda1 = 66.0 + ( 1.50 * log(avg_energy) ) - ( 0.5 * log(CellProperties.n[ELECTRON]) );
+		Lambda2 = 25.1 + log(avg_energy);		
+		fColumnDensity += CellProperties.n[HYDROGEN] * CellProperties.cell_width;
+		fColumnDensitystar += ( ( (Lambda1*(1.0-CellProperties.HI)) + (Lambda2*CellProperties.HI) ) / Lambda1 ) * CellProperties.n[HYDROGEN] * CellProperties.cell_width;
+		CellProperties.nH_c = fColumnDensity;
+		CellProperties.nH_star_c = fColumnDensitystar;
+#endif // BEAM_HEATING
 
 	    pActiveCell->UpdateCellProperties( &CellProperties );
 
@@ -2028,15 +2062,6 @@ int j;
     	pActiveCell = pNextActiveCell;
     	pActiveCell->GetCellProperties( &CellProperties );
 
-#ifdef BEAM_HEATING
-		Lambda1 = 66.0 + ( 1.50 * log(avg_energy) ) - ( 0.5 * log(CellProperties.n[ELECTRON]) );
-		Lambda2 = 25.1 + log(avg_energy);		
-		fColumnDensity += CellProperties.n[HYDROGEN] * CellProperties.cell_width;
-		fColumnDensitystar += ( ( (Lambda1*(1.0-CellProperties.HI)) + (Lambda2*CellProperties.HI) ) / Lambda1 ) * CellProperties.n[HYDROGEN] * CellProperties.cell_width;
-		CellProperties.nH_c = fColumnDensity;
-		CellProperties.nH_star_c = fColumnDensitystar;
-#endif // BEAM_HEATING
-
 #ifdef OPTICALLY_THICK_RADIATION
     	if( CellProperties.T[ELECTRON] < OPTICALLY_THICK_TEMPERATURE )
     	{
@@ -2051,12 +2076,50 @@ int j;
 	    }
 #endif // OPTICALLY_THICK_RADIATION
 
+#ifdef BEAM_HEATING
+		Lambda1 = 66.0 + ( 1.50 * log(avg_energy) ) - ( 0.5 * log(CellProperties.n[ELECTRON]) );
+		Lambda2 = 25.1 + log(avg_energy);		
+		fColumnDensity += CellProperties.n[HYDROGEN] * CellProperties.cell_width;
+		fColumnDensitystar += ( ( (Lambda1*(1.0-CellProperties.HI)) + (Lambda2*CellProperties.HI) ) / Lambda1 ) * CellProperties.n[HYDROGEN] * CellProperties.cell_width;
+		CellProperties.nH_c = fColumnDensity;
+		CellProperties.nH_star_c = fColumnDensitystar;
+#endif // BEAM_HEATING
+
     	pActiveCell->UpdateCellProperties( &CellProperties );
 
 	    pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
 	}
 #endif // OPEN_FIELD
 #endif // OPTICALLY_THICK_RADIATION || BEAM_HEATING
+
+// *****************************************************************************
+// *                                                                           *
+// *    CALCULATE THE CELL-CENTERED TERMS                                      *
+// *                                                                           *
+// *****************************************************************************
+
+// *****************************************************************************
+// *    BEAM HEATING								       					   *
+// *****************************************************************************
+#ifdef BEAM_HEATING
+	pNextActiveCell = pStartOfCurrentRow->pGetPointer( RIGHT )->pGetPointer( RIGHT );
+	while( pNextActiveCell->pGetPointer( RIGHT )->pGetPointer( RIGHT ) )
+	{
+    	pActiveCell = pNextActiveCell;
+    	pActiveCell->GetCellProperties( &CellProperties );
+
+    	CellProperties.TE_KE_term[4][ELECTRON] = pHeat->CalculateBeamHeating( current_time, BeamParams, CellProperties.nH_c, CellProperties.nH_star_c, CellProperties.n[ELECTRON], CellProperties.n[HYDROGEN], (1.0-CellProperties.HI) );
+		#ifdef OPTICALLY_THICK_RADIATION
+			#ifdef NLTE_CHROMOSPHERE
+				pHeat->SetQbeam( CellProperties.s[1], CellProperties.TE_KE_term[4][ELECTRON] );
+			#endif // NLTE_CHROMOSPHERE
+		#endif // OPTICALLY_THICK_RADIATION
+
+    	pActiveCell->UpdateCellProperties( &CellProperties );
+
+	    pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
+	}
+#endif // BEAM_HEATING
 
 // *****************************************************************************
 // *    TERMS OF THE CONSERVATION EQUATIONS                                    *
@@ -2070,15 +2133,13 @@ int j;
 					 			USE_POLY_FIT_VARS					\
 								NLTE_VARS_2							\
 								NLTE_CHR_VARS_2						\
-								USE_JB_VARS							\
-								BEAM_HEATING_VARS					\
 								iCounter,							\
-								pActiveCell, CellProperties,  		\
+								CellProperties,				  		\
                              	pLeftCell, LeftCellProperties,      \
                              	pRightCell, RightCellProperties,    \
                              	pFarLeftCell, FarLeftCellProperties,\
                              	LowerValue, UpperValue,             \
-                             	term1, j ) 
+                             	j, term1, term2 ) 
 	{
 #pragma omp for schedule(dynamic, CHUNK_SIZE)						\
    	            lastprivate(pLocalActiveCell)
@@ -2298,12 +2359,7 @@ int j;
 // *****************************************************************************
 
 #ifdef BEAM_HEATING
-    	CellProperties.TE_KE_term[4][ELECTRON] = pHeat->CalculateBeamHeating( current_time, BeamParams, CellProperties.nH_c, CellProperties.nH_star_c, CellProperties.n[ELECTRON], CellProperties.n[HYDROGEN], (1.0-CellProperties.HI) );
-	#ifdef OPTICALLY_THICK_RADIATION
-		#ifdef NLTE_CHROMOSPHERE
-			pHeat->SetQbeam( CellProperties.s[1], CellProperties.TE_KE_term[4][ELECTRON] );
-		#endif // NLTE_CHROMOSPHERE
-	#endif // OPTICALLY_THICK_RADIATION
+		// The beam heating function is called in the section above where the cell-centered terms are calculated
     	CellProperties.TE_KE_term[4][HYDROGEN] = SMALLEST_DOUBLE;
     	CellProperties.TE_KE_term[4][HEATED_SPECIES] += pHeat->CalculateHeating( CellProperties.s[1], current_time );
 #else // BEAM_HEATING

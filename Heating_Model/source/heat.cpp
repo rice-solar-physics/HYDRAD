@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *     
-// * Date last modified: 09/12/2018
+// * Date last modified: 02/20/2020
 // *
 // ****
 
@@ -409,12 +409,14 @@ void CHeat::InitQbeam( double fAvgEE, int iNumCells )
 	// Reset the index to the beam quantities
 	iQbeamIndex = 0;
 	 
-	 iQbeamIndex_max = iNumCells * 2;
+	iQbeamIndex_max = iNumCells * 2;
 	pfQbeam = new double[iQbeamIndex_max];
 }
 
 void CHeat::SetQbeam( double s, double Qbeam )
 {
+	if( !pfQbeam ) return;
+
 	pfQbeam[iQbeamIndex] = s;
 	pfQbeam[iQbeamIndex+1] = Qbeam;
 
