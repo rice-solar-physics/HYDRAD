@@ -449,7 +449,10 @@ double CHeat::GetQbeam( double s )
 	LinearFit( x, y, s, &Qbeam );
 	if( Qbeam < 0.0 ) Qbeam = 0.0;
 
+#ifdef OPENMP
+#else // OPENMP
 	iQbeamIndex = i;
+#endif // OPENMP
 
 	return Qbeam;
 }
