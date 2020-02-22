@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *     
-// * Date last modified: 02/20/2020
+// * Date last modified: 02/21/2020
 // *
 // ****
 
@@ -196,6 +196,13 @@ if( iBeamHeatingDP == 1 )
 }
 
 fclose( pConfigFile );
+
+#ifdef OPTICALLY_THICK_RADIATION
+#ifdef NLTE_CHROMOSPHERE
+	pfQbeam = NULL;
+	fAverageElectronEnergy = 0.0;
+#endif // NLTE_CHROMOSPHERE
+#endif // OPTICALLY_THICK_RADIATION
 }
 #endif // BEAM_HEATING
 

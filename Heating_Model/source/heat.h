@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 09/07/2018
+// * Date last modified: 02/21/2020
 // *
 // ****
 
@@ -47,7 +47,7 @@ class CHeat {
 #ifdef OPTICALLY_THICK_RADIATION
 	#ifdef NLTE_CHROMOSPHERE
 		int iQbeamIndex, iQbeamIndex_max;
-		double *pfQbeam = NULL, fAverageElectronEnergy = 0.0;
+		double *pfQbeam, fAverageElectronEnergy;
 	#endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
 #endif // BEAM_HEATING
