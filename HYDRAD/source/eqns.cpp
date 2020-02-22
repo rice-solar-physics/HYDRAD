@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 02/20/2020
+// * Date last modified: 02/21/2020
 // *
 // ****
 
@@ -907,9 +907,9 @@ int j;
 		#else // NON_EQUILIBRIUM_RADIATION
 			#define NLTE_VARS_1
 		#endif // NON_EQUILIBRIUM_RADIATION
-		#define NLTE_CHR_VARS_1 fH, fnu, fTrt, fMcZ_c, fA, fTeZ_c, fZ_c, flog10_Trad, fPreviousIteration, fBB_lu, fBB_ul, fBF, fFB, fColl_ex_lu, fColl_ex_ul, fColl_ion, fColl_rec, i,
+		#define NLTE_CHR_VARS_1 fH, fnu, fTrt, fMcZ_c, fA, flog10_Trad, fPreviousIteration, fBB_lu, fBB_ul, fBF, fFB, fColl_ex_lu, fColl_ex_ul, fColl_ion, fColl_rec, i,
 		#ifdef BEAM_HEATING
-			#define BEAM_HEATING_VARS_1 fQbeam, fLambda1, fLambda2, log_fAvgEE,
+			#define BEAM_HEATING_VARS_1 fQbeam, fLambda1,
 		#else // BEAM_HEATING
 			#define BEAM_HEATING_VARS_1
 		#endif // BEAM_HEATING
@@ -1111,11 +1111,12 @@ int j;
 
 			// Estimate the new density and temperature
 			CellProperties.n[ELECTRON] = CellProperties.n[ELECTRON] - CONVERGENCE_EPSILON * ( CellProperties.n[ELECTRON] - ( CellProperties.n[HYDROGEN] * ( CellProperties.Hstate[5] + fSum ) ) );
+				// If the electron density changes precipitously then prevent dramatic changes in the electron temperature by recalculating the electron energy
+				CellProperties.TE_KE[1][ELECTRON] = (2.07e-16) * CellProperties.n[ELECTRON] * CellProperties.T[ELECTRON];
 			CellProperties.T[ELECTRON] =  CellProperties.T[ELECTRON] - CONVERGENCE_EPSILON * ( CellProperties.T[ELECTRON] - ( ( (4.830917874e15) * CellProperties.TE_KE[1][ELECTRON] ) / CellProperties.n[ELECTRON] ) );
-
 			// Check for convergence and exit the loop if the condition is met
     	    if( i && (fabs(fPreviousIteration-CellProperties.n[ELECTRON])/CellProperties.n[ELECTRON]) < CONVERGENCE_CONDITION ) break;
-    	}
+		}
 
 	    CellProperties.rho_e = CellProperties.n[ELECTRON] * ELECTRON_MASS;
     	// BOLTZMANN_CONSTANT / GAMMA_MINUS_ONE = 2.07e-16
@@ -1461,10 +1462,13 @@ double T[3][SPECIES], gradT, n[SPECIES], P, v[2], gradv, Kappa_B, Kappa_L, Fc_ma
 	double delta = BeamParams[2];
     
 	// Variables used by the beam heating function
-	double fColumnDensity = 0.0;												// Column density (cm^-2)
-	double fColumnDensitystar = 0.0;											// Nstar (defined in Hawley & Fisher 1994, ApJ, 426, 287)
-	double avg_energy = ( ( 1.0 - delta )/( 2.0 - delta ) ) * cutoff_energy;	// Average energy of the electron distribution
-	double Lambda1, Lambda2;
+	double fColumnDensity;				// Column density (cm^-2)
+	double fColumnDensitystar;			// Nstar (defined in Hawley & Fisher 1994, ApJ, 426, 287)
+	double avg_energy, log_avg_energy;	// Average energy of the electron distribution
+	double fLambda1, fLambda2;
+		avg_energy = ( ( 1.0 - delta )/( 2.0 - delta ) ) * cutoff_energy;
+		log_avg_energy = log(avg_energy);
+		fLambda2 = 25.1 + log_avg_energy;
 
 #ifdef OPTICALLY_THICK_RADIATION
 #ifdef NLTE_CHROMOSPHERE
@@ -2035,10 +2039,9 @@ int j;
 #endif // OPTICALLY_THICK_RADIATION
 
 #ifdef BEAM_HEATING
-		Lambda1 = 66.0 + ( 1.50 * log(avg_energy) ) - ( 0.5 * log(CellProperties.n[ELECTRON]) );
-		Lambda2 = 25.1 + log(avg_energy);		
+		fLambda1 = 66.0 + ( 1.50 * log_avg_energy ) - ( 0.5 * log(CellProperties.n[ELECTRON]) );
 		fColumnDensity += CellProperties.n[HYDROGEN] * CellProperties.cell_width;
-		fColumnDensitystar += ( ( (Lambda1*(1.0-CellProperties.HI)) + (Lambda2*CellProperties.HI) ) / Lambda1 ) * CellProperties.n[HYDROGEN] * CellProperties.cell_width;
+		fColumnDensitystar += ( ( (fLambda1*(1.0-CellProperties.HI)) + (fLambda2*CellProperties.HI) ) / fLambda1 ) * CellProperties.n[HYDROGEN] * CellProperties.cell_width;
 		CellProperties.nH_c = fColumnDensity;
 		CellProperties.nH_star_c = fColumnDensitystar;
 #endif // BEAM_HEATING
@@ -2082,10 +2085,9 @@ int j;
 #endif // OPTICALLY_THICK_RADIATION
 
 #ifdef BEAM_HEATING
-		Lambda1 = 66.0 + ( 1.50 * log(avg_energy) ) - ( 0.5 * log(CellProperties.n[ELECTRON]) );
-		Lambda2 = 25.1 + log(avg_energy);		
+		fLambda1 = 66.0 + ( 1.50 * log_avg_energy ) - ( 0.5 * log(CellProperties.n[ELECTRON]) );
 		fColumnDensity += CellProperties.n[HYDROGEN] * CellProperties.cell_width;
-		fColumnDensitystar += ( ( (Lambda1*(1.0-CellProperties.HI)) + (Lambda2*CellProperties.HI) ) / Lambda1 ) * CellProperties.n[HYDROGEN] * CellProperties.cell_width;
+		fColumnDensitystar += ( ( (fLambda1*(1.0-CellProperties.HI)) + (fLambda2*CellProperties.HI) ) / fLambda1 ) * CellProperties.n[HYDROGEN] * CellProperties.cell_width;
 		CellProperties.nH_c = fColumnDensity;
 		CellProperties.nH_star_c = fColumnDensitystar;
 #endif // BEAM_HEATING
