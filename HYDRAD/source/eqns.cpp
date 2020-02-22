@@ -513,7 +513,7 @@ double fBB_lu[6], fBB_ul[6], fBF[4], fFB[4], fColl_ex_lu[10], fColl_ex_ul[10], f
 	    pRadiativeRates->GetBoundFreeRates( fBF, &(flog10_Trad[6]) );
 	    pRadiativeRates->GetFreeBoundRates( fFB, &(flog10_Trad[6]), log10(CellProperties.T[ELECTRON]), CellProperties.n[ELECTRON] );
 	    pRadiativeRates->GetCollisionalRatesRH( fColl_ex_lu, fColl_ex_ul, fColl_ion, fColl_rec, log10( CellProperties.T[ELECTRON] ), CellProperties.n[ELECTRON] );
-/*
+
 #ifdef BEAM_HEATING
 		fQbeam = pHeat->GetQbeam( CellProperties.s[1] );
 		// Calculate the contribution to collisional excitation / ionization by non-thermal electrons
@@ -527,7 +527,7 @@ double fBB_lu[6], fBB_ul[6], fBF[4], fFB[4], fColl_ex_lu[10], fColl_ex_ul[10], f
 			fColl_ion[0] += 1.73E10 * term1;
 		}
 #endif // BEAM_HEATING
-*/
+
 	    pRadiativeRates->SolveHIIFraction( &(CellProperties.Hstate[0]), fColl_ex_lu, fColl_ex_ul, fColl_ion, fColl_rec, fBB_lu, fBB_ul, fBF, fFB );
 	    CellProperties.HI = 1.0 - CellProperties.Hstate[5];
 
@@ -1081,7 +1081,7 @@ int j;
        		flog10_Trad[j] = log10( CellProperties.Trad[j]) ;
 
 #ifdef BEAM_HEATING
-//		fQbeam = pHeat->GetQbeam( CellProperties.s[1] );
+		fQbeam = pHeat->GetQbeam( CellProperties.s[1] );
 #endif // BEAM_HEATING
     	for(i=0; i<=MAX_ITERATIONS; i++ )
     	{
@@ -1092,7 +1092,7 @@ int j;
         	pRadiativeRates->GetBoundFreeRates( fBF, &(flog10_Trad[6]) );
        		pRadiativeRates->GetFreeBoundRates( fFB, &(flog10_Trad[6]), log10(CellProperties.T[ELECTRON]), CellProperties.n[ELECTRON] );
 			pRadiativeRates->GetCollisionalRatesRH( fColl_ex_lu, fColl_ex_ul, fColl_ion, fColl_rec, log10( CellProperties.T[ELECTRON] ), CellProperties.n[ELECTRON] );
-/*
+
 #ifdef BEAM_HEATING
 			// Calculate the contribution to collisional excitation / ionization by non-thermal electrons
 			if( fQbeam > Qbeam_CUT_OFF )
@@ -1105,12 +1105,14 @@ int j;
 				fColl_ion[0] += 1.73E10 * term1;
 			}
 #endif // BEAM_HEATING
-*/
+
 			pRadiativeRates->SolveHIIFraction( &(CellProperties.Hstate[0]), fColl_ex_lu, fColl_ex_ul, fColl_ion, fColl_rec, fBB_lu, fBB_ul, fBF, fFB );
 			CellProperties.HI = 1.0 - CellProperties.Hstate[5];
 
 			// Estimate the new density and temperature
 			CellProperties.n[ELECTRON] = CellProperties.n[ELECTRON] - CONVERGENCE_EPSILON * ( CellProperties.n[ELECTRON] - ( CellProperties.n[HYDROGEN] * ( CellProperties.Hstate[5] + fSum ) ) );
+				// If the electron density changes precipitously then prevent dramatic changes in the electron temperature by recalculating the electron energy
+				CellProperties.TE_KE[1][ELECTRON] = (2.07e-16) * CellProperties.n[ELECTRON] * CellProperties.T[ELECTRON];
 			CellProperties.T[ELECTRON] =  CellProperties.T[ELECTRON] - CONVERGENCE_EPSILON * ( CellProperties.T[ELECTRON] - ( ( (4.830917874e15) * CellProperties.TE_KE[1][ELECTRON] ) / CellProperties.n[ELECTRON] ) );
 			// Check for convergence and exit the loop if the condition is met
     	    if( i && (fabs(fPreviousIteration-CellProperties.n[ELECTRON])/CellProperties.n[ELECTRON]) < CONVERGENCE_CONDITION ) break;
