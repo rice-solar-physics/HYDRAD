@@ -5,7 +5,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 02/04/2020
+// * Date last modified: 03/25/2020
 // *
 // ****
 
@@ -38,13 +38,6 @@ class CEquations {
 
     // Function for finding the gravitational acceleration from the polynomial fit
     double CalculateGravity( double s );
-
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-	// Function for finding the magnetic field from the polynomial fit
-    double CalculateMagneticField( double s );
-    // Function for finding the cross-section from the polynomial fit
-    double CalculateCrossSection( double s );
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
     // Function for finding the smallest time-scale
     void GetSmallestTimeScale( double *delta_t, int iFirstStep );
@@ -127,7 +120,16 @@ class CEquations {
     // Function for evaluating the terms of the equations
     void EvaluateTerms( double current_time, double *delta_t, int iFirstStep );
 
-    // Functions to provide a 2nd order accurate numerical integration of
+	// Functions declared public: because needed in CMesh to calculate upper boundary
+	// conditions in ghost cells for open flux tubes
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+	// Function for finding the magnetic field from the polynomial fit
+    double CalculateMagneticField( double s );
+    // Function for finding the cross-section from the polynomial fit
+    double CalculateCrossSection( double s );
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
+
+	// Functions to provide a 2nd order accurate numerical integration of
     // the system of equations
     void Half_Time_Step( PCELLPROPERTIES pNewCellProperties, double delta_t );
     void Full_Time_Step( PCELLPROPERTIES CellProperties, double delta_t );

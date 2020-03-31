@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 02/06/2020
+// * Date last modified: 03/24/2020
 // *
 // ****
 
@@ -1424,17 +1424,25 @@ iLevel = 5;
 		x[2] = s[1];
 		y[1] = pHstate0[iLevel];
 		y[2] = pHstate1[iLevel];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+		y[1] *= cross_section[0];
+		y[2] *= cross_section[1];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 		LinearFit( x, y, s_pos[0], &Q1 );
 
 		x[1] = s[1];
 		x[2] = s[2];
 		y[1] = pHstate1[iLevel];
 		y[2] = pHstate2[iLevel];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+		y[1] *= cross_section[1];
+		y[2] *= cross_section[2];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 		LinearFit( x, y, s_pos[0], &Q2 );
 
-		Q3 = pHstate1[iLevel];
+		Q3 = y[1];
 
-		if( pHstate2[iLevel] <= pHstate1[iLevel] )
+		if( y[2] <= y[1] )
 		{
             QT = max( Q1, Q2 );
             if( Q3 < QT )
@@ -1458,17 +1466,26 @@ iLevel = 5;
         x[2] = s[3];
         y[1] = pHstate2[iLevel];
         y[2] = pHstate3[iLevel];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+		y[1] *= cross_section[2];
+		y[2] *= cross_section[3];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
         LinearFit( x, y, s_pos[0], &Q1 );
 
         x[1] = s[1];
         x[2] = s[2];
         y[1] = pHstate1[iLevel];
         y[2] = pHstate2[iLevel];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+		y[1] *= cross_section[1];
+		y[2] *= cross_section[2];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
         LinearFit( x, y, s_pos[0], &Q2 );
 
-        Q3 = pHstate2[iLevel];
+        Q3 = y[2];
 
-        if( pHstate2[iLevel] <= pHstate1[iLevel] )
+		// Note: The flow is in the opposite direction and so the conditional is switched
+        if( y[1] <= y[2] )
         {
             QT = min( Q1, Q2 );
             if( Q3 > QT )
@@ -1493,17 +1510,25 @@ iLevel = 5;
 		x[2] = s[2];
 		y[1] = pHstate1[iLevel];
 		y[2] = pHstate2[iLevel];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+		y[1] *= cross_section[1];
+		y[2] *= cross_section[2];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 		LinearFit( x, y, s_pos[2], &Q1 );
 
 		x[1] = s[2];
 		x[2] = s[3];
 		y[1] = pHstate2[iLevel];
 		y[2] = pHstate3[iLevel];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+		y[1] *= cross_section[2];
+		y[2] *= cross_section[3];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 		LinearFit( x, y, s_pos[2], &Q2 );
 
-		Q3 = pHstate2[iLevel];
+		Q3 = y[1];
 
-		if( pHstate3[iLevel] <= pHstate2[iLevel] )
+		if( y[2] <= y[1] )
 		{
             QT = max( Q1, Q2 );
             if( Q3 < QT )
@@ -1527,17 +1552,26 @@ iLevel = 5;
         x[2] = s[4];
         y[1] = pHstate3[iLevel];
         y[2] = pHstate4[iLevel];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+		y[1] *= cross_section[3];
+		y[2] *= cross_section[4];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
         LinearFit( x, y, s_pos[2], &Q1 );
 
         x[1] = s[2];
         x[2] = s[3];
         y[1] = pHstate2[iLevel];
         y[2] = pHstate3[iLevel];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+		y[1] *= cross_section[2];
+		y[2] *= cross_section[3];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
         LinearFit( x, y, s_pos[2], &Q2 );
 
-        Q3 = pHstate3[iLevel];
+        Q3 = y[2];
 
-        if( pHstate3[iLevel] <= pHstate2[iLevel] )
+		// Note: The flow is in the opposite direction and so the conditional is switched
+        if( y[1] <= y[2] )
         {
             QT = min( Q1, Q2 );
             if( Q3 > QT )
@@ -1554,8 +1588,9 @@ iLevel = 5;
                 Hstate2 = QT;
         }
     }
+
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-    pDel_Hstate_dot_v[iLevel] = - ( ( Hstate2 * pv[2] * cross_section[2] ) - ( Hstate0 * pv[0] * cross_section[0] ) ) / cell_volume;
+    pDel_Hstate_dot_v[iLevel] = - ( ( Hstate2 * pv[2] ) - ( Hstate0 * pv[0] ) ) / cell_volume;
 #else // USE_POLY_FIT_TO_MAGNETIC_FIELD
     pDel_Hstate_dot_v[iLevel] = - ( ( Hstate2 * pv[2] ) - ( Hstate0 * pv[0] ) ) / delta_s;
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD

@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 02/21/2020
+// * Date last modified: 03/29/2020
 // *
 // ****
 
@@ -1491,7 +1491,12 @@ double T[3][SPECIES], gradT, n[SPECIES], P, v[2], gradv, Kappa_B, Kappa_L, Fc_ma
 #endif // USE_KINETIC_MODEL
 
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-	double fCrossSection[3], fCellVolume;
+#if defined (NON_EQUILIBRIUM_RADIATION) || ( defined(OPTICALLY_THICK_RADIATION) && defined (NLTE_CHROMOSPHERE) )
+	double fCrossSection[5];
+#else // NON_EQUILIBRIUM_RADIATION || ( OPTICALLY_THICK_RADIATION && NLTE_CHROMOSPHERE )
+	double fCrossSection[4];
+#endif //  NON_EQUILIBRIUM_RADIATION || ( OPTICALLY_THICK_RADIATION && NLTE_CHROMOSPHERE )
+	double fCellVolume;
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
 #ifdef USE_JB
@@ -1533,6 +1538,8 @@ int j;
 	#else // NLTE_CHROMOSPHERE
 		#define NLTE_CHR_VARS_2
 	#endif // NLTE_CHROMOSPHERE
+	#else // OPTICALLY_THICK_RADIATION
+		#define NLTE_CHR_VARS_2
 	#endif // OPTICALLY_THICK_RADIATION
 	#ifdef BEAM_HEATING
 		#define BEAM_HEATING_VARS_2 pHydrogen, pHelium, HI_IonRate, HI_RecRate, AbHe, HeI_IonRate, HeI_RecRate, HeII_IonRate, HeII_RecRate, tau_IR,
@@ -1574,6 +1581,13 @@ int j;
 	    pFarLeftCell = pLeftCell->pGetPointer( LEFT );
 	    pFarLeftCell->GetCellProperties( &FarLeftCellProperties );
 
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+    	fCrossSection[0] = CalculateCrossSection( FarLeftCellProperties.s[1]/Params.L );
+    	fCrossSection[1] = CalculateCrossSection( LeftCellProperties.s[1]/Params.L );
+    	fCrossSection[2] = CalculateCrossSection( CellProperties.s[1]/Params.L );
+    	fCrossSection[3] = CalculateCrossSection( RightCellProperties.s[1]/Params.L );
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
+
 // *****************************************************************************
 // *    ADVECTIVE FLUX TRANSPORT ALGORITHM									   *
 // *****************************************************************************
@@ -1593,17 +1607,25 @@ int j;
 			x[2] = LeftCellProperties.s[1];
 			y[1] = FarLeftCellProperties.rho[1];
 			y[2] = LeftCellProperties.rho[1];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+			y[1] *= fCrossSection[0];
+			y[2] *= fCrossSection[1];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 			LinearFit( x, y, CellProperties.s[0], &Q1 );
 
 			x[1] = LeftCellProperties.s[1];
 			x[2] = CellProperties.s[1];
 			y[1] = LeftCellProperties.rho[1];
 			y[2] = CellProperties.rho[1];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+			y[1] *= fCrossSection[1];
+			y[2] *= fCrossSection[2];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 			LinearFit( x, y, CellProperties.s[0], &Q2 );
 
-	        Q3 = LeftCellProperties.rho[1];
+	        Q3 = y[1];
 
-			if( CellProperties.rho[1] <= LeftCellProperties.rho[1] )
+			if( y[2] <= y[1] )
 			{
 		    	QT = max( Q1, Q2 );
 			    if( Q3 < QT )
@@ -1628,17 +1650,25 @@ int j;
 			x[2] = LeftCellProperties.s[1];
 			y[1] = FarLeftCellProperties.rho_v[1];
 			y[2] = LeftCellProperties.rho_v[1];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+			y[1] *= fCrossSection[0];
+			y[2] *= fCrossSection[1];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 			LinearFit( x, y, CellProperties.s[0], &Q1 );
 
 			x[1] = LeftCellProperties.s[1];
 			x[2] = CellProperties.s[1];
 			y[1] = LeftCellProperties.rho_v[1];
 			y[2] = CellProperties.rho_v[1];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+			y[1] *= fCrossSection[1];
+			y[2] *= fCrossSection[2];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 			LinearFit( x, y, CellProperties.s[0], &Q2 );
 
-	        Q3 = LeftCellProperties.rho_v[1];
+	        Q3 = y[1];
 
-			if( CellProperties.rho_v[1] <= LeftCellProperties.rho_v[1] )
+			if( y[2] <= y[1] )
 			{
 		    	QT = max( Q1, Q2 );
 	    		if( Q3 < QT )
@@ -1654,7 +1684,7 @@ int j;
 	    		else
 	        		CellProperties.rho_v[0] = QT;
 			}
-	        
+
 			LeftCellProperties.rho_v[2] = CellProperties.rho_v[0];
 
 			// CALCULATE THE ENERGY
@@ -1665,17 +1695,25 @@ int j;
 	            x[2] = LeftCellProperties.s[1];
     	        y[1] = FarLeftCellProperties.TE_KE_P[1][j];
         	    y[2] = LeftCellProperties.TE_KE_P[1][j];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+				y[1] *= fCrossSection[0];
+				y[2] *= fCrossSection[1];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
             	LinearFit( x, y, CellProperties.s[0], &Q1 );
 
 	            x[1] = LeftCellProperties.s[1];
     	        x[2] = CellProperties.s[1];
         	    y[1] = LeftCellProperties.TE_KE_P[1][j];
             	y[2] = CellProperties.TE_KE_P[1][j];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+				y[1] *= fCrossSection[1];
+				y[2] *= fCrossSection[2];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
             	LinearFit( x, y, CellProperties.s[0], &Q2 );
 
-	            Q3 = LeftCellProperties.TE_KE_P[1][j];
+	            Q3 = y[1];
 
-    	        if( CellProperties.TE_KE_P[1][j] <= LeftCellProperties.TE_KE_P[1][j] )
+    	        if( y[2] <= y[1] )
         	    {
             	    QT = max( Q1, Q2 );
 					if( Q3 < QT )
@@ -1691,7 +1729,7 @@ int j;
 					else
 		    			CellProperties.TE_KE_P[0][j] = QT;
             	}
-	        
+
             	LeftCellProperties.TE_KE_P[2][j] = CellProperties.TE_KE_P[0][j];
 			}
     	}
@@ -1703,17 +1741,26 @@ int j;
 			x[2] = RightCellProperties.s[1];
 			y[1] = CellProperties.rho[1];
 			y[2] = RightCellProperties.rho[1];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+			y[1] *= fCrossSection[2];
+			y[2] *= fCrossSection[3];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 			LinearFit( x, y, CellProperties.s[0], &Q1 );
 
 			x[1] = LeftCellProperties.s[1];
 			x[2] = CellProperties.s[1];
 			y[1] = LeftCellProperties.rho[1];
 			y[2] = CellProperties.rho[1];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+			y[1] *= fCrossSection[1];
+			y[2] *= fCrossSection[2];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 			LinearFit( x, y, CellProperties.s[0], &Q2 );
 
-	        Q3 = CellProperties.rho[1];
+	        Q3 = y[2];
 
-			if( CellProperties.rho[1] <= LeftCellProperties.rho[1] )
+			// Note: The flow is in the opposite direction and so the conditional is switched
+			if( y[1] <= y[2] )
 			{
     	        QT = min( Q1, Q2 );
 	    		if( Q3 > QT )
@@ -1729,7 +1776,7 @@ int j;
 	    		else
 	        		CellProperties.rho[0] = QT;
 			}
-	        
+
 			LeftCellProperties.rho[2] = CellProperties.rho[0];
 		
 			// CALCULATE THE MOMENTUM
@@ -1738,17 +1785,26 @@ int j;
 			x[2] = RightCellProperties.s[1];
 			y[1] = CellProperties.rho_v[1];
 			y[2] = RightCellProperties.rho_v[1];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+			y[1] *= fCrossSection[2];
+			y[2] *= fCrossSection[3];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 			LinearFit( x, y, CellProperties.s[0], &Q1 );
 
 			x[1] = LeftCellProperties.s[1];
 			x[2] = CellProperties.s[1];
 			y[1] = LeftCellProperties.rho_v[1];
 			y[2] = CellProperties.rho_v[1];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+			y[1] *= fCrossSection[1];
+			y[2] *= fCrossSection[2];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 			LinearFit( x, y, CellProperties.s[0], &Q2 );
 
-	        Q3 = CellProperties.rho_v[1];
+	        Q3 = y[2];
 
-			if( CellProperties.rho_v[1] <= LeftCellProperties.rho_v[1] )
+			// Note: The flow is in the opposite direction and so the conditional is switched
+			if( y[1] <= y[2] )
 			{
 	    		QT = min( Q1, Q2 );
 	    		if( Q3 > QT )
@@ -1764,7 +1820,7 @@ int j;
 	    		else
 	        		CellProperties.rho_v[0] = QT;
 			}
-	        
+
 			LeftCellProperties.rho_v[2] = CellProperties.rho_v[0];
 
 			// CALCULATE THE ENERGY
@@ -1775,17 +1831,26 @@ int j;
     	        x[2] = RightCellProperties.s[1];
         	    y[1] = CellProperties.TE_KE_P[1][j];
             	y[2] = RightCellProperties.TE_KE_P[1][j];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+			y[1] *= fCrossSection[2];
+			y[2] *= fCrossSection[3];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
             	LinearFit( x, y, CellProperties.s[0], &Q1 );
 
 	            x[1] = LeftCellProperties.s[1];
     	        x[2] = CellProperties.s[1];
         	    y[1] = LeftCellProperties.TE_KE_P[1][j];
             	y[2] = CellProperties.TE_KE_P[1][j];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+			y[1] *= fCrossSection[1];
+			y[2] *= fCrossSection[2];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
             	LinearFit( x, y, CellProperties.s[0], &Q2 );
 
-	            Q3 = CellProperties.TE_KE_P[1][j];
+	            Q3 = y[2];
 
-    	        if( CellProperties.TE_KE_P[1][j] <= LeftCellProperties.TE_KE_P[1][j] )
+				// Note: The flow is in the opposite direction and so the conditional is switched
+    	        if( y[1] <= y[2] )
         	    {
 					QT = min( Q1, Q2 );
 					if( Q3 > QT )
@@ -1801,7 +1866,7 @@ int j;
 					else
 	        			CellProperties.TE_KE_P[0][j] = QT;
             	}
-	        
+
 	            LeftCellProperties.TE_KE_P[2][j] = CellProperties.TE_KE_P[0][j];
 			}
     	}
@@ -2208,13 +2273,13 @@ int j;
 // *    ADVECTION                                                              *
 // *****************************************************************************
 
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-    	LowerValue = CellProperties.rho[0] * CellProperties.v[0] * fCrossSection[0];
-    	UpperValue = CellProperties.rho[2] * CellProperties.v[2] * fCrossSection[2];
-    	CellProperties.rho_term[0] = - ( UpperValue - LowerValue ) / fCellVolume;
-#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
+		// The cell interface quantities calculated with Barton's algorithm account for
+		// a non-uniform magnetic field / cross-section in the field-aligned direction
     	LowerValue = CellProperties.rho[0] * CellProperties.v[0];
     	UpperValue = CellProperties.rho[2] * CellProperties.v[2];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+		CellProperties.rho_term[0] = - ( UpperValue - LowerValue ) / fCellVolume;
+#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
     	CellProperties.rho_term[0] = - ( UpperValue - LowerValue ) / CellProperties.cell_width;
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
@@ -2231,13 +2296,13 @@ int j;
 // *    ADVECTION                                                              *
 // *****************************************************************************
 
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-	    LowerValue = CellProperties.rho_v[0] * CellProperties.v[0] * fCrossSection[0];
-	    UpperValue = CellProperties.rho_v[2] * CellProperties.v[2] * fCrossSection[2];
-	    CellProperties.rho_v_term[0] = - ( UpperValue - LowerValue ) / fCellVolume;
-#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
+		// The cell interface quantities calculated with Barton's algorithm account for
+		// a non-uniform magnetic field / cross-section in the field-aligned direction
 	    LowerValue = CellProperties.rho_v[0] * CellProperties.v[0];
 	    UpperValue = CellProperties.rho_v[2] * CellProperties.v[2];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+	    CellProperties.rho_v_term[0] = - ( UpperValue - LowerValue ) / fCellVolume;
+#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
 	    CellProperties.rho_v_term[0] = - ( UpperValue - LowerValue ) / CellProperties.cell_width;
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
@@ -2297,13 +2362,13 @@ int j;
 
 		for( j=0; j<SPECIES; j++ )
 		{
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-			LowerValue = CellProperties.TE_KE_P[0][j] * CellProperties.v[0] * fCrossSection[0];
-			UpperValue = CellProperties.TE_KE_P[2][j] * CellProperties.v[2] * fCrossSection[2];
-			CellProperties.TE_KE_term[0][j] = - ( UpperValue - LowerValue ) / fCellVolume;
-#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
+			// The cell interface quantities calculated with Barton's algorithm account for
+			// a non-uniform magnetic field / cross-section in the field-aligned direction
 			LowerValue = CellProperties.TE_KE_P[0][j] * CellProperties.v[0];
 			UpperValue = CellProperties.TE_KE_P[2][j] * CellProperties.v[2];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+			CellProperties.TE_KE_term[0][j] = - ( UpperValue - LowerValue ) / fCellVolume;
+#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
 			CellProperties.TE_KE_term[0][j] = - ( UpperValue - LowerValue ) / CellProperties.cell_width;
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 		}
@@ -2529,6 +2594,18 @@ int j;
     	ps[2] = CellProperties.s[1];
     	ps[3] = RightCellProperties.s[1];
     	ps[4] = FarRightCellProperties.s[1];
+
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+		// Calculate the grid cell cross-sections corresponding to the cells containing the ion fractions
+		// Note: It's safe to do this here because these variables are not used again in the current cell 
+		//       and are reset to the cell center and interface cross-sections when the time-derivatives 
+		//       are calculated in the next grid cell
+    	fCrossSection[0] = CalculateCrossSection( FarLeftCellProperties.s[1]/Params.L );
+    	fCrossSection[1] = CalculateCrossSection( LeftCellProperties.s[1]/Params.L );
+    	fCrossSection[2] = CalculateCrossSection( CellProperties.s[1]/Params.L );
+    	fCrossSection[3] = CalculateCrossSection( RightCellProperties.s[1]/Params.L );
+    	fCrossSection[4] = CalculateCrossSection( FarRightCellProperties.s[1]/Params.L );
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
 #ifdef NON_EQUILIBRIUM_RADIATION
     	ppni0 = FarLeftCellProperties.pIonFrac->ppGetIonFrac();

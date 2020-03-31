@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 12/24/2019
+// * Date last modified: 03/24/2020
 // *
 // ****
 
@@ -984,17 +984,25 @@ for( iIndex=0; iIndex<=Z; iIndex++ )
 		x[2] = s[1];
 		y[1] = pni0[iIndex];
 		y[2] = pni1[iIndex];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+		y[1] *= cross_section[0];
+		y[2] *= cross_section[1];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 		LinearFit( x, y, s_pos[0], &Q1 );
 
 		x[1] = s[1];
 		x[2] = s[2];
 		y[1] = pni1[iIndex];
 		y[2] = pni2[iIndex];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+		y[1] *= cross_section[1];
+		y[2] *= cross_section[2];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 		LinearFit( x, y, s_pos[0], &Q2 );
 
-		Q3 = pni1[iIndex];
+		Q3 = y[1];
 
-		if( pni2[iIndex] <= pni1[iIndex] )
+		if( y[2] <= y[1] )
 		{
             QT = max( Q1, Q2 );
             if( Q3 < QT )
@@ -1018,17 +1026,26 @@ for( iIndex=0; iIndex<=Z; iIndex++ )
         x[2] = s[3];
         y[1] = pni2[iIndex];
         y[2] = pni3[iIndex];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+		y[1] *= cross_section[2];
+		y[2] *= cross_section[3];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
         LinearFit( x, y, s_pos[0], &Q1 );
 
         x[1] = s[1];
         x[2] = s[2];
         y[1] = pni1[iIndex];
         y[2] = pni2[iIndex];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+		y[1] *= cross_section[1];
+		y[2] *= cross_section[2];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
         LinearFit( x, y, s_pos[0], &Q2 );
 
-        Q3 = pni2[iIndex];
+        Q3 = y[2];
 
-        if( pni2[iIndex] <= pni1[iIndex] )
+		// Note: The flow is in the opposite direction and so the conditional is switched
+        if( y[1] <= y[2] )
         {
             QT = min( Q1, Q2 );
             if( Q3 > QT )
@@ -1053,17 +1070,25 @@ for( iIndex=0; iIndex<=Z; iIndex++ )
 		x[2] = s[2];
 		y[1] = pni1[iIndex];
 		y[2] = pni2[iIndex];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+		y[1] *= cross_section[1];
+		y[2] *= cross_section[2];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 		LinearFit( x, y, s_pos[2], &Q1 );
 
 		x[1] = s[2];
 		x[2] = s[3];
 		y[1] = pni2[iIndex];
 		y[2] = pni3[iIndex];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+		y[1] *= cross_section[2];
+		y[2] *= cross_section[3];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 		LinearFit( x, y, s_pos[2], &Q2 );
 
-		Q3 = pni2[iIndex];
+		Q3 = y[1];
 
-		if( pni3[iIndex] <= pni2[iIndex] )
+		if( y[2] <= y[1] )
 		{
             QT = max( Q1, Q2 );
             if( Q3 < QT )
@@ -1087,17 +1112,26 @@ for( iIndex=0; iIndex<=Z; iIndex++ )
         x[2] = s[4];
         y[1] = pni3[iIndex];
         y[2] = pni4[iIndex];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+		y[1] *= cross_section[3];
+		y[2] *= cross_section[4];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
         LinearFit( x, y, s_pos[2], &Q1 );
 
         x[1] = s[2];
         x[2] = s[3];
         y[1] = pni2[iIndex];
         y[2] = pni3[iIndex];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
+		y[1] *= cross_section[2];
+		y[2] *= cross_section[3];
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
         LinearFit( x, y, s_pos[2], &Q2 );
 
-        Q3 = pni3[iIndex];
+        Q3 = y[2];
 
-        if( pni3[iIndex] <= pni2[iIndex] )
+		// Note: The flow is in the opposite direction and so the conditional is switched
+        if( y[1] <= y[2] )
         {
             QT = min( Q1, Q2 );
             if( Q3 > QT )
@@ -1116,7 +1150,7 @@ for( iIndex=0; iIndex<=Z; iIndex++ )
     }
 
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-    term1 = - ( ( ni2 * pv[2] * cross_section[2] ) - ( ni0 * pv[0] * cross_section[0] ) ) / cell_volume;
+	term1 = - ( ( ni2 * pv[2] ) - ( ni0 * pv[0] ) ) / cell_volume;
 #else // USE_POLY_FIT_TO_MAGNETIC_FIELD
     term1 = - ( ( ni2 * pv[2] ) - ( ni0 * pv[0] ) ) / delta_s;
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
