@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 02/10/2020
+// * Date last modified: 03/25/2020
 // *
 // ****
 
@@ -1686,7 +1686,9 @@ pActiveCell->GetCellProperties( &(CellProperties[0]) );
 
 #ifdef NON_EQUILIBRIUM_RADIATION
 	// Find the ion population by extrapolation from the two grid cells adjacent to the ghost cells
-	double **ppIonFrac[3];
+	double x[3], **ppIonFrac[3];
+	x[1] = CellProperties[0].s[1];
+	x[2] = CellProperties[1].s[1];
    	ppIonFrac[1] = CellProperties[0].pIonFrac->ppGetIonFrac();
    	ppIonFrac[2] = CellProperties[1].pIonFrac->ppGetIonFrac();
    	GhostCellProperties[0].pIonFrac->InterpolateAllIonFrac( x, ppIonFrac, 2, GhostCellProperties[0].s[1] );
