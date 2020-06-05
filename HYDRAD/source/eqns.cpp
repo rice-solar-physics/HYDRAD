@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 03/29/2020
+// * Date last modified: 06/05/2020
 // *
 // ****
 
@@ -1832,8 +1832,8 @@ int j;
         	    y[1] = CellProperties.TE_KE_P[1][j];
             	y[2] = RightCellProperties.TE_KE_P[1][j];
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-			y[1] *= fCrossSection[2];
-			y[2] *= fCrossSection[3];
+				y[1] *= fCrossSection[2];
+				y[2] *= fCrossSection[3];
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
             	LinearFit( x, y, CellProperties.s[0], &Q1 );
 
@@ -1842,8 +1842,8 @@ int j;
         	    y[1] = LeftCellProperties.TE_KE_P[1][j];
             	y[2] = CellProperties.TE_KE_P[1][j];
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-			y[1] *= fCrossSection[1];
-			y[2] *= fCrossSection[2];
+				y[1] *= fCrossSection[1];
+				y[2] *= fCrossSection[2];
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
             	LinearFit( x, y, CellProperties.s[0], &Q2 );
 
@@ -2878,25 +2878,42 @@ while( pNextActiveCell )
 
     // Find the maximum temperature to determine the velocity range
     if( CellProperties.T[ELECTRON] > Tmax )
-	Tmax = CellProperties.T[ELECTRON];
+		Tmax = CellProperties.T[ELECTRON];
 
     pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
 }
 
 // Calculate the quantities required for the kinetic model
-pNextActiveCell = pStartOfCurrentRow;
+#ifdef OPENMP
+	PCELL pLocalActiveCell;
+	int iCounter, iLocalNumberOfCells = Params.iNumberOfCells;
+#pragma omp parallel shared( ppCellList, iLocalNumberOfCells )		\
+   	                 private(	iCounter, CellProperties )
+	{
+#pragma omp for schedule(dynamic, CHUNK_SIZE)						\
+   	            lastprivate(pLocalActiveCell)
+	for( iCounter=0; iCounter<iLocalNumberOfCells; iCounter++ )
+	{
+		pLocalActiveCell = ppCellList[iCounter];
+		pLocalActiveCell->GetCellProperties( &CellProperties );
+#else // OPENMP
+	pNextActiveCell = pStartOfCurrentRow;
+	while( pNextActiveCell )
+	{
+    	pActiveCell = pNextActiveCell;
+    	pActiveCell->GetCellProperties( &CellProperties );
+#endif // OPENMP
 
-while( pNextActiveCell )
-{
-    pActiveCell = pNextActiveCell;
-    pActiveCell->GetCellProperties( &CellProperties );
+	    CellProperties.pKinetic->CalculateVelocityRange( CellProperties.T[ELECTRON], Tmax );
+    	CellProperties.pKinetic->CalculateCollisionalProperties( CellProperties.T[ELECTRON], CellProperties.T[HYDROGEN], CellProperties.n[ELECTRON] );
+    	CellProperties.pKinetic->CalculateMaxDFN( CellProperties.T[ELECTRON], CellProperties.T[HYDROGEN], CellProperties.n[ELECTRON] );
 
-    CellProperties.pKinetic->CalculateVelocityRange( CellProperties.T[ELECTRON], Tmax );
-    CellProperties.pKinetic->CalculateCollisionalProperties( CellProperties.T[ELECTRON], CellProperties.T[HYDROGEN], CellProperties.n[ELECTRON] );
-    CellProperties.pKinetic->CalculateMaxDFN( CellProperties.T[ELECTRON], CellProperties.T[HYDROGEN], CellProperties.n[ELECTRON] );
-
-    pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
-}
+#ifdef OPENMP
+	}
+#else // OPENMP
+    	pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
+#endif // OPENMP
+	}
 
 // Calculate the non-Maxwellian distribution function and its moments in each grid cell
 CalculateNonMaxDFN();
@@ -2940,7 +2957,7 @@ pNonMaxDFN = CellProperties.pKinetic->Get_pNonMaxDFN();
 for( i=0; i<DISTRIBUTION_DATA_POINTS; i++ )
     pNonMaxDFN[i] = pMaxDFN_ee[i];
 
-iIndex = iNumCells-2;
+iIndex = Params.iNumberOfCells-2;
 pActiveCell = ppCellList[iIndex];
 pActiveCell->GetCellProperties( &CellProperties );
 pMaxDFN_ee = CellProperties.pKinetic->Get_pMaxDFN_ee();
@@ -2948,7 +2965,7 @@ pNonMaxDFN = CellProperties.pKinetic->Get_pNonMaxDFN();
 for( i=0; i<DISTRIBUTION_DATA_POINTS; i++ )
     pNonMaxDFN[i] = pMaxDFN_ee[i];
 
-iIndex = iNumCells-1;
+iIndex = Params.iNumberOfCells-1;
 pActiveCell = ppCellList[iIndex];
 pActiveCell->GetCellProperties( &CellProperties );
 pMaxDFN_ee = CellProperties.pKinetic->Get_pMaxDFN_ee();
@@ -2961,19 +2978,18 @@ for( i=0; i<DISTRIBUTION_DATA_POINTS; i++ )
 // *****************************************************************************
 
 // Solve for positive velocities
-
 iIndex = 1;
 pActiveCell = ppCellList[iIndex];
 pActiveCell->GetCellProperties( &CellProperties );
 pNonMaxDFN = CellProperties.pKinetic->Get_pNonMaxDFN();
 
-for( iIndex=2; iIndex<iNumCells; iIndex++ )
+for( iIndex=2; iIndex<Params.iNumberOfCells; iIndex++ )
 {
-    previous_cell_width = CellProperties.cell_width;
-    previous_pNonMaxDFN = pNonMaxDFN;
+   	previous_cell_width = CellProperties.cell_width;
+   	previous_pNonMaxDFN = pNonMaxDFN;
 
     pActiveCell = ppCellList[iIndex];
-    pActiveCell->GetCellProperties( &CellProperties );
+   	pActiveCell->GetCellProperties( &CellProperties );
     pupsilon = CellProperties.pKinetic->Get_pupsilon();
     pnu_ee = CellProperties.pKinetic->Get_pnu_ee();
     pnu_ei = CellProperties.pKinetic->Get_pnu_ei();
@@ -2985,22 +3001,22 @@ for( iIndex=2; iIndex<iNumCells; iIndex++ )
 
     for( i=half_data_points; i<DISTRIBUTION_DATA_POINTS; i++ )
     {
-	term1 = ( ( pnu_ee[i] * pMaxDFN_ee[i] ) + ( 4.0 * pnu_ei[i] * pMaxDFN_ei[i] ) ) * ds;
-	term2 = pupsilon[i] * previous_pNonMaxDFN[i];
-	term3 = pupsilon[i] + ( ( pnu_ee[i] + ( 4.0 * pnu_ei[i] ) ) * ds );
+		term1 = ( ( pnu_ee[i] * pMaxDFN_ee[i] ) + ( 4.0 * pnu_ei[i] * pMaxDFN_ei[i] ) ) * ds;
+		term2 = pupsilon[i] * previous_pNonMaxDFN[i];
+		term3 = pupsilon[i] + ( ( pnu_ee[i] + ( 4.0 * pnu_ei[i] ) ) * ds );
 
-	pNonMaxDFN[i] = ( term1 + term2 ) / term3;
-    }
+		pNonMaxDFN[i] = ( term1 + term2 ) / term3;
+   	}
 }
 
 // Solve for negative velocities
 
-iIndex = iNumCells-2;
+iIndex = Params.iNumberOfCells-2;
 pActiveCell = ppCellList[iIndex];
 pActiveCell->GetCellProperties( &CellProperties );
 pNonMaxDFN = CellProperties.pKinetic->Get_pNonMaxDFN();
 
-for( iIndex=iNumCells-3; iIndex>=0; iIndex-- )
+for( iIndex=Params.iNumberOfCells-3; iIndex>=0; iIndex-- )
 {
     previous_cell_width = CellProperties.cell_width;
     previous_pNonMaxDFN = pNonMaxDFN;
@@ -3019,10 +3035,10 @@ for( iIndex=iNumCells-3; iIndex>=0; iIndex-- )
     for( i=0; i<half_data_points; i++ )
     {
         term1 = ( ( pnu_ee[i] * pMaxDFN_ee[i] ) + ( 4.0 * pnu_ei[i] * pMaxDFN_ei[i] ) ) * ds;
-	term2 = pupsilon[i] * previous_pNonMaxDFN[i];
-	term3 = pupsilon[i] + ( ( pnu_ee[i] + ( 4.0 * pnu_ei[i] ) ) * ds );
+		term2 = pupsilon[i] * previous_pNonMaxDFN[i];
+		term3 = pupsilon[i] + ( ( pnu_ee[i] + ( 4.0 * pnu_ei[i] ) ) * ds );
 
-	pNonMaxDFN[i] = ( term1 + term2 ) / term3;
+		pNonMaxDFN[i] = ( term1 + term2 ) / term3;
     }
 }
 
@@ -3030,146 +3046,179 @@ for( iIndex=iNumCells-3; iIndex>=0; iIndex-- )
 // *    SPITZER PART OF THE SOLUTION                                            															*
 // *****************************************************************************
 
-for( iIndex=2; iIndex<iNumCells-2; iIndex++ )
+#ifdef OPENMP
+	PCELL pLocalActiveCell;
+	int iCounter, iLocalNumberOfCells = Params.iNumberOfCells;
+#pragma omp parallel shared( ppCellList, iLocalNumberOfCells )					\
+   	                 private(	iCounter, CellProperties,						\
+					 			LeftCellProperties, FarLeftCellProperties, 		\
+								RightCellProperties, FarRightCellProperties,	\
+					 			pupsilon, plambda_ei, pNonMaxDFN, u_th,			\
+								x, y, fLowerValue, fUpperValue, fError, 		\
+								dTbyds, fScaleLength, E, lambda_ei,				\
+								i, j, u_n, x_e, x_t, term1, term2, fp,			\
+								K_SH, Kappa )
 {
-    pActiveCell = ppCellList[iIndex];
-    pActiveCell->GetCellProperties( &CellProperties );
-
-    ppCellList[iIndex-2]->GetCellProperties( &FarLeftCellProperties );
-    ppCellList[iIndex-1]->GetCellProperties( &LeftCellProperties );
-    ppCellList[iIndex+1]->GetCellProperties( &RightCellProperties );
-    ppCellList[iIndex+2]->GetCellProperties( &FarRightCellProperties );
-
-    pupsilon = CellProperties.pKinetic->Get_pupsilon();
-    plambda_ei = CellProperties.pKinetic->Get_plambda_ei();
-    pNonMaxDFN = CellProperties.pKinetic->Get_pNonMaxDFN();
-
-    u_th = CellProperties.pKinetic->Get_u_th();
-
-    x[1] = FarLeftCellProperties.s[1];
-    x[2] = LeftCellProperties.s[1];
-    x[3] = CellProperties.s[1];
-    x[4] = RightCellProperties.s[1];
-    x[5] = FarRightCellProperties.s[1];
-
-    y[1] = FarLeftCellProperties.T[ELECTRON];
-    y[2] = LeftCellProperties.T[ELECTRON];
-    y[3] = CellProperties.T[ELECTRON];
-    y[4] = RightCellProperties.T[ELECTRON];
-    y[5] = FarRightCellProperties.T[ELECTRON];
-
-    FitPolynomial4( x, y, CellProperties.s[0], &fLowerValue, &fError );
-    FitPolynomial4( &(x[1]), &(y[1]), CellProperties.s[2], &fUpperValue, &fError );
-
-    dTbyds = ( fUpperValue - fLowerValue ) / CellProperties.cell_width;
-    fScaleLength = KNUDSEN_NUMBER * fabs( CellProperties.T[ELECTRON] / dTbyds );
-    E = -0.703 * ( BOLTZMANN_CONSTANT / ELECTRON_CHARGE ) * dTbyds;
-
-    lambda_ei = fSHMeanFreePath( u_th, CellProperties.T[ELECTRON], CellProperties.T[HYDROGEN], CellProperties.n[ELECTRON] );
-
-    // Solve for positive velocities
-
-    for( i=half_data_points; i<DISTRIBUTION_DATA_POINTS; i++ )
-    {
-        // Normalise the velocity to the thermal speed
-	u_n = pupsilon[i] / u_th;
-
-	if( plambda_ei[i] > fScaleLength || u_n > 3.20 )
-            break;
-
-	// Calculate X_E and X_T
-        if( u_n > 0.10 )
+#pragma omp for schedule(dynamic, CHUNK_SIZE)									\
+   	            lastprivate(pLocalActiveCell)
+	for( iCounter=2; iCounter<iLocalNumberOfCells-2; iCounter++ )
 	{
-            // Find the data points to interpolate at the current velocity
-            for( j=0; j<51; j++ )
-            {
-                if( u_n <= SH_Table[j][U] )
-                    break;
-            }
+		pLocalActiveCell = ppCellList[iCounter];
+		pLocalActiveCell->GetCellProperties( &CellProperties );
 
-            x[1] = SH_Table[j-1][U];
-            x[2] = SH_Table[j][U];
-
-            y[1] = SH_Table[j-1][X_E];
-            y[2] = SH_Table[j][X_E];
-            LinearFit( x, y, u_n, &x_e );
-
-            y[1] = SH_Table[j-1][X_T];
-            y[2] = SH_Table[j][X_T];
-            LinearFit( x, y, u_n, &x_t );
-	}
-	else
+	    ppCellList[iCounter-2]->GetCellProperties( &FarLeftCellProperties );
+    	ppCellList[iCounter-1]->GetCellProperties( &LeftCellProperties );
+    	ppCellList[iCounter+1]->GetCellProperties( &RightCellProperties );
+    	ppCellList[iCounter+2]->GetCellProperties( &FarRightCellProperties );
+#else // OPENMP
+	for( iIndex=2; iIndex<Params.iNumberOfCells-2; iIndex++ )
 	{
-            x_e = 0.0;
-            x_t = 0.0;
-	}
+    	pActiveCell = ppCellList[iIndex];
+    	pActiveCell->GetCellProperties( &CellProperties );
 
-	term1 = -x_e * ( ( ELECTRON_CHARGE * E ) / ( BOLTZMANN_CONSTANT * CellProperties.T[ELECTRON] ) );
-	term2 = 2.0 * x_t * ( 1.0 / CellProperties.T[ELECTRON] ) * dTbyds; 
-	fp = lambda_ei * ( term1 + term2 );
+	    ppCellList[iIndex-2]->GetCellProperties( &FarLeftCellProperties );
+    	ppCellList[iIndex-1]->GetCellProperties( &LeftCellProperties );
+    	ppCellList[iIndex+1]->GetCellProperties( &RightCellProperties );
+    	ppCellList[iIndex+2]->GetCellProperties( &FarRightCellProperties );
+#endif // OPENMP
 
-	pNonMaxDFN[i] *= ( 1.0 + fp );
-    }
+	    pupsilon = CellProperties.pKinetic->Get_pupsilon();
+	    plambda_ei = CellProperties.pKinetic->Get_plambda_ei();
+	    pNonMaxDFN = CellProperties.pKinetic->Get_pNonMaxDFN();
 
-    // Solve for negative velocities
+    	u_th = CellProperties.pKinetic->Get_u_th();
 
-    for( i=half_data_points-1; i>=0; i-- )
-    {
-        // Normalise the velocity to the thermal speed
-	u_n = -pupsilon[i] / u_th;
+	    x[1] = FarLeftCellProperties.s[1];
+    	x[2] = LeftCellProperties.s[1];
+    	x[3] = CellProperties.s[1];
+    	x[4] = RightCellProperties.s[1];
+    	x[5] = FarRightCellProperties.s[1];
 
-	if( plambda_ei[i] > fScaleLength || u_n > 3.20 )
-            break;
+	    y[1] = FarLeftCellProperties.T[ELECTRON];
+	    y[2] = LeftCellProperties.T[ELECTRON];
+	    y[3] = CellProperties.T[ELECTRON];
+	    y[4] = RightCellProperties.T[ELECTRON];
+	    y[5] = FarRightCellProperties.T[ELECTRON];
 
-	// Calculate X_E and X_T
-	if( u_n > 0.10 )
-	{
-            // Find the data points to interpolate at the current velocity
-            for( j=0; j<51; j++ )
-            {
-                if( u_n <= SH_Table[j][U] )
-                    break;
-            }
+	    FitPolynomial4( x, y, CellProperties.s[0], &fLowerValue, &fError );
+    	FitPolynomial4( &(x[1]), &(y[1]), CellProperties.s[2], &fUpperValue, &fError );
 
-            x[1] = SH_Table[j-1][U];
-            x[2] = SH_Table[j][U];
+	    dTbyds = ( fUpperValue - fLowerValue ) / CellProperties.cell_width;
+    	fScaleLength = KNUDSEN_NUMBER * fabs( CellProperties.T[ELECTRON] / dTbyds );
+    	E = -0.703 * ( BOLTZMANN_CONSTANT / ELECTRON_CHARGE ) * dTbyds;
 
-            y[1] = SH_Table[j-1][X_E];
-            y[2] = SH_Table[j][X_E];
-            LinearFit( x, y, u_n, &x_e );
+	    lambda_ei = fSHMeanFreePath( u_th, CellProperties.T[ELECTRON], CellProperties.T[HYDROGEN], CellProperties.n[ELECTRON] );
 
-            y[1] = SH_Table[j-1][X_T];
-            y[2] = SH_Table[j][X_T];
-            LinearFit( x, y, u_n, &x_t );
-	}
-	else
-	{
-            x_e = 0.0;
-            x_t = 0.0;
-	}
+	    // Solve for positive velocities
 
-	term1 = -x_e * ( ( ELECTRON_CHARGE * E ) / ( BOLTZMANN_CONSTANT * CellProperties.T[ELECTRON] ) );
-	term2 = 2.0 * x_t * ( 1.0 / CellProperties.T[ELECTRON] ) * dTbyds; 
-	fp = - lambda_ei * ( term1 + term2 );
+    	for( i=half_data_points; i<DISTRIBUTION_DATA_POINTS; i++ )
+		{
+    	    // Normalise the velocity to the thermal speed
+			u_n = pupsilon[i] / u_th;
 
-	pNonMaxDFN[i] *= ( 1.0 + fp );
-    }
+			if( plambda_ei[i] > fScaleLength || u_n > 3.20 )
+	            break;
 
-    CellProperties.Fc[1][ELECTRON] = CellProperties.pKinetic->Get_Fc();
+			// Calculate X_E and X_T
+        	if( u_n > 0.10 )
+			{
+            	// Find the data points to interpolate at the current velocity
+            	for( j=0; j<51; j++ )
+            	{
+                	if( u_n <= SH_Table[j][U] )
+                    	break;
+            	}
 
-    // Calculate the thermal conduction time-scale
-    K_SH = SPITZER_ELECTRON_CONDUCTIVITY * pow( CellProperties.T[ELECTRON], 2.5 );
-    Kappa = fabs( CellProperties.Fc[1][ELECTRON] / dTbyds );
+	            x[1] = SH_Table[j-1][U];
+    	        x[2] = SH_Table[j][U];
+
+        	    y[1] = SH_Table[j-1][X_E];
+            	y[2] = SH_Table[j][X_E];
+            	LinearFit( x, y, u_n, &x_e );
+
+	            y[1] = SH_Table[j-1][X_T];
+    	        y[2] = SH_Table[j][X_T];
+        	    LinearFit( x, y, u_n, &x_t );
+			}
+			else
+			{
+            	x_e = 0.0;
+            	x_t = 0.0;
+			}
+
+			term1 = -x_e * ( ( ELECTRON_CHARGE * E ) / ( BOLTZMANN_CONSTANT * CellProperties.T[ELECTRON] ) );
+			term2 = 2.0 * x_t * ( 1.0 / CellProperties.T[ELECTRON] ) * dTbyds; 
+			fp = lambda_ei * ( term1 + term2 );
+
+			pNonMaxDFN[i] *= ( 1.0 + fp );
+    	}
+
+	    // Solve for negative velocities
+
+    	for( i=half_data_points-1; i>=0; i-- )
+    	{
+        	// Normalise the velocity to the thermal speed
+			u_n = -pupsilon[i] / u_th;
+
+			if( plambda_ei[i] > fScaleLength || u_n > 3.20 )
+    	        break;
+
+			// Calculate X_E and X_T
+			if( u_n > 0.10 )
+			{
+            	// Find the data points to interpolate at the current velocity
+            	for( j=0; j<51; j++ )
+            	{
+                	if( u_n <= SH_Table[j][U] )
+                    	break;
+            	}
+
+	            x[1] = SH_Table[j-1][U];
+    	        x[2] = SH_Table[j][U];
+
+	            y[1] = SH_Table[j-1][X_E];
+    	        y[2] = SH_Table[j][X_E];
+        	    LinearFit( x, y, u_n, &x_e );
+
+	            y[1] = SH_Table[j-1][X_T];
+    	        y[2] = SH_Table[j][X_T];
+        	    LinearFit( x, y, u_n, &x_t );
+			}
+			else
+			{
+    	        x_e = 0.0;
+        	    x_t = 0.0;
+			}
+
+			term1 = -x_e * ( ( ELECTRON_CHARGE * E ) / ( BOLTZMANN_CONSTANT * CellProperties.T[ELECTRON] ) );
+			term2 = 2.0 * x_t * ( 1.0 / CellProperties.T[ELECTRON] ) * dTbyds; 
+			fp = - lambda_ei * ( term1 + term2 );
+
+			pNonMaxDFN[i] *= ( 1.0 + fp );
+    	}
+
+	    CellProperties.Fc[1][ELECTRON] = CellProperties.pKinetic->Get_Fc();
+
+	    // Calculate the thermal conduction time-scale
+    	K_SH = SPITZER_ELECTRON_CONDUCTIVITY * pow( CellProperties.T[ELECTRON], 2.5 );
+    	Kappa = fabs( CellProperties.Fc[1][ELECTRON] / dTbyds );
 	
-    if( Kappa > K_SH )
-        Kappa = K_SH;
+	    if( Kappa > K_SH )
+    	    Kappa = K_SH;
 
-    // The time-step is calculated by: delta_t = ( n * k_B ) * ( cell width )^2 / ( 2.0 * coefficient of thermal conduction )
-    // 0.5 * BOLTZMANN_CONSTANT = 6.9e-17
-    term1 = SAFETY_CONDUCTION * (6.9e-17) * CellProperties.cell_width * CellProperties.cell_width;
-    CellProperties.conduction_delta_t[ELECTRON] = ( term1 * CellProperties.n[ELECTRON] ) / Kappa;
+	    // The time-step is calculated by: delta_t = ( n * k_B ) * ( cell width )^2 / ( 2.0 * coefficient of thermal conduction )
+    	// 0.5 * BOLTZMANN_CONSTANT = 6.9e-17
+    	term1 = SAFETY_CONDUCTION * (6.9e-17) * CellProperties.cell_width * CellProperties.cell_width;
+    	CellProperties.conduction_delta_t[ELECTRON] = ( term1 * CellProperties.n[ELECTRON] ) / Kappa;
 
-    pActiveCell->UpdateCellProperties( &CellProperties );
+#ifdef OPENMP
+		pLocalActiveCell->UpdateCellProperties( &CellProperties );
+#else // OPENMP
+	    pActiveCell->UpdateCellProperties( &CellProperties );
+#endif // OPENMP
+	}
+#ifdef OPENMP
 }
+#endif // OPENMP
 }
 #endif // USE_KINETIC_MODEL
