@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 06/05/2020
+// * Date last modified: 07/20/2020
 // *
 // ****
 
@@ -20,7 +20,6 @@
 #include "../../Resources/source/constants.h"
 #include "../../Resources/source/file.h"
 #include "../../Resources/source/fitpoly.h"
-#include "../../Resources/Utils/regPoly/regpoly.h"
 
 #ifdef OPENMP
 	#include <omp.h>
@@ -77,7 +76,7 @@ void CEquations::Initialise( void )
 {
 FILE *pFile;
 double fTemp;
-int i, iTemp;
+int iTemp;
 
 #if defined (OPENMP) || defined (USE_KINETIC_MODEL)
 	ppCellList = NULL;
@@ -112,19 +111,11 @@ int i, iTemp;
 #endif // USE_KINETIC_MODEL
 
 	// Initialise the gravitational acceleration profile in the field-aligned direction
-	pfGravityCoefficients = (double*)malloc( (POLY_ORDER+1) * sizeof(double) );
-	pFile = fopen( Params.GravityFilename, "r" );
-		for( i=0; i<(POLY_ORDER+1); i++ )
-    		ReadDouble( pFile, &(pfGravityCoefficients[i]) );
-	fclose( pFile );
+	pGravity = new CPieceWiseFit( Params.GravityFilename );
 
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
 	// Initialise the magnetic field profile in the field-aligned direction
-	pfMagneticFieldCoefficients = (double*)malloc( (POLY_ORDER+1) * sizeof(double) );
-	pFile = fopen( Params.MagneticFieldFilename, "r" );
-		for( i=0; i<(POLY_ORDER+1); i++ )
-    		ReadDouble( pFile, &(pfMagneticFieldCoefficients[i]) );
-	fclose( pFile );
+	pMagneticField = new CPieceWiseFit( Params.MagneticFieldFilename );
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
 	// Create the heating object
@@ -162,12 +153,12 @@ void CEquations::FreeAll( void )
 #endif // OPENMP || USE_KINETIC_MODEL
 
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-	// Free the memory allocated to the cross-section profile in the field-aligned direction
-	free( pfMagneticFieldCoefficients );
+	// Free the memory allocated to the magnetic field profile in the field-aligned direction
+	delete pMagneticField;
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
 	// Free the memory allocated to the gravitational acceleration profile in the field-aligned direction
-	free( pfGravityCoefficients );
+	delete pGravity;
 
 	// Delete the heating object
 	delete pHeat;
@@ -2653,45 +2644,21 @@ int j;
 	GetSmallestTimeScale( delta_t, iFirstStep );
 }
 
-double CEquations::CalculateGravity( double s )
+double CEquations::CalculateGravity( double x )
 {
-double sum = 0.0;
-int i;
-
-	sum += ( 1.0 * pfGravityCoefficients[0] );
-	for( i=1; i<(POLY_ORDER+1); i++ ) {
-		sum += ( pow(s,i) * pfGravityCoefficients[i] );
-}
-
-	return sum;
+	return pGravity->GetPieceWiseFit( x );
 }
 
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-double CEquations::CalculateMagneticField( double s )
+double CEquations::CalculateMagneticField( double x )
 {
-double sum = 0.0;
-int i;
-
-	sum += ( 1.0 * pfMagneticFieldCoefficients[0] );
-	for( i=1; i<(POLY_ORDER+1); i++ ) {
-		sum += ( pow(s,i) * pfMagneticFieldCoefficients[i] );
-	}
-
-	return sum;
+	return pMagneticField->GetPieceWiseFit( x );
 }
 
-double CEquations::CalculateCrossSection( double s )
+double CEquations::CalculateCrossSection( double x )
 {
-double sum = 0.0;
-int i;
-
-	sum += ( 1.0 * pfMagneticFieldCoefficients[0] );
-	for( i=1; i<(POLY_ORDER+1); i++ ) {
-		sum += ( pow(s,i) * pfMagneticFieldCoefficients[i] );
-	}
-
 	// The cross-section area varies inversely with the magnetic field strength
-	return ( 1.0 / sum );
+	return ( 1.0 / pMagneticField->GetPieceWiseFit( x ) );
 }
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
