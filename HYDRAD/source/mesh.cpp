@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 03/25/2020
+// * Date last modified: 07/21/2020
 // *
 // ****
 
@@ -1598,11 +1598,19 @@ pActiveCell->GetCellProperties( &(CellProperties[0]) );
 
 	L1 = CellProperties[1].s[1] - CellProperties[0].s[1];
 	L2 = GhostCellProperties[0].s[1] - CellProperties[1].s[1];
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
 	A1 = CalculateCrossSection( CellProperties[0].s[1]/Params.L );
 	A2 = CalculateCrossSection( CellProperties[1].s[1]/Params.L );
+#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
+	A1 = A2 = 1.0;
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 	v = CellProperties[1].rho_v[1] / CellProperties[1].rho[1];
 	// The factor (L2/L1) accounts for non-uniform grid cell widths
 	dv = ( L2 / L1 ) * ( (v*A2) - ( (CellProperties[0].rho_v[1] / CellProperties[0].rho[1])*A1 ) );
+	if( v == 0.0 ) { 
+		v = 1.0;
+		dv = 0.0;
+	}
 
 	// Find the mass density by advecting this quantity from adjacent cells 
 	// using the steady-state conservation equation
@@ -1644,10 +1652,18 @@ pActiveCell->GetCellProperties( &(CellProperties[0]) );
 	L1 = L2;
 	L2 = GhostCellProperties[1].s[1] - GhostCellProperties[0].s[1];
 	A1 = A2;
+#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
 	A2 = CalculateCrossSection( GhostCellProperties[1].s[1]/Params.L );
+#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
+	A2 = 1.0;
+#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 	v = GhostCellProperties[0].rho_v[1] / GhostCellProperties[0].rho[1];
 	// The factor (L2/L1) accounts for non-uniform grid cell widths
 	dv = ( L2 / L1 ) * ( (v*A2) - ( (CellProperties[1].rho_v[1] / CellProperties[1].rho[1])*A1 ) );
+	if( v == 0.0 ) { 
+		v = 1.0;
+		dv = 0.0;
+	}
 
 	// Find the mass density by advecting this quantity from adjacent cells 
 	// using the steady-state conservation equation

@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 12/19/2019
+// * Date last modified: 07/20/2020
 // *
 // ****
 
@@ -14,60 +14,39 @@
 #include <math.h>
 
 #include "config.h"
+#include "../../Resources/Utils/generatePieceWiseFit/source/piecewisefit.h"
 #include "ode.h"
 #include  "../../Resources/source/fitpoly.h"
 #include "../../Resources/source/constants.h"
-#include "../../Resources/Utils/regPoly/regpoly.h"
 
 
-double CalcSolarGravity( double s, double *pfGravityCoefficients )
+double CalcSolarGravity( double x, PPIECEWISEFIT pGravity )
 {
-double sum = 0.0;
-int i;
-
-sum += ( 1.0 * pfGravityCoefficients[0] );
-for( i=1; i<(POLY_ORDER+1); i++ ) {
-	sum += ( pow(s,i) * pfGravityCoefficients[i] );
-}
-
-return sum;
+return pGravity->GetPieceWiseFit( x );
 }
 
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-double CalcCrossSection( double s, double *pfMagneticFieldCoefficients )
+double CalcCrossSection( double x, PPIECEWISEFIT pMagneticField )
 {
-double B = 0.0;
-int i;
-
-B += ( 1.0 * pfMagneticFieldCoefficients[0] );
-for( i=1; i<(POLY_ORDER+1); i++ ) {
-	B += ( pfMagneticFieldCoefficients[i] * pow(s,i) );
-}
-
 // The cross-section area varies inversely with the magnetic field strength
-return ( 1.0 / B );
+return ( 1.0 / pMagneticField->GetPieceWiseFit( x ) );
 }
 
-double CalcdAbyds( double s, double Lfull, double *pfMagneticFieldCoefficients )
+double CalcdAbyds( double x, double Lfull, PPIECEWISEFIT pMagneticField )
 {
-double dBbydx = 0.0, A;
-int i;
+double dBbydx, A;
 
-dBbydx += ( 1.0 * pfMagneticFieldCoefficients[1] );
-for( i=2; i<(POLY_ORDER+1); i++ ) {
-	dBbydx += ( ((double)i) * pfMagneticFieldCoefficients[i] * pow(s,(i-1)) );
-}
-
-A = CalcCrossSection( s, pfMagneticFieldCoefficients );
+dBbydx = pMagneticField->GetDerivative( x, 1 );
+A = CalcCrossSection( x, pMagneticField );
 
 return ( -((A*A)/Lfull) * dBbydx );
 }
 
-double CalcdFcbyds( double s, double EH, double ER, double Fc, double Lfull, double *pfMagneticFieldCoefficients )
+double CalcdFcbyds( double s, double EH, double ER, double Fc, double Lfull, PPIECEWISEFIT pMagneticField )
 {
 double term1;
 
-term1 = - ( Fc / CalcCrossSection( s/Lfull, pfMagneticFieldCoefficients ) ) * CalcdAbyds( s/Lfull, Lfull, pfMagneticFieldCoefficients );
+term1 = - ( Fc / CalcCrossSection( s/Lfull, pMagneticField ) ) * CalcdAbyds( s/Lfull, Lfull, pMagneticField );
 
 return ( EH + ER + term1 );
 }
@@ -78,9 +57,9 @@ return ( EH + ER );
 }
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
-double CalcdPbyds( double s, double n, double Lfull, double *pfGravityCoefficients )
+double CalcdPbyds( double s, double n, double Lfull, PPIECEWISEFIT pGravity )
 {
-return AVERAGE_PARTICLE_MASS * n * CalcSolarGravity( s/Lfull, pfGravityCoefficients );
+return AVERAGE_PARTICLE_MASS * n * CalcSolarGravity( s/Lfull, pGravity );
 }
 
 double CalcdTbyds( double Fc, double T )

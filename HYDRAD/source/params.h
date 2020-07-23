@@ -4,12 +4,14 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 07/11/2018
+// * Date last modified: 07/20/2020
 // *
 // ****
 
 
 #include "config.h"
+
+#include "../../Resources/Utils/generatePieceWiseFit/source/piecewisefit.h"
 
 #include "../../Heating_Model/source/heat.h"
 

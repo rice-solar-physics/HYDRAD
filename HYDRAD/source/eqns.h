@@ -5,7 +5,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 03/25/2020
+// * Date last modified: 07/20/2020
 // *
 // ****
 
@@ -20,12 +20,12 @@ class CEquations {
 
     private:
 
-    // Coefficients for the polynomial fit to the gravitational acceleration in the field-aligned direction
-    double *pfGravityCoefficients;
+    // Piece-wise polynomial fit to the field-aligned gravitational acceleration
+    PPIECEWISEFIT pGravity;
 
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-    // Coefficients for the polynomial fit to the magnetic field in the field-aligned direction
-    double *pfMagneticFieldCoefficients;
+    // Piece-wise polynomial fit to the field-aligned magnetic field strength
+    PPIECEWISEFIT pMagneticField;
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
 #ifdef USE_JB
@@ -37,7 +37,7 @@ class CEquations {
     void FreeAll( void );
 
     // Function for finding the gravitational acceleration from the polynomial fit
-    double CalculateGravity( double s );
+    double CalculateGravity( double x );
 
     // Function for finding the smallest time-scale
     void GetSmallestTimeScale( double *delta_t, int iFirstStep );
@@ -124,9 +124,9 @@ class CEquations {
 	// conditions in ghost cells for open flux tubes
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
 	// Function for finding the magnetic field from the polynomial fit
-    double CalculateMagneticField( double s );
+    double CalculateMagneticField( double x );
     // Function for finding the cross-section from the polynomial fit
-    double CalculateCrossSection( double s );
+    double CalculateCrossSection( double x );
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
 	// Functions to provide a 2nd order accurate numerical integration of

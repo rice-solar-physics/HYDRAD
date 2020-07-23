@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 09/24/2019
+// * Date last modified: 07/20/2020
 // *
 // ****
 
@@ -15,11 +15,10 @@
 
 #include "config.h"
 #include "params.h"
+#include "misc.h"
 #include "../../Resources/source/file.h"
 #include "../../Resources/source/fitpoly.h"
 #include "../../Resources/source/constants.h"
-#include "../../Resources/Utils/regPoly/regpoly.h"
-#include "../../Resources/Utils/regPoly/nrutil.h"
 
 
 void GetConfigurationParameters( PARAMETERS *pParams )
@@ -64,58 +63,31 @@ void GenerateDefaultLoop( PARAMETERS Params )
 
 FILE *pFile;
 char szGravityFilename[512];
-double s, ds;
+double s, ds, x, y;
 int i;
 
-// **** FUNCTIONS AND VARIABLES FOR THE CURVE-FITTING CODE ****
-void BasisFuncs( double x, double *bfunc, int ma );
-double *x, *y, *sig, *a, chisq;
-double **u, **v, *w;
-int ndat, ma;
-// **** FUNCTIONS AND VARIABLES FOR THE CURVE-FITTING CODE ****
-
-ndat = MIN_CELLS + 1;
-
-x = vector( 1, ndat );
-y = vector( 1, ndat );
-sig = vector( 1, ndat );
-
-s = 0.0;
-ds = Params.Lfull / ( ndat - 1 );
-for( i=1; i<=ndat; i++ )
-{
-    x[i] = s / Params.Lfull;
-#ifdef OPEN_FIELD
-    y[i] = CalcSolarGravity( s, Params.Inc );
-#else // OPEN_FIELD
-    y[i] = CalcSolarGravity( s, Params.Lfull, Params.Inc );
-#endif // OPEN_FIELD
-    sig[i] = 1.0;
-    s += ds;
-}
-
-ma = POLY_ORDER + 1;
-a = vector( 1, ma );
-u = matrix( 1, ndat, 1, ma );
-v = matrix( 1, ma, 1, ma );
-w = vector( 1, ma );
-
-// Call the function that returns the coefficients of the best-fit polynomial (Single Value Decomposition)
-svdfit( x, y, sig, ndat, a, ma, u, v, w, &chisq, BasisFuncs );
-
-sprintf( szGravityFilename, "%s.gravity", Params.szOutputFilename );
+// Create a tabulated gravity file
+sprintf( szGravityFilename, "%s.table", Params.szOutputFilename );
 pFile = fopen( szGravityFilename, "w" );
-for( i=1; i<=ma; i++ )
-    fprintf( pFile, "%.16e\t", a[i] );
+	// Write the order of the polynomial fit
+	fprintf( pFile, "%i\n", GRAVITY_POLY_ORDER );
+	// Write the number of sub-domains and the sub-domain boundaries
+	fprintf( pFile, SUB_DOMAIN_STRUCTURE );
+	// Write the number of data points
+	fprintf( pFile, "%i\n", MIN_CELLS );
+	s = 0.0;
+	ds = Params.Lfull / MIN_CELLS;
+	for( i=0; i<MIN_CELLS+1; i++ ) {
+	    x = s / Params.Lfull;
+#ifdef OPEN_FIELD
+    	y = CalcSolarGravity( s, Params.Inc );
+#else // OPEN_FIELD
+    	y = CalcSolarGravity( s, Params.Lfull, Params.Inc );
+#endif // OPEN_FIELD
+		fprintf( pFile, "%.16e\t%.16e\n", x, y );
+		s += ds;
+	}
 fclose( pFile );
-
-free_vector( w, 1, ma );
-free_matrix( v, 1, ma, 1, ma );
-free_matrix( u, 1, ndat, 1, ma );
-free_vector( a, 1, ma );
-free_vector( sig, 1, ndat );
-free_vector( y, 1, ndat );
-free_vector( x, 1, ndat );
 }
 
 #ifdef OPEN_FIELD
@@ -146,15 +118,6 @@ fPhi1 = ( _PI_ / 180.0 ) * Inc;
 #endif // OPEN_FIELD
 
 return result;
-}
-
-void BasisFuncs( double x, double *bfunc, int ma )
-{
-int i=1;
-
-bfunc[i] = 1.0;
-for( i=2; i<=ma; i++ )
-	bfunc[i] = bfunc[i-1] * x;	
 }
 #endif // USE_POLY_FIT_TO_GRAVITY
 

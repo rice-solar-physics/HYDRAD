@@ -7,12 +7,9 @@
 // *
 // * Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 01/12/2016
+// * Date last modified: 07/20/2020
 // *
 // ****
-
-
-#define POLY_ORDER	6
 
 
 // ** Routine to return the values of the polynomial coefficients a[1..ma] **

@@ -5,7 +5,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 02/18/2020
+// * Date last modified: 07/21/2020
 // *
 // ****
 
@@ -16,6 +16,7 @@
 
 #include "config.h"
 #include "params.h"
+#include "../../Resources/Utils/generatePieceWiseFit/source/piecewisefit.h"
 #include "ode.h"
 #include "misc.h"
 #include "../../Radiation_Model/source/radiation.h"
@@ -32,21 +33,20 @@ using namespace std;
 #endif // OPTICALLY_THICK_RADIATION
 #include "../../Resources/source/file.h"
 #include "../../Resources/source/constants.h"
-#include "../../Resources/Utils/regPoly/regpoly.h"
 
 
 int main(void)
 {
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-double FindHeatingRange( double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, double *pfGravityCoefficients, double *pfMagneticFieldCoefficients );
-double RefineSolution( double Log_10H0, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, double *pfGravityCoefficients, double *pfMagneticFieldCoefficients );
-int CalculateSolution( double finalH0, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, double *pfGravityCoefficients, double *pfMagneticFieldCoefficients );
-int AddChromospheres( int iTRplusCoronaplusTRSteps, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, double *pfGravityCoefficients, double *pfMagneticFieldCoefficients );
+double FindHeatingRange( double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, PPIECEWISEFIT pGravity, PPIECEWISEFIT pMagneticField );
+double RefineSolution( double Log_10H0, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, PPIECEWISEFIT pGravity, PPIECEWISEFIT pMagneticField );
+int CalculateSolution( double finalH0, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, PPIECEWISEFIT pGravity, PPIECEWISEFIT pMagneticField );
+int AddChromospheres( int iTRplusCoronaplusTRSteps, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PPIECEWISEFIT pGravity, PPIECEWISEFIT pMagneticField );
 #else // USE_POLY_FIT_TO_MAGNETIC_FIELD
-double FindHeatingRange( double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, double *pfGravityCoefficients );
-double RefineSolution( double Log_10H0, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, double *pfGravityCoefficients );
-int CalculateSolution( double finalH0, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, double *pfGravityCoefficients );
-int AddChromospheres( int iTRplusCoronaplusTRSteps, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, double *pfGravityCoefficients );
+double FindHeatingRange( double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, PPIECEWISEFIT pGravity );
+double RefineSolution( double Log_10H0, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, PPIECEWISEFIT pGravity );
+int CalculateSolution( double finalH0, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, PPIECEWISEFIT pGravity );
+int AddChromospheres( int iTRplusCoronaplusTRSteps, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PPIECEWISEFIT pGravity );
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 #ifdef OPTICALLY_THICK_RADIATION
 #ifdef NLTE_CHROMOSPHERE
@@ -62,11 +62,11 @@ PRADIATION pRadiation;
 FILE *pFile;
 #ifdef USE_POLY_FIT_TO_GRAVITY
 #else // USE_POLY_FIT_TO_GRAVITY
-char szGravityFilename[512];
+char szGravityTableFilename[512], szGravityFilename[512];
 #endif // USE_POLY_FIT_TO_GRAVITY
-double *pfGravityCoefficients;
+PPIECEWISEFIT pGravity;
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-double *pfMagneticFieldCoefficients;
+PPIECEWISEFIT pMagneticField;
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 int i;
 
@@ -85,24 +85,17 @@ pRadiation = new CRadiation( (char *)"Radiation_Model/config/elements_eq.cfg" );
 
 // Initialise the gravitational geometry
 #ifdef USE_POLY_FIT_TO_GRAVITY
-pFile = fopen( POLY_FIT_TO_GRAVITY_FILE, "r" );
+pGravity = new CPieceWiseFit( POLY_FIT_TO_GRAVITY_FILE );
 #else // USE_POLY_FIT_TO_GRAVITY
 GenerateDefaultLoop( Params );
+sprintf( szGravityTableFilename, "%s.table", Params.szOutputFilename );
 sprintf( szGravityFilename, "%s.gravity", Params.szOutputFilename );
-pFile = fopen( szGravityFilename, "r" );
+pGravity = new CPieceWiseFit( szGravityTableFilename, szGravityFilename );
 #endif // USE_POLY_FIT_TO_GRAVITY
-pfGravityCoefficients = (double*)malloc( sizeof(double) * (POLY_ORDER+1) );
-for( i=0; i<POLY_ORDER+1; i++ )
-    ReadDouble( pFile, &(pfGravityCoefficients[i]) );
-fclose( pFile );
 
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
 // Initialise the magnetic field
-pFile = fopen( POLY_FIT_TO_MAGNETIC_FIELD_FILE, "r" );
-pfMagneticFieldCoefficients = (double*)malloc( sizeof(double) * (POLY_ORDER+1) );
-for( i=0; i<POLY_ORDER+1; i++ )
-    ReadDouble( pFile, &(pfMagneticFieldCoefficients[i]) );
-fclose( pFile );
+pMagneticField = new CPieceWiseFit( POLY_FIT_TO_MAGNETIC_FIELD_FILE );
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
 // Allocate memory to store the hydrostatic profiles
@@ -116,19 +109,19 @@ ne = (double*)malloc( sizeof(double) * MAX_CELLS );
 finalH0 = 0.0;
 #else // ISOTHERMAL
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-	Log_10H0 = FindHeatingRange( s, P, T, nH, ne, Params, pRadiation, pfGravityCoefficients, pfMagneticFieldCoefficients );
-	finalH0 = RefineSolution( Log_10H0, s, P, T, nH, ne, Params, pRadiation, pfGravityCoefficients, pfMagneticFieldCoefficients );
+	Log_10H0 = FindHeatingRange( s, P, T, nH, ne, Params, pRadiation, pGravity, pMagneticField );
+	finalH0 = RefineSolution( Log_10H0, s, P, T, nH, ne, Params, pRadiation, pGravity, pMagneticField );
 #else // USE_POLY_FIT_TO_MAGNETIC_FIELD
-	Log_10H0 = FindHeatingRange( s, P, T, nH, ne, Params, pRadiation, pfGravityCoefficients );
-	finalH0 = RefineSolution( Log_10H0, s, P, T, nH, ne, Params, pRadiation, pfGravityCoefficients );
+	Log_10H0 = FindHeatingRange( s, P, T, nH, ne, Params, pRadiation, pGravity );
+	finalH0 = RefineSolution( Log_10H0, s, P, T, nH, ne, Params, pRadiation, pGravity );
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 #endif // ISOTHERMAL
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-	iTRplusCoronaplusTRSteps = CalculateSolution( finalH0, s, P, T, nH, ne, Params, pRadiation, pfGravityCoefficients, pfMagneticFieldCoefficients );
-	iTotalSteps = AddChromospheres( iTRplusCoronaplusTRSteps, s, P, T, nH, ne, Params, pfGravityCoefficients, pfMagneticFieldCoefficients );
+	iTRplusCoronaplusTRSteps = CalculateSolution( finalH0, s, P, T, nH, ne, Params, pRadiation, pGravity, pMagneticField );
+	iTotalSteps = AddChromospheres( iTRplusCoronaplusTRSteps, s, P, T, nH, ne, Params, pGravity, pMagneticField );
 #else // USE_POLY_FIT_TO_MAGNETIC_FIELD
-	iTRplusCoronaplusTRSteps = CalculateSolution( finalH0, s, P, T, nH, ne, Params, pRadiation, pfGravityCoefficients );
-	iTotalSteps = AddChromospheres( iTRplusCoronaplusTRSteps, s, P, T, nH, ne, Params, pfGravityCoefficients );
+	iTRplusCoronaplusTRSteps = CalculateSolution( finalH0, s, P, T, nH, ne, Params, pRadiation, pGravity );
+	iTotalSteps = AddChromospheres( iTRplusCoronaplusTRSteps, s, P, T, nH, ne, Params, pGravity );
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
 printf( "Writing initial conditions file...\n\n" );
@@ -144,11 +137,11 @@ free( T );
 free( nH );
 free( ne );
 
-// Free the memory allocated to the gravitational geometry
-free( pfGravityCoefficients );
+// Delete the piece-wise fit to gravity
+delete pGravity;
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-// Free the memory allocated to the magnetic field
-free( pfMagneticFieldCoefficients );
+// Delete the piece-wise fit to the magnetic field
+delete pMagneticField;
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
 // Close the radiative losses
@@ -171,9 +164,9 @@ return 0;
 }
 
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-double FindHeatingRange( double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, double *pfGravityCoefficients, double *pfMagneticFieldCoefficients )
+double FindHeatingRange( double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, PPIECEWISEFIT pGravity, PPIECEWISEFIT pMagneticField )
 #else // USE_POLY_FIT_TO_MAGNETIC_FIELD
-double FindHeatingRange( double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, double *pfGravityCoefficients )
+double FindHeatingRange( double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, PPIECEWISEFIT pGravity )
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 {
 double ds, max_ds, sL, sR;
@@ -223,7 +216,7 @@ for( Log_10H0=Params.Log_10H0[0]; Log_10H0<=Params.Log_10H0[1]; Log_10H0+=Params
 // *****************************************************************************
 
             // Get the pressure gradient
-            dPbyds = CalcdPbyds( s[iStep], nH[iStep], Params.Lfull, pfGravityCoefficients );
+            dPbyds = CalcdPbyds( s[iStep], nH[iStep], Params.Lfull, pGravity );
 
             // Calculate the heat input and the radiation
             H = Eheat( s[iStep], H0, Params.sH0, Params.sH );
@@ -235,7 +228,7 @@ for( Log_10H0=Params.Log_10H0[0]; Log_10H0<=Params.Log_10H0[1]; Log_10H0+=Params
 
             // Get the heat flux gradient
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-            dFcbyds = CalcdFcbyds( s[iStep], H, R, Fc, Params.Lfull, pfMagneticFieldCoefficients );
+            dFcbyds = CalcdFcbyds( s[iStep], H, R, Fc, Params.Lfull, pMagneticField );
 #else // USE_POLY_FIT_TO_MAGNETIC_FIELD
             dFcbyds = CalcdFcbyds( H, R );
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
@@ -259,7 +252,7 @@ for( Log_10H0=Params.Log_10H0[0]; Log_10H0<=Params.Log_10H0[1]; Log_10H0+=Params
 // *****************************************************************************
 
             // Get the pressure gradient
-            dPbyds = CalcdPbyds( (s[iStep]+(ds/2.0)), nH2, Params.Lfull, pfGravityCoefficients );
+            dPbyds = CalcdPbyds( (s[iStep]+(ds/2.0)), nH2, Params.Lfull, pGravity );
 
             // Calculate the heat input and the radiation
             H = Eheat( (s[iStep]+(ds/2.0)), H0, Params.sH0, Params.sH );
@@ -271,7 +264,7 @@ for( Log_10H0=Params.Log_10H0[0]; Log_10H0<=Params.Log_10H0[1]; Log_10H0+=Params
 
             // Get the heat flux gradient
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-            dFcbyds = CalcdFcbyds( (s[iStep]+(ds/2.0)), H, R, Fc2, Params.Lfull, pfMagneticFieldCoefficients );
+            dFcbyds = CalcdFcbyds( (s[iStep]+(ds/2.0)), H, R, Fc2, Params.Lfull, pMagneticField );
 #else // USE_POLY_FIT_TO_MAGNETIC_FIELD
             dFcbyds = CalcdFcbyds( H, R );
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
@@ -336,9 +329,9 @@ return Log_10H0;
 }
 
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-double RefineSolution( double Log_10H0, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, double *pfGravityCoefficients, double *pfMagneticFieldCoefficients )
+double RefineSolution( double Log_10H0, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, PPIECEWISEFIT pGravity, PPIECEWISEFIT pMagneticField )
 #else // USE_POLY_FIT_TO_MAGNETIC_FIELD
-double RefineSolution( double Log_10H0, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, double *pfGravityCoefficients )
+double RefineSolution( double Log_10H0, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, PPIECEWISEFIT pGravity )
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 {
 double ds, max_ds, sL, sR;
@@ -396,7 +389,7 @@ for( H0=H0lower; H0<=H0upper; H0+=dH0 )
 // *****************************************************************************
 
 			// Get the pressure gradient
-            dPbyds = CalcdPbyds( s[iStep], nH[iStep], Params.Lfull, pfGravityCoefficients );
+            dPbyds = CalcdPbyds( s[iStep], nH[iStep], Params.Lfull, pGravity );
 
             // Calculate the heat input and the radiation
             H = Eheat( s[iStep], H0, Params.sH0, Params.sH );
@@ -408,7 +401,7 @@ for( H0=H0lower; H0<=H0upper; H0+=dH0 )
 
 			// Get the heat flux gradient
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-            dFcbyds = CalcdFcbyds( s[iStep], H, R, Fc, Params.Lfull, pfMagneticFieldCoefficients );
+            dFcbyds = CalcdFcbyds( s[iStep], H, R, Fc, Params.Lfull, pMagneticField );
 #else // USE_POLY_FIT_TO_MAGNETIC_FIELD
             dFcbyds = CalcdFcbyds( H, R );
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
@@ -432,7 +425,7 @@ for( H0=H0lower; H0<=H0upper; H0+=dH0 )
 // *****************************************************************************
 
 			// Get the pressure gradient
-            dPbyds = CalcdPbyds( (s[iStep]+(ds/2.0)), nH2, Params.Lfull, pfGravityCoefficients );
+            dPbyds = CalcdPbyds( (s[iStep]+(ds/2.0)), nH2, Params.Lfull, pGravity );
 
             // Calculate the heat input and the radiation
             H = Eheat( (s[iStep]+(ds/2.0)), H0, Params.sH0, Params.sH );
@@ -444,7 +437,7 @@ for( H0=H0lower; H0<=H0upper; H0+=dH0 )
 
 			// Get the heat flux gradient
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-            dFcbyds = CalcdFcbyds( (s[iStep]+(ds/2.0)), H, R, Fc2, Params.Lfull, pfMagneticFieldCoefficients );
+            dFcbyds = CalcdFcbyds( (s[iStep]+(ds/2.0)), H, R, Fc2, Params.Lfull, pMagneticField );
 #else // USE_POLY_FIT_TO_MAGNETIC_FIELD
             dFcbyds = CalcdFcbyds( H, R );
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
@@ -518,9 +511,9 @@ return finalH0;
 }
 
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-int CalculateSolution( double finalH0, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, double *pfGravityCoefficients, double *pfMagneticFieldCoefficients )
+int CalculateSolution( double finalH0, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, PPIECEWISEFIT pGravity, PPIECEWISEFIT pMagneticField )
 #else // USE_POLY_FIT_TO_MAGNETIC_FIELD
-int CalculateSolution( double finalH0, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, double *pfGravityCoefficients )
+int CalculateSolution( double finalH0, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PRADIATION pRadiation, PPIECEWISEFIT pGravity )
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 {
 double ds, max_ds, sL, sR;
@@ -568,7 +561,7 @@ while( s[iStep] <= sR ) {
 // *****************************************************************************
 
 		// Get the pressure gradient
-        dPbyds = CalcdPbyds( s[iStep], nH[iStep], Params.Lfull, pfGravityCoefficients );
+        dPbyds = CalcdPbyds( s[iStep], nH[iStep], Params.Lfull, pGravity );
 
         // Calculate the heat input and the radiation
 #ifdef ISOTHERMAL
@@ -584,7 +577,7 @@ while( s[iStep] <= sR ) {
 
 		// Get the heat flux gradient
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-        dFcbyds = CalcdFcbyds( s[iStep], H, R, Fc, Params.Lfull, pfMagneticFieldCoefficients );
+        dFcbyds = CalcdFcbyds( s[iStep], H, R, Fc, Params.Lfull, pMagneticField );
 #else // USE_POLY_FIT_TO_MAGNETIC_FIELD
         dFcbyds = CalcdFcbyds( H, R );
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
@@ -608,7 +601,7 @@ while( s[iStep] <= sR ) {
 // *****************************************************************************
 
 		// Get the pressure gradient
-        dPbyds = CalcdPbyds( (s[iStep]+(ds/2.0)), nH2, Params.Lfull, pfGravityCoefficients );
+        dPbyds = CalcdPbyds( (s[iStep]+(ds/2.0)), nH2, Params.Lfull, pGravity );
 
         // Calculate the heat input and the radiation
 #ifdef ISOTHERMAL
@@ -624,7 +617,7 @@ while( s[iStep] <= sR ) {
 
 		// Get the heat flux gradient
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-        dFcbyds = CalcdFcbyds( (s[iStep]+(ds/2.0)), H, R, Fc2, Params.Lfull, pfMagneticFieldCoefficients );
+        dFcbyds = CalcdFcbyds( (s[iStep]+(ds/2.0)), H, R, Fc2, Params.Lfull, pMagneticField );
 #else // USE_POLY_FIT_TO_MAGNETIC_FIELD
         dFcbyds = CalcdFcbyds( H, R );
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
@@ -676,9 +669,9 @@ return iStep;
 
 #ifdef OPTICALLY_THICK_RADIATION
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-int AddChromospheres( int iTRplusCoronaplusTRSteps, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, double *pfGravityCoefficients, double *pfMagneticFieldCoefficients )
+int AddChromospheres( int iTRplusCoronaplusTRSteps, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PPIECEWISEFIT pGravity, PPIECEWISEFIT pMagneticField )
 #else // USE_POLY_FIT_TO_MAGNETIC_FIELD
-int AddChromospheres( int iTRplusCoronaplusTRSteps, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, double *pfGravityCoefficients )
+int AddChromospheres( int iTRplusCoronaplusTRSteps, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PPIECEWISEFIT pGravity )
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 {
 double GetVALTemperature( double s, int iVALTemperatureDP, double **ppVALTemperature );
@@ -745,7 +738,7 @@ for( ;; ) {
 // *****************************************************************************
 
 		// Get the pressure gradient
-        dPbyds = CalcdPbyds( s[iStep], nH[iStep], Params.Lfull, pfGravityCoefficients );
+        dPbyds = CalcdPbyds( s[iStep], nH[iStep], Params.Lfull, pGravity );
 
         P2 = P[iStep] + ( dPbyds * (ds/2.0) );
         T2 = GetVALTemperature( s[iStep]+(ds/2.0), iVALTemperatureDP, ppVALTemperature );
@@ -758,7 +751,7 @@ for( ;; ) {
 // *****************************************************************************
 
 		// Get the pressure gradient
-        dPbyds = CalcdPbyds( (s[iStep]+(ds/2.0)), nH2, Params.Lfull, pfGravityCoefficients );
+        dPbyds = CalcdPbyds( (s[iStep]+(ds/2.0)), nH2, Params.Lfull, pGravity );
 
 // *****************************************************************************
 // *    STEP 3                                                                 *
@@ -823,7 +816,7 @@ for( ;; ) {
 // *****************************************************************************
 
 		// Get the pressure gradient
-        dPbyds = CalcdPbyds( s[iStep], nH[iStep], Params.Lfull, pfGravityCoefficients );
+        dPbyds = CalcdPbyds( s[iStep], nH[iStep], Params.Lfull, pGravity );
 
         P2 = P[iStep] + ( dPbyds * (ds/2.0) );
         T2 = GetVALTemperature( Params.Lfull - ( s[iStep]+(ds/2.0) ), iVALTemperatureDP, ppVALTemperature );
@@ -836,7 +829,7 @@ for( ;; ) {
 // *****************************************************************************
 
 		// Get the pressure gradient
-        dPbyds = CalcdPbyds( (s[iStep]+(ds/2.0)), nH2, Params.Lfull, pfGravityCoefficients );
+        dPbyds = CalcdPbyds( (s[iStep]+(ds/2.0)), nH2, Params.Lfull, pGravity );
 
 // *****************************************************************************
 // *    STEP 3                                                                 *
@@ -913,9 +906,9 @@ return fVALTemperature;
 }
 #else // OPTICALLY_THICK_RADIATION
 #ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-int AddChromospheres( int iTRplusCoronaplusTRSteps, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, double *pfGravityCoefficients, double *pfMagneticFieldCoefficients )
+int AddChromospheres( int iTRplusCoronaplusTRSteps, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PPIECEWISEFIT pGravity, PPIECEWISEFIT pMagneticField )
 #else // USE_POLY_FIT_TO_MAGNETIC_FIELD
-int AddChromospheres( int iTRplusCoronaplusTRSteps, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, double *pfGravityCoefficients )
+int AddChromospheres( int iTRplusCoronaplusTRSteps, double *s, double *P, double *T, double *nH, double *ne, PARAMETERS Params, PPIECEWISEFIT pGravity )
 #endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 {
 double ds, max_ds;
@@ -956,7 +949,7 @@ for( ;; ) {
 // *****************************************************************************
 
 		// Get the pressure gradient
-        dPbyds = CalcdPbyds( s[iStep], nH[iStep], Params.Lfull, pfGravityCoefficients );
+        dPbyds = CalcdPbyds( s[iStep], nH[iStep], Params.Lfull, pGravity );
 
         P2 = P[iStep] + ( dPbyds * (ds/2.0) );
         T2 = T[iStep];
@@ -967,7 +960,7 @@ for( ;; ) {
 // *****************************************************************************
 
 		// Get the pressure gradient
-        dPbyds = CalcdPbyds( (s[iStep]+(ds/2.0)), nH2, Params.Lfull, pfGravityCoefficients );
+        dPbyds = CalcdPbyds( (s[iStep]+(ds/2.0)), nH2, Params.Lfull, pGravity );
 
 // *****************************************************************************
 // *    STEP 3                                                                 *
@@ -1030,7 +1023,7 @@ for( ;; ) {
 // *****************************************************************************
 
 		// Get the pressure gradient
-        dPbyds = CalcdPbyds( s[iStep], nH[iStep], Params.Lfull, pfGravityCoefficients );
+        dPbyds = CalcdPbyds( s[iStep], nH[iStep], Params.Lfull, pGravity );
 
         P2 = P[iStep] + ( dPbyds * (ds/2.0) );
         T2 = T[iStep];
@@ -1041,7 +1034,7 @@ for( ;; ) {
 // *****************************************************************************
 
 		// Get the pressure gradient
-        dPbyds = CalcdPbyds( (s[iStep]+(ds/2.0)), nH2, Params.Lfull, pfGravityCoefficients );
+        dPbyds = CalcdPbyds( (s[iStep]+(ds/2.0)), nH2, Params.Lfull, pGravity );
 
 // *****************************************************************************
 // *    STEP 3                                                                 *
