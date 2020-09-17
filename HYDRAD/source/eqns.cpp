@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 07/20/2020
+// * Date last modified: 09/17/2020
 // *
 // ****
 
@@ -2431,11 +2431,35 @@ int j;
 // *****************************************************************************
 
 #ifdef BEAM_HEATING
-		// The beam heating function is called in the section above where the cell-centered terms are calculated
+	// The beam heating function is called in the section above where the cell-centered terms are calculated
+#if defined (ELECTRON_HEATING_ONLY) || defined(HYDROGEN_HEATING_ONLY)
+	#ifdef ELECTRON_HEATING_ONLY
+    	CellProperties.TE_KE_term[4][ELECTRON] += pHeat->CalculateHeating( CellProperties.s[1], current_time );
     	CellProperties.TE_KE_term[4][HYDROGEN] = SMALLEST_DOUBLE;
-    	CellProperties.TE_KE_term[4][HEATED_SPECIES] += pHeat->CalculateHeating( CellProperties.s[1], current_time );
+	#endif // ELECTRON_HEATING_ONLY
+	#ifdef HYDROGEN_HEATING_ONLY
+    	CellProperties.TE_KE_term[4][HYDROGEN] = pHeat->CalculateHeating( CellProperties.s[1], current_time );
+	#endif // HYDROGTEN_HEATING_ONLY
+#else // ELECTRON_HEATING_ONLY || HYDROGEN_HEATING_ONLY
+	term1 = pHeat->CalculateHeating( CellProperties.s[1], current_time );
+   	CellProperties.TE_KE_term[4][ELECTRON] += ELECTRON_HEATING * term1;
+	CellProperties.TE_KE_term[4][HYDROGEN] = HYDROGEN_HEATING * term1;
+#endif // // ELECTRON_HEATING_ONLY || HYDROGEN_HEATING_ONLY
 #else // BEAM_HEATING
-    	CellProperties.TE_KE_term[4][HEATED_SPECIES] = pHeat->CalculateHeating( CellProperties.s[1], current_time );
+#if defined (ELECTRON_HEATING_ONLY) || defined(HYDROGEN_HEATING_ONLY)
+	#ifdef ELECTRON_HEATING_ONLY
+    	CellProperties.TE_KE_term[4][ELECTRON] = pHeat->CalculateHeating( CellProperties.s[1], current_time );
+    	CellProperties.TE_KE_term[4][HYDROGEN] = SMALLEST_DOUBLE;
+	#endif // ELECTRON_HEATING_ONLY
+	#ifdef HYDROGEN_HEATING_ONLY
+    	CellProperties.TE_KE_term[4][ELECTRON] = SMALLEST_DOUBLE;
+    	CellProperties.TE_KE_term[4][HYDROGEN] = pHeat->CalculateHeating( CellProperties.s[1], current_time );
+	#endif // HYDROGTEN_HEATING_ONLY
+#else // ELECTRON_HEATING_ONLY || HYDROGEN_HEATING_ONLY
+	term1 = pHeat->CalculateHeating( CellProperties.s[1], current_time );
+   	CellProperties.TE_KE_term[4][ELECTRON] = ELECTRON_HEATING * term1;
+	CellProperties.TE_KE_term[4][HYDROGEN] = HYDROGEN_HEATING * term1;
+#endif // // ELECTRON_HEATING_ONLY || HYDROGEN_HEATING_ONLY
 #endif // BEAM_HEATING
 
 // *****************************************************************************
@@ -2446,7 +2470,7 @@ int j;
 #ifdef OPTICALLY_THICK_RADIATION
     	if( CellProperties.T[ELECTRON] < OPTICALLY_THICK_TEMPERATURE )
     	{
-        	CellProperties.TE_KE_term[4][HEATED_SPECIES] += pHeat->CalculateVALHeating( log10(CellProperties.rho_c ) );
+        	CellProperties.TE_KE_term[4][ELECTRON] += pHeat->CalculateVALHeating( log10(CellProperties.rho_c ) );
         	CellProperties.TE_KE_term[5][ELECTRON] -= pHI->GetVolumetricLossRate( log10(CellProperties.T[ELECTRON]), log10((4e-14)*CellProperties.HI_c), CellProperties.n[ELECTRON] * CellProperties.rho[1] );
         	CellProperties.TE_KE_term[5][ELECTRON] -= pMgII->GetVolumetricLossRate( log10(CellProperties.T[ELECTRON]), log10(CellProperties.rho_c), CellProperties.n[ELECTRON] * CellProperties.rho[1] );
         	CellProperties.TE_KE_term[5][ELECTRON] -= pCaII->GetVolumetricLossRate( log10(CellProperties.T[ELECTRON]), log10(CellProperties.rho_c), CellProperties.n[ELECTRON] * CellProperties.rho[1] );
