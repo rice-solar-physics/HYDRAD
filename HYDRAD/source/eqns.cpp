@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 09/17/2020
+// * Date last modified: 10/03/2020
 // *
 // ****
 
@@ -2019,15 +2019,9 @@ int j;
 // *****************************************************************************
 
 #ifdef NUMERICAL_VISCOSITY
-			y[1] = FarLeftCellProperties.rho_v[1];
-			y[2] = LeftCellProperties.rho_v[1];
-			y[3] = CellProperties.rho_v[1];
-			y[4] = RightCellProperties.rho_v[1];
-			FitPolynomial4( x, y, ( CellProperties.s[1] - CellProperties.cell_width ), &(rho_v[0]), &error );
-			rho_v[1] = CellProperties.rho_v[1];
-
+			// This calculation uses the cell boundary mass density from the advection algorithm and the velocity gradient across the boundary from the viscosity algorithm
 			term1 = ( CellProperties.cell_width * CellProperties.cell_width ) / ( 2.0 * RELATIVE_VISCOUS_TIME_SCALE * ( CellProperties.advection_delta_t / SAFETY_ADVECTION ) );
-			CellProperties.Fnumerical[0] = term1 * ( ( rho_v[1] - rho_v[0] ) / CellProperties.cell_width );
+			CellProperties.Fnumerical[0] = term1 * CellProperties.rho[0] * gradv;
         	LeftCellProperties.Fnumerical[2] = CellProperties.Fnumerical[0];
 #endif // NUMERICAL_VISCOSITY
     	}
