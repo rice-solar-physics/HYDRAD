@@ -5,7 +5,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 07/21/2020
+// * Date last modified: 11/11/2020
 // *
 // ****
 
@@ -1265,7 +1265,7 @@ void RecalculateElectronDensity( PARAMETERS Params )
 		printf( "%.3g%%\n", 100.0*((double)j/(double)iEntries) );
 
     // Calculate the contribution to the electron density from elements other than hydrogen:
-    fSum = 0.0;
+   	fSum = 1.44e-4;		// Ensure a minimum number of electrons in the coldest part of the atmosphere
         
 	// Elements treated in equilibrium (except hydrogen)
 	piA = pRadiationEQ->pGetAtomicNumbers( &iNumElements );
@@ -1659,7 +1659,7 @@ void RecalculateChromosphericHeating( PARAMETERS Params, int number_of_lines )
                 frho_c += n_H * AVERAGE_PARTICLE_MASS * cell_width_cos_theta;
 
 #ifdef NLTE_CHROMOSPHERE
-		fSum = 0.0;
+	   	fSum = 1.44e-4;		// Ensure a minimum number of electrons in the coldest part of the atmosphere
 		piA = pRadiation_EQ->pGetAtomicNumbers( &iNumElements );
 		for( i=0; i<iNumElements; i++ )
 		{
