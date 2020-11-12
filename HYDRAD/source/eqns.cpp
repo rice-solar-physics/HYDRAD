@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 10/03/2020
+// * Date last modified: 11/11/2020
 // *
 // ****
 
@@ -1029,7 +1029,7 @@ int j;
 		}
 
 	    // Calculate the contribution to the electron density from elements other than hydrogen:
- 	   	fSum = 0.0;
+ 	   	fSum = 1.44e-4;		// Ensure a minimum number of electrons in the coldest part of the atmosphere
 
 #ifdef NON_EQUILIBRIUM_RADIATION
     	piA = CellProperties.pIonFrac->pGetElementInfo( &iNumElements );
@@ -1416,7 +1416,7 @@ double Kappa[SPECIES], max_flux_coeff[SPECIES];
 	Kappa[HYDROGEN] = SPITZER_ION_CONDUCTIVITY;
 	max_flux_coeff[ELECTRON] = 1.5 / SQRT_ELECTRON_MASS; 
 	max_flux_coeff[HYDROGEN] = 1.5 / SQRT_AVERAGE_PARTICLE_MASS;
-double T[3][SPECIES], gradT, n[SPECIES], P, v[2], gradv, Kappa_B, Kappa_L, Fc_max;
+double T[3][SPECIES], gradT, n[SPECIES], P, v[2], gradv, Kappa_B, Fc_max;
 
 #if defined (NON_EQUILIBRIUM_RADIATION) || ( defined(OPTICALLY_THICK_RADIATION) && defined (NLTE_CHROMOSPHERE) )
 	PCELL pFarRightCell;
@@ -1915,49 +1915,47 @@ int j;
 
 #ifdef OPTICALLY_THICK_RADIATION
             	if( j == HYDROGEN && T[1][ELECTRON] < OPTICALLY_THICK_TEMPERATURE )
-				{
 					Kappa_B = ( Kappa[j] + pHI->Getkappa_0( log10(T[1][ELECTRON]) ) ) * pow( T[1][j], 2.5 );
-                	CellProperties.Fc[0][j] = - Kappa_B * gradT;
-				}
             	else
 #endif // OPTICALLY_THICK_RADIATION
-				{
 					Kappa_B = Kappa[j] * pow( T[1][j], 2.5 );
-	            	CellProperties.Fc[0][j] = - Kappa_B * gradT;
-				}
 
-	            // Estimate the maximum conducted heat flux (treats n as approximately constant across cell)
-	            // BOLTZMANN_CONSTANT^1.5 = 1.621132937e-24
-#ifdef USE_JB
-		    	Fc_max = HEAT_FLUX_LIMITING_COEFFICIENT * (1.621132937e-24) * max_flux_coeff[j] * n[j] * pow( CellProperties.T[j], 1.5 );
-#else // USE_JB
-        	    Fc_max = HEAT_FLUX_LIMITING_COEFFICIENT * (1.621132937e-24) * max_flux_coeff[j] * n[j] * pow( T[1][j], 1.5 );
-#endif // USE_JB
+            	CellProperties.Fc[0][j] = - Kappa_B * gradT;
+
+#ifdef USE_BKE
+				if( j == ELECTRON )
+				{
+					// Calculate the thermal conduction suppression factor, R, due to scattering by turbulence
+					// c_R / k_B = 2.28e4
+					term1 = (2.28e4) * ( ( T[1][j] * T[1][j] ) / ( BKE_L_T * n[j] ) );
+					term2 = CellProperties.s[0] - BKE_S_R;
+					term2 *= term2;
+					term1 *= exp( - term2 / BKE_2L_R2 );
+					// Apply the Bian, Kontar, & Emslie thermal conduction suppression factor
+					CellProperties.Fc[0][j] /= 1.0 + term1;
+				}
+#endif // USE_BKE
 
 	    		// Apply the heat flux limiter
+	            // BOLTZMANN_CONSTANT^1.5 = 1.621132937e-24
+        	    Fc_max = HEAT_FLUX_LIMITING_COEFFICIENT * (1.621132937e-24) * max_flux_coeff[j] * n[j] * pow( T[1][j], 1.5 );
             	term1 = CellProperties.Fc[0][j] * Fc_max;
             	term2 = ( CellProperties.Fc[0][j] * CellProperties.Fc[0][j] ) + ( Fc_max * Fc_max );
             	CellProperties.Fc[0][j] =  term1 / sqrt( term2 );
 
 // **** THERMAL CONDUCTION TIME STEP ****
+				// Recalculate the coefficient of thermal conduction
+				Kappa_B = fabs( CellProperties.Fc[0][j] / gradT );
 		    	// The time-step is calculated by: delta_t = ( n * k_B ) * ( cell width )^2 / ( 2.0 * coefficient of thermal conduction )
 		    	// 0.5 * BOLTZMANN_CONSTANT = 6.9e-17
 	    		term1 = SAFETY_CONDUCTION * (6.9e-17) * CellProperties.cell_width * CellProperties.cell_width;
-
-			    Kappa_L = fabs( CellProperties.Fc[0][j] / gradT );
-
-		    	if( Kappa_L < Kappa_B )
-        	    	CellProperties.conduction_delta_t[j] = ( term1 * n[j] ) / Kappa_L;
-	    		else
-					CellProperties.conduction_delta_t[j] = ( term1 * n[j] ) / Kappa_B;
-
+				CellProperties.conduction_delta_t[j] = ( term1 * n[j] ) / Kappa_B;
 			    if( CellProperties.conduction_delta_t[j] < TIME_STEP_LIMIT )
 			    {
 	    			Kappa_B = ( term1 * n[j] ) / TIME_STEP_LIMIT;
 					CellProperties.Fc[0][j] = - Kappa_B * gradT;
 					CellProperties.conduction_delta_t[j] = TIME_STEP_LIMIT;
 	    		}
-
 			    LeftCellProperties.conduction_delta_t[j] += CellProperties.conduction_delta_t[j];
 		    	LeftCellProperties.conduction_delta_t[j] /= 2.0;
 // **** THERMAL CONDUCTION TIME STEP ****
