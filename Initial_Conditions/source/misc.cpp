@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 07/20/2020
+// * Date last modified: 11/28/2020
 // *
 // ****
 
@@ -138,7 +138,7 @@ long i, k;
 
 ds = Params.Lfull / MIN_CELLS;
 #ifdef ADAPT
-ds /= pow( 2.0, MAX_REFINEMENT_LEVEL );
+ds /= pow( 2.0, INITIAL_REFINEMENT_LEVEL );
 #endif // ADAPT
 iMAX_CELLS = (long)(Params.Lfull/ds);
 
@@ -153,14 +153,14 @@ if( iMAX_CELLS & 1 )
 // Allocate sufficient memory to hold the unique ID numbers that pair grid cells following refinement
 ppiID = (long**)malloc( sizeof(long) * iMAX_CELLS );
 for( i=0; i<iMAX_CELLS; i++ )
-    ppiID[i] = (long*)malloc( sizeof(long) * MAX_REFINEMENT_LEVEL );
+	ppiID[i] = (long*)malloc( sizeof(long) * INITIAL_REFINEMENT_LEVEL );
 
 // Create the blocks of unique ID numbers for each refinement level
 iID = 0;
-for( j=0; j<MAX_REFINEMENT_LEVEL; j++ )
+for( j=0; j<INITIAL_REFINEMENT_LEVEL; j++ )
 {
     iRL = j + 1;
-    iBlockLength = pow( 2, ( MAX_REFINEMENT_LEVEL - iRL + 1 ) );
+	iBlockLength = pow( 2, ( INITIAL_REFINEMENT_LEVEL - iRL + 1 ) );
     for( i=0; i<iMAX_CELLS; i+=iBlockLength )
     {
         for( k=0; k<iBlockLength; k++ )
@@ -227,10 +227,13 @@ for( ;; )
     fprintf( pFile, "%.16e\t%.16e\t%.16e\t0.0\t%.16e\t%.16e\t%i", sAMR, ds, (AVERAGE_PARTICLE_MASS*fConservedQuantities[0]),
                                                                   (1.5*BOLTZMANN_CONSTANT*fConservedQuantities[1]*fConservedQuantities[2]),
                                                                   (1.5*BOLTZMANN_CONSTANT*fConservedQuantities[0]*fConservedQuantities[2]),
-                                                                  MAX_REFINEMENT_LEVEL );
+                                                                  INITIAL_REFINEMENT_LEVEL );
 
-    for( k=0; k<MAX_REFINEMENT_LEVEL; k++ )
+	for( k=0; k<INITIAL_REFINEMENT_LEVEL; k++ )
         fprintf( pFile, "\t%ld", ppiID[j][k] );
+	// Now pad out the rest of the line with zeroes
+	for( k=INITIAL_REFINEMENT_LEVEL; k<MAX_REFINEMENT_LEVEL; k++ )
+        fprintf( pFile, "\t0" );
     fprintf( pFile, "\n" );
     j++;
 #else // ADAPT
