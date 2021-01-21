@@ -16,7 +16,7 @@
 #include "../../../source/file.h"
 
 
-#define READ_ELECTRON_MASS_DENSITY		// Required for runs using the optically-thick chromosphere model
+// #define READ_ELECTRON_MASS_DENSITY		// Required for runs using the optically-thick chromosphere model
 
 
 int main(void)
@@ -58,8 +58,8 @@ pCONFIGFile = fopen( "config.cfg", "r" );
 	fscanf(pCONFIGFile, "%i", &iNumFiles );
 
 	printf( "\n%s.%s\n", szRoot, szExtension );
-	printf( "\niNumber of Columns = %i\n", iNumColumns );
-	printf( "\niNumber of Columns to Average = %i\n", iNumAverages );	
+	printf( "\nNumber of Columns = %i\n", iNumColumns );
+	printf( "\nNumber of Columns to Average = %i\n", iNumAverages );	
 	printf( "\tColumns:");
 	for( i=0; i<iNumAverages; i++ ) {
 		printf( " %i", piC[i] );
