@@ -5,7 +5,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/12/2015
+// * Date last modified: 01/21/2021
 // *
 // ****
 
@@ -16,11 +16,13 @@
 #include "../../../source/file.h"
 
 
+#define READ_ELECTRON_MASS_DENSITY		// Required for runs using the optically-thick chromosphere model
+
+
 int main(void)
 {
 FILE *pCONFIGFile, *pAMRFile, *pEXTFile, *pOUTPUTFile;
 char szRoot[256], szExtension[32], szAMRFilename[256], szEXTFilename[256], szOUTPUTFilename[256];
-char szBuffer[256];
 double *pfSum;
 double fLLp, fULp, fLL, fUL;
 double fTimeStamp, fL, fs, fds;
@@ -34,33 +36,46 @@ int iBuffer;
 pCONFIGFile = fopen( "config.cfg", "r" );
 
 	// Get the filename structure of the files containing the data to be spatially averaged
-	fscanf(pCONFIGFile, "%s", szRoot ); fscanf( pCONFIGFile, "%s", szBuffer );
-	fscanf(pCONFIGFile, "%s", szExtension ); fscanf( pCONFIGFile, "%s", szBuffer );
+	fscanf(pCONFIGFile, "%s", szRoot );
+	fscanf(pCONFIGFile, "%s", szExtension );
 	// Get the number of columns in the files
-	fscanf(pCONFIGFile, "%i", &iNumColumns ); fscanf( pCONFIGFile, "%s", szBuffer );
+	fscanf(pCONFIGFile, "%i", &iNumColumns );
 	
 	// Get the number of columns to calculate spatial averages for
-	fscanf(pCONFIGFile, "%i", &iNumAverages ); fscanf( pCONFIGFile, "%s", szBuffer );
+	fscanf(pCONFIGFile, "%i", &iNumAverages );
 	// Get the particular column numbers to calculate spatial averages for
 	piC = (int*)malloc( sizeof(int) * iNumAverages );
 	for( i=0; i<iNumAverages; i++ )
 		fscanf( pCONFIGFile, "%i", &(piC[i]) );
-	fscanf( pCONFIGFile, "%s", szBuffer );
 	pfSum = (double*)malloc( sizeof(double) * iNumAverages );
 	
 	// Get the lower and upper spatial limits as percentages and convert to fractions
-	ReadDouble( pCONFIGFile, &fLLp ); fscanf( pCONFIGFile, "%s", szBuffer );
-	ReadDouble( pCONFIGFile, &fULp ); fscanf( pCONFIGFile, "%s", szBuffer );
+	ReadDouble( pCONFIGFile, &fLLp );
+	ReadDouble( pCONFIGFile, &fULp );
 	fLLp /= 100.0; fULp /= 100.0;
 
 	// Get the number of spatial average files to write
-	fscanf(pCONFIGFile, "%i", &iNumFiles ); fscanf( pCONFIGFile, "%s", szBuffer );
+	fscanf(pCONFIGFile, "%i", &iNumFiles );
+
+	printf( "\n%s.%s\n", szRoot, szExtension );
+	printf( "\niNumber of Columns = %i\n", iNumColumns );
+	printf( "\niNumber of Columns to Average = %i\n", iNumAverages );	
+	printf( "\tColumns:");
+	for( i=0; i<iNumAverages; i++ ) {
+		printf( " %i", piC[i] );
+	}
+	printf( "\n" );
+	printf( "\nAverage Between %g and %g of Domain\n", fLLp, fULp );
+	printf( "\nNumber of Spatial Average Files = %i\n", iNumFiles );
+	printf( "\tFile Number Range:" );
 
 	for( i=0; i<iNumFiles; i++ )
 	{
 		// Get the file range
 		fscanf( pCONFIGFile, "%i", &(iRange[0]) );
-		fscanf( pCONFIGFile, "%i", &(iRange[1]) ); fscanf( pCONFIGFile, "%s", szBuffer );
+		fscanf( pCONFIGFile, "%i", &(iRange[1]) );
+
+		printf( " [%i,%i]", iRange[0], iRange[1] );
 
 		// Construct the output filename and open the file
 		sprintf( szOUTPUTFilename, "f(t)(%ito%i).txt", iRange[0], iRange[1] );
@@ -94,13 +109,15 @@ pCONFIGFile = fopen( "config.cfg", "r" );
 							// Read the data from the .amr file
 							ReadDouble( pAMRFile, &fs );		// Position
 							ReadDouble( pAMRFile, &fds );		// Grid cell width
-							ReadDouble( pAMRFile, &fBuffer );	// Mass density
+#ifdef READ_ELECTRON_MASS_DENSITY
+							ReadDouble( pAMRFile, &fBuffer );	// Electron mass density
+#endif // READ_ELECTRON_MASS_DENSITY
+							ReadDouble( pAMRFile, &fBuffer );	// Hydrogen mass density							
 							ReadDouble( pAMRFile, &fBuffer );	// Momentum density
 							ReadDouble( pAMRFile, &fBuffer );	// Electron energy
 							ReadDouble( pAMRFile, &fBuffer );	// Hydrogen energy
 							for( l=0; l<=MAX_REFINEMENT_LEVEL; l++ )
 								fscanf( pAMRFile, "%i", &iBuffer );
-
 
 							// Read the data from the .ext file
 							for( m=0; m<iNumColumns; m++ )
@@ -134,6 +151,8 @@ fclose( pCONFIGFile );
 
 free( pfSum );
 free( piC );
+
+printf( "\n" );
 
 return 0;
 }
