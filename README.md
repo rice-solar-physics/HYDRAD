@@ -1,6 +1,8 @@
-# HYDRAD
+<div align="center">
+	<img src="hydrad-logo.png" width=55%><br>
+</div>
 
-![hydrad log](hydrad-logo.png)
+# HYDRAD
 
 HYDrodynamics and RADiation Code for computing solutions to field-aligned hydrodynamic equations in coronal loops
 
