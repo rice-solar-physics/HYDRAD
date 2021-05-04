@@ -5,7 +5,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/11/2015
+// * Date last modified: 05/04/2021
 // *
 // ****
 
@@ -57,12 +57,12 @@ for( i=iFrom; i<=iTo; i++ )
 
 	for(j=0; j<iNumCells; j++)
 	{
-		ReadDouble( pPHYFile, &fs );	// Position
-			fprintf( pIEFile, "%.8e", fs );
+		ReadDouble( pPHYFile, &fs );		// Position
+		fprintf( pIEFile, "%.8e", fs );
 		ReadDouble( pPHYFile, &fBuffer );	// Velocity
 		ReadDouble( pPHYFile, &fBuffer );	// Sound speed
-                ReadDouble( pPHYFile, &fn );		// Electron number density
-                ReadDouble( pPHYFile, &fBuffer );	// Hydrogen number density
+        ReadDouble( pPHYFile, &fn );		// Electron number density
+        ReadDouble( pPHYFile, &fBuffer );	// Hydrogen number density
 		ReadDouble( pPHYFile, &fBuffer );	// Electron pressure
 		ReadDouble( pPHYFile, &fBuffer );	// Hydrogen pressure
 		ReadDouble( pPHYFile, &fT );		// Electron temperature
@@ -71,9 +71,9 @@ for( i=iFrom; i<=iTo; i++ )
 		ReadDouble( pPHYFile, &fBuffer );	// Hydrogen thermal energy flux
 		
 #ifdef DENSITY_DEPENDENT_RATES
-		pRadiation->WriteAllEquilIonFracToFile( pIEFile, log10(fT), log10(fn) );
+		pRadiation->WriteEquilIonFracToFile( pIEFile, log10(fT), log10(fn) );
 #else // DENSITY_DEPENDENT_RATES
-		pRadiation->WriteAllEquilIonFracToFile( pIEFile, log10(fT) );
+		pRadiation->WriteEquilIonFracToFile( pIEFile, log10(fT) );
 #endif // DENSITY_DEPENDENT_RATES
 	}
 
