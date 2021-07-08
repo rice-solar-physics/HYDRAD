@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/11/2020
+// * Date last modified: 07/07/2021
 // *
 // ****
 
@@ -2474,59 +2474,59 @@ int j;
     	{
 			term1 = 1.0;
 #else // OPTICALLY_THICK_RADIATION
-   		if( CellProperties.T[ELECTRON] < MINIMUM_RADIATION_TEMPERATURE )
-   		{
-       		// Provide some additional heating to the chromosphere if the temperature drops below the specified isothermal temperature
-       		CellProperties.TE_KE_term[5][ELECTRON] = ( ( ( MINIMUM_RADIATION_TEMPERATURE / CellProperties.T[ELECTRON] ) - 1.0 ) * CellProperties.TE_KE[1][ELECTRON] ) / MINIMUM_COLLISIONAL_COUPLING_TIME_SCALE;
+	   		if( CellProperties.T[ELECTRON] < MINIMUM_RADIATION_TEMPERATURE )
+   			{
+       			// Provide some additional heating to the chromosphere if the temperature drops below the specified isothermal temperature
+       			CellProperties.TE_KE_term[5][ELECTRON] = ( ( ( MINIMUM_RADIATION_TEMPERATURE / CellProperties.T[ELECTRON] ) - 1.0 ) * CellProperties.TE_KE[1][ELECTRON] ) / MINIMUM_COLLISIONAL_COUPLING_TIME_SCALE;
 // **** RADIATION TIME STEP ****
-			CellProperties.radiation_delta_t = MINIMUM_COLLISIONAL_COUPLING_TIME_SCALE;
+				CellProperties.radiation_delta_t = MINIMUM_COLLISIONAL_COUPLING_TIME_SCALE;
 // **** RADIATION TIME STEP ****
-    	}
-   		else
-   		{   
-			term1 = 1.0;
-			// Decrease the radiation smoothly to zero in the chromosphere
-			if( CellProperties.T[ELECTRON] < lower_radiation_temperature_boundary )
-    			term1 = ( CellProperties.T[ELECTRON] - MINIMUM_RADIATION_TEMPERATURE ) / ZERO_OVER_TEMPERATURE_INTERVAL;
+    		}
+   			else
+   			{   
+				term1 = 1.0;
+				// Decrease the radiation smoothly to zero in the chromosphere
+				if( CellProperties.T[ELECTRON] < lower_radiation_temperature_boundary )
+    				term1 = ( CellProperties.T[ELECTRON] - MINIMUM_RADIATION_TEMPERATURE ) / ZERO_OVER_TEMPERATURE_INTERVAL;
 #endif // OPTICALLY_THICK_RADIATION
 
 #ifdef DECOUPLE_IONISATION_STATE_SOLVER
 	#ifdef USE_POWER_LAW_RADIATIVE_LOSSES
-			CellProperties.TE_KE_term[5][ELECTRON] -= term1 * pRadiation2->GetPowerLawRad( log10( CellProperties.T[ELECTRON] ), CellProperties.n[ELECTRON], CellProperties.n[HYDROGEN] );
+				CellProperties.TE_KE_term[5][ELECTRON] -= term1 * pRadiation2->GetPowerLawRad( log10( CellProperties.T[ELECTRON] ), CellProperties.n[ELECTRON], CellProperties.n[HYDROGEN] );
 	#else // USE_POWER_LAW_RADIATIVE_LOSSES
 			// If USE_POWER_LAW_RADIATIVE_LOSSES hasn't been defined then the default must be to use the NON_EQUILIBRIUM_RADIATION method for calculating the radiative losses, because
 			// NON_EQUILIBRIUM_RADIATION is *ALWAYS* defined when DECOUPLE_IONISATION_STATE_SOLVER is defined
-			CellProperties.TE_KE_term[5][ELECTRON] -= term1 * ( pRadiation->GetRadiation( log10( CellProperties.T[ELECTRON] ), CellProperties.n[ELECTRON], CellProperties.n[HYDROGEN] ) + pRadiation2->GetRadiation( log10( CellProperties.T[ELECTRON] ), CellProperties.n[ELECTRON], CellProperties.n[HYDROGEN] ) + pRadiation2->GetFreeFreeRad( log10( CellProperties.T[ELECTRON] ), CellProperties.n[ELECTRON], CellProperties.n[HYDROGEN] ) );
+				CellProperties.TE_KE_term[5][ELECTRON] -= term1 * ( pRadiation->GetRadiation( log10( CellProperties.T[ELECTRON] ), CellProperties.n[ELECTRON], CellProperties.n[HYDROGEN] ) + pRadiation2->GetRadiation( log10( CellProperties.T[ELECTRON] ), CellProperties.n[ELECTRON], CellProperties.n[HYDROGEN] ) + pRadiation2->GetFreeFreeRad( log10( CellProperties.T[ELECTRON] ), CellProperties.n[ELECTRON], CellProperties.n[HYDROGEN] ) );
 	#endif // USE_POWER_LAW_RADIATIVE_LOSSES
 #else // DECOUPLE_IONISATION_STATE_SOLVER
 	#ifdef NON_EQUILIBRIUM_RADIATION
-       		ppni2 = CellProperties.pIonFrac->ppGetIonFrac();
-        	CellProperties.TE_KE_term[5][ELECTRON] -= term1 * ( pRadiation->GetRadiation( log10( CellProperties.T[ELECTRON] ), CellProperties.n[ELECTRON], CellProperties.n[HYDROGEN], ppni2 ) + pRadiation2->GetRadiation( log10( CellProperties.T[ELECTRON] ), CellProperties.n[ELECTRON], CellProperties.n[HYDROGEN] ) + pRadiation2->GetFreeFreeRad( log10( CellProperties.T[ELECTRON] ), CellProperties.n[ELECTRON], CellProperties.n[HYDROGEN] ) );
+       			ppni2 = CellProperties.pIonFrac->ppGetIonFrac();
+        		CellProperties.TE_KE_term[5][ELECTRON] -= term1 * ( pRadiation->GetRadiation( log10( CellProperties.T[ELECTRON] ), CellProperties.n[ELECTRON], CellProperties.n[HYDROGEN], ppni2 ) + pRadiation2->GetRadiation( log10( CellProperties.T[ELECTRON] ), CellProperties.n[ELECTRON], CellProperties.n[HYDROGEN] ) + pRadiation2->GetFreeFreeRad( log10( CellProperties.T[ELECTRON] ), CellProperties.n[ELECTRON], CellProperties.n[HYDROGEN] ) );
 	#else // NON_EQUILIBRIUM_RADIATION
 		#ifdef USE_POWER_LAW_RADIATIVE_LOSSES
-			CellProperties.TE_KE_term[5][ELECTRON] -= term1 * pRadiation2->GetPowerLawRad( log10( CellProperties.T[ELECTRON] ), CellProperties.n[ELECTRON], CellProperties.n[HYDROGEN] );
+				CellProperties.TE_KE_term[5][ELECTRON] -= term1 * pRadiation2->GetPowerLawRad( log10( CellProperties.T[ELECTRON] ), CellProperties.n[ELECTRON], CellProperties.n[HYDROGEN] );
 		#else // USE_POWER_LAW_RADIATIVE_LOSSES
-       		CellProperties.TE_KE_term[5][ELECTRON] -= term1 * ( pRadiation2->GetRadiation( log10( CellProperties.T[ELECTRON] ), CellProperties.n[ELECTRON], CellProperties.n[HYDROGEN] ) + pRadiation2->GetFreeFreeRad( log10( CellProperties.T[ELECTRON] ), CellProperties.n[ELECTRON], CellProperties.n[HYDROGEN] ) );
+       			CellProperties.TE_KE_term[5][ELECTRON] -= term1 * ( pRadiation2->GetRadiation( log10( CellProperties.T[ELECTRON] ), CellProperties.n[ELECTRON], CellProperties.n[HYDROGEN] ) + pRadiation2->GetFreeFreeRad( log10( CellProperties.T[ELECTRON] ), CellProperties.n[ELECTRON], CellProperties.n[HYDROGEN] ) );
 		#endif // USE_POWER_LAW_RADIATIVE_LOSSES
 	#endif // NON_EQUILIBRIUM_RADIATION
 #endif // DECOUPLE_IONISATION_STATE_SOLVER
 
 #ifdef USE_JB
-			if( CellProperties.T[ELECTRON] > Tmin && CellProperties.T[ELECTRON] < Tc )
-			{
-				term1 = CellProperties.T[ELECTRON] / Tc;
-				term2 = pow( term1, 2.5 );
-				// Modify heating (only when applied to electrons) per the TRAC method
-				CellProperties.TE_KE_term[4][ELECTRON] *= term2;
-				// Modify radiation (applies only to electrons) per the TRAC method
-				CellProperties.TE_KE_term[5][ELECTRON] *= term2;
-			}
+				if( CellProperties.T[ELECTRON] > Tmin && CellProperties.T[ELECTRON] < Tc )
+				{
+					term1 = CellProperties.T[ELECTRON] / Tc;
+					term2 = pow( term1, 2.5 );
+					// Modify heating (only when applied to electrons) per the TRAC method
+					CellProperties.TE_KE_term[4][ELECTRON] *= term2;
+					// Modify radiation (applies only to electrons) per the TRAC method
+					CellProperties.TE_KE_term[5][ELECTRON] *= term2;
+				}
 #endif // USE_JB
 
 // **** RADIATION TIME STEP ****
-	    	CellProperties.radiation_delta_t = ( SAFETY_RADIATION * CellProperties.TE_KE[1][ELECTRON] ) / fabs( CellProperties.TE_KE_term[5][ELECTRON] );
+	    		CellProperties.radiation_delta_t = ( SAFETY_RADIATION * CellProperties.TE_KE[1][ELECTRON] ) / fabs( CellProperties.TE_KE_term[5][ELECTRON] );
 // **** RADIATION TIME STEP ****
-		}
+		}	// Closes the else '{' on line 2474 column 10 or line 2485 column 14, depending on the active pre-processor directives
 
 // *****************************************************************************
 // *    SMALL-SCALE ELECTRIC FIELDS                                            *
@@ -2681,7 +2681,7 @@ double CEquations::CalculateCrossSection( double x )
 void CEquations::GetSmallestTimeScale( double *delta_t, int iFirstStep )
 {
 if( !iFirstStep )
-    return;
+	return;
 	
 PCELL pNextActiveCell;
 CELLPROPERTIES CellProperties;
@@ -2777,6 +2777,12 @@ int j;
 
 	for( j=0; j<SPECIES; j++ )
     	pCellProperties->TE_KE[1][j] = BottomCellProperties.TE_KE[1][j] + ( delta_t * pCellProperties->dTE_KEbydt[j] );
+
+#ifdef ENFORCE_POSITIVE_ELECTRON_ENERGY
+	if( pCellProperties->TE_KE[1][ELECTRON] < 0.0 ) {
+		pCellProperties->TE_KE[1][ELECTRON] = BottomCellProperties.TE_KE[1][ELECTRON];
+	}
+#endif // ENFORCE_POSITIVE_ELECTRON_ENERGY
 
 #ifdef OPTICALLY_THICK_RADIATION
 #ifdef NLTE_CHROMOSPHERE

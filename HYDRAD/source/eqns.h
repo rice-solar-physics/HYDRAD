@@ -5,12 +5,19 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 07/20/2020
+// * Date last modified: 07/07/2021
 // *
 // ****
 
 
 #include "cell.h"
+
+// The radiation time-scale may not be adequate to control stability in the case
+// of a large energy increase across the half time-step. The radiation time-scale
+// can be grossly overestimated. Enabling this directive prevents catastrophic 
+// cooling to negative energies / temperatures by setting d/dt = 0 across the full
+// time-step when necessary
+#define ENFORCE_POSITIVE_ELECTRON_ENERGY
 
 
 // **** EQUATIONS CLASS ****
