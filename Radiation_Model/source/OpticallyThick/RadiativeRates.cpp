@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 03/24/2020
+// * Date last modified: 08/26/2021
 // *
 // ****
 
@@ -1398,11 +1398,7 @@ void CRadiativeRates::SolveHIIFraction( double *pfHstate, double *pfColl_ex_lu, 
 }
 #endif // USE_SINGLE_VALUE_DECOMPOSITION
 
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-void CRadiativeRates::GetAllDel_Hstate_dot_v( double *pHstate0, double *pHstate1, double *pHstate2, double *pHstate3, double *pHstate4, double *s, double *s_pos, double *pv, double *cross_section, double cell_volume, double *pDel_Hstate_dot_v )
-#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
 void CRadiativeRates::GetAllDel_Hstate_dot_v( double *pHstate0, double *pHstate1, double *pHstate2, double *pHstate3, double *pHstate4, double *s, double *s_pos, double *pv, double delta_s, double *pDel_Hstate_dot_v )
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 {
 // Variables used for interpolation
 double x[3], y[3];
@@ -1424,20 +1420,12 @@ iLevel = 5;
 		x[2] = s[1];
 		y[1] = pHstate0[iLevel];
 		y[2] = pHstate1[iLevel];
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-		y[1] *= cross_section[0];
-		y[2] *= cross_section[1];
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 		LinearFit( x, y, s_pos[0], &Q1 );
 
 		x[1] = s[1];
 		x[2] = s[2];
 		y[1] = pHstate1[iLevel];
 		y[2] = pHstate2[iLevel];
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-		y[1] *= cross_section[1];
-		y[2] *= cross_section[2];
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 		LinearFit( x, y, s_pos[0], &Q2 );
 
 		Q3 = y[1];
@@ -1466,20 +1454,12 @@ iLevel = 5;
         x[2] = s[3];
         y[1] = pHstate2[iLevel];
         y[2] = pHstate3[iLevel];
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-		y[1] *= cross_section[2];
-		y[2] *= cross_section[3];
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
         LinearFit( x, y, s_pos[0], &Q1 );
 
         x[1] = s[1];
         x[2] = s[2];
         y[1] = pHstate1[iLevel];
         y[2] = pHstate2[iLevel];
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-		y[1] *= cross_section[1];
-		y[2] *= cross_section[2];
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
         LinearFit( x, y, s_pos[0], &Q2 );
 
         Q3 = y[2];
@@ -1510,20 +1490,12 @@ iLevel = 5;
 		x[2] = s[2];
 		y[1] = pHstate1[iLevel];
 		y[2] = pHstate2[iLevel];
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-		y[1] *= cross_section[1];
-		y[2] *= cross_section[2];
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 		LinearFit( x, y, s_pos[2], &Q1 );
 
 		x[1] = s[2];
 		x[2] = s[3];
 		y[1] = pHstate2[iLevel];
 		y[2] = pHstate3[iLevel];
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-		y[1] *= cross_section[2];
-		y[2] *= cross_section[3];
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 		LinearFit( x, y, s_pos[2], &Q2 );
 
 		Q3 = y[1];
@@ -1552,20 +1524,12 @@ iLevel = 5;
         x[2] = s[4];
         y[1] = pHstate3[iLevel];
         y[2] = pHstate4[iLevel];
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-		y[1] *= cross_section[3];
-		y[2] *= cross_section[4];
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
         LinearFit( x, y, s_pos[2], &Q1 );
 
         x[1] = s[2];
         x[2] = s[3];
         y[1] = pHstate2[iLevel];
         y[2] = pHstate3[iLevel];
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-		y[1] *= cross_section[2];
-		y[2] *= cross_section[3];
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
         LinearFit( x, y, s_pos[2], &Q2 );
 
         Q3 = y[2];
@@ -1589,11 +1553,7 @@ iLevel = 5;
         }
     }
 
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-    pDel_Hstate_dot_v[iLevel] = - ( ( Hstate2 * pv[2] ) - ( Hstate0 * pv[0] ) ) / cell_volume;
-#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
-    pDel_Hstate_dot_v[iLevel] = - ( ( Hstate2 * pv[2] ) - ( Hstate0 * pv[0] ) ) / delta_s;
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
+    pDel_Hstate_dot_v[iLevel] = - ( pv[1] * ( Hstate2 - Hstate0 ) ) / delta_s;
 }
 }
 

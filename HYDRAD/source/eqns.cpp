@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 07/07/2021
+// * Date last modified: 08/26/2021
 // *
 // ****
 
@@ -2591,28 +2591,16 @@ int j;
 
 // *****************************************************************************
 // *                                                                           *
-// *    TIME-DEPENDENT IONISATION                                              *
+// *    TIME-DEPENDENT IONISATION AND MULTI-LEVEL HYDROGEN ATOM                *
 // *                                                                           *
 // *****************************************************************************
 
-#if defined (NON_EQUILIBRIUM_RADIATION) || ( defined(OPTICALLY_THICK_RADIATION) && defined (NLTE_CHROMOSPHERE) )
+#if defined(NON_EQUILIBRIUM_RADIATION) || ( defined(OPTICALLY_THICK_RADIATION) && defined(NLTE_CHROMOSPHERE) )
 	    ps[0] = FarLeftCellProperties.s[1];
     	ps[1] = LeftCellProperties.s[1];
     	ps[2] = CellProperties.s[1];
     	ps[3] = RightCellProperties.s[1];
     	ps[4] = FarRightCellProperties.s[1];
-
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-		// Calculate the grid cell cross-sections corresponding to the cells containing the ion fractions
-		// Note: It's safe to do this here because these variables are not used again in the current cell 
-		//       and are reset to the cell center and interface cross-sections when the time-derivatives 
-		//       are calculated in the next grid cell
-    	fCrossSection[0] = CalculateCrossSection( FarLeftCellProperties.s[1]/Params.L );
-    	fCrossSection[1] = CalculateCrossSection( LeftCellProperties.s[1]/Params.L );
-    	fCrossSection[2] = CalculateCrossSection( CellProperties.s[1]/Params.L );
-    	fCrossSection[3] = CalculateCrossSection( RightCellProperties.s[1]/Params.L );
-    	fCrossSection[4] = CalculateCrossSection( FarRightCellProperties.s[1]/Params.L );
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
 #ifdef NON_EQUILIBRIUM_RADIATION
     	ppni0 = FarLeftCellProperties.pIonFrac->ppGetIonFrac();
@@ -2622,11 +2610,7 @@ int j;
     	ppni4 = FarRightCellProperties.pIonFrac->ppGetIonFrac();
    
     	ppdnibydt = CellProperties.pIonFrac->ppGetdnibydt();
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-    	pRadiation->GetAlldnibydt( log10( CellProperties.T[ELECTRON] ), log10( CellProperties.n[ELECTRON] ), ppni0, ppni1, ppni2, ppni3, ppni4, ps, CellProperties.s, CellProperties.v, fCrossSection, fCellVolume, ppdnibydt, &(CellProperties.atomic_delta_t) );
-#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
 		pRadiation->GetAlldnibydt( log10( CellProperties.T[ELECTRON] ), log10( CellProperties.n[ELECTRON] ), ppni0, ppni1, ppni2, ppni3, ppni4, ps, CellProperties.s, CellProperties.v, CellProperties.cell_width, ppdnibydt, &(CellProperties.atomic_delta_t) );
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 #endif // NON_EQUILIBRIUM_RADIATION
 
 #ifdef OPTICALLY_THICK_RADIATION
@@ -2636,11 +2620,7 @@ int j;
    		pHstate2 = CellProperties.Hstate;
    		pHstate3 = RightCellProperties.Hstate;
    		pHstate4 = FarRightCellProperties.Hstate;
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-   		pRadiativeRates->GetAllDel_Hstate_dot_v( pHstate0, pHstate1, pHstate2, pHstate3, pHstate4, ps, CellProperties.s, CellProperties.v, fCrossSection, fCellVolume, CellProperties.Del_Hstate_dot_v );
-#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
    		pRadiativeRates->GetAllDel_Hstate_dot_v( pHstate0, pHstate1, pHstate2, pHstate3, pHstate4, ps, CellProperties.s, CellProperties.v, CellProperties.cell_width, CellProperties.Del_Hstate_dot_v );
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 #endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
 
@@ -2746,6 +2726,12 @@ pActiveCell->GetCellProperties( &CellProperties );
 
 	for( j=0; j<SPECIES; j++ )
     	pNewCellProperties->TE_KE[1][j] = CellProperties.TE_KE[1][j] + ( delta_t * CellProperties.dTE_KEbydt[j] );
+
+#ifdef ENFORCE_POSITIVE_ELECTRON_ENERGY
+	if( pNewCellProperties->TE_KE[1][ELECTRON] < 0.0 ) {
+		pNewCellProperties->TE_KE[1][ELECTRON] = CellProperties.TE_KE[1][ELECTRON];
+	}
+#endif // ENFORCE_POSITIVE_ELECTRON_ENERGY
 
 #ifdef OPTICALLY_THICK_RADIATION
 #ifdef NLTE_CHROMOSPHERE

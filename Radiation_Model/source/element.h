@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 03/24/2020
+// * Date last modified: 08/26/2021
 // *
 // ****
 
@@ -101,11 +101,7 @@ class CElement {
     double GetEmissivity( double flog_10T, double flog_10n );
 
     // Function to calculate the rate of change with respect to time of the fractional population of the ions and the characteristic time-scale
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-    void Getdnibydt( double flog_10T, double flog_10n, double *pni0, double *pni1, double *pni2, double *pni3, double *pni4, double *s, double *s_pos, double *pv, double *cross_section, double cell_volume, double *pdnibydt, double *pTimeScale );
-#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
 	void Getdnibydt( double flog_10T, double flog_10n, double *pni0, double *pni1, double *pni2, double *pni3, double *pni4, double *s, double *s_pos, double *pv, double delta_s, double *pdnibydt, double *pTimeScale );
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 
     // Functions to calculate the emissivity away from equilibrium (this number includes multiplication by the ion fraction)
     // Multiply by the number density squared to obtain the energy radiatied in units of erg cm^-3 s^-1

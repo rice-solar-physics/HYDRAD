@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 03/24/2020
+// * Date last modified: 08/26/2021
 // *
 // ****
 
@@ -946,11 +946,7 @@ if( result < 0.0 ) result = 0.0;
 return result;
 }
 
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-void CElement::Getdnibydt( double flog_10T, double flog_10n, double *pni0, double *pni1, double *pni2, double *pni3, double *pni4, double *s, double *s_pos, double *pv, double *cross_section, double cell_volume, double *pdnibydt, double *pTimeScale )
-#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
 void CElement::Getdnibydt( double flog_10T, double flog_10n, double *pni0, double *pni1, double *pni2, double *pni3, double *pni4, double *s, double *s_pos, double *pv, double delta_s, double *pdnibydt, double *pTimeScale )
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 {
 double ne, IonRate[2], RecRate[2], term1, term2, term3, term4, term5, delta_t1, delta_t2, TimeScale, SmallestTimeScale;
 int iIndex, iSpecNum;
@@ -984,20 +980,12 @@ for( iIndex=0; iIndex<=Z; iIndex++ )
 		x[2] = s[1];
 		y[1] = pni0[iIndex];
 		y[2] = pni1[iIndex];
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-		y[1] *= cross_section[0];
-		y[2] *= cross_section[1];
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 		LinearFit( x, y, s_pos[0], &Q1 );
 
 		x[1] = s[1];
 		x[2] = s[2];
 		y[1] = pni1[iIndex];
 		y[2] = pni2[iIndex];
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-		y[1] *= cross_section[1];
-		y[2] *= cross_section[2];
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 		LinearFit( x, y, s_pos[0], &Q2 );
 
 		Q3 = y[1];
@@ -1026,20 +1014,12 @@ for( iIndex=0; iIndex<=Z; iIndex++ )
         x[2] = s[3];
         y[1] = pni2[iIndex];
         y[2] = pni3[iIndex];
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-		y[1] *= cross_section[2];
-		y[2] *= cross_section[3];
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
         LinearFit( x, y, s_pos[0], &Q1 );
 
         x[1] = s[1];
         x[2] = s[2];
         y[1] = pni1[iIndex];
         y[2] = pni2[iIndex];
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-		y[1] *= cross_section[1];
-		y[2] *= cross_section[2];
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
         LinearFit( x, y, s_pos[0], &Q2 );
 
         Q3 = y[2];
@@ -1070,20 +1050,12 @@ for( iIndex=0; iIndex<=Z; iIndex++ )
 		x[2] = s[2];
 		y[1] = pni1[iIndex];
 		y[2] = pni2[iIndex];
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-		y[1] *= cross_section[1];
-		y[2] *= cross_section[2];
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 		LinearFit( x, y, s_pos[2], &Q1 );
 
 		x[1] = s[2];
 		x[2] = s[3];
 		y[1] = pni2[iIndex];
 		y[2] = pni3[iIndex];
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-		y[1] *= cross_section[2];
-		y[2] *= cross_section[3];
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 		LinearFit( x, y, s_pos[2], &Q2 );
 
 		Q3 = y[1];
@@ -1112,20 +1084,12 @@ for( iIndex=0; iIndex<=Z; iIndex++ )
         x[2] = s[4];
         y[1] = pni3[iIndex];
         y[2] = pni4[iIndex];
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-		y[1] *= cross_section[3];
-		y[2] *= cross_section[4];
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
         LinearFit( x, y, s_pos[2], &Q1 );
 
         x[1] = s[2];
         x[2] = s[3];
         y[1] = pni2[iIndex];
         y[2] = pni3[iIndex];
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-		y[1] *= cross_section[2];
-		y[2] *= cross_section[3];
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
         LinearFit( x, y, s_pos[2], &Q2 );
 
         Q3 = y[2];
@@ -1149,11 +1113,7 @@ for( iIndex=0; iIndex<=Z; iIndex++ )
         }
     }
 
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-	term1 = - ( ( ni2 * pv[2] ) - ( ni0 * pv[0] ) ) / cell_volume;
-#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
-    term1 = - ( ( ni2 * pv[2] ) - ( ni0 * pv[0] ) ) / delta_s;
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
+    term1 = - ( pv[1] * ( ni2 - ni0 ) ) / delta_s ;
 
     if( iSpecNum > 1 )
     {

@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 03/24/2020
+// * Date last modified: 08/26/2021
 // *
 // ****
 
@@ -127,11 +127,7 @@ class CRadiativeRates {
     
     void SolveHIIFraction( double *pfHstate, double *pfColl_ex_lu, double *pfColl_ex_ul, double *pfColl_ion, double *pfColl_rec, double *pfBB_lu, double *pfBB_ul, double *pfBF, double *pfFB );
 
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-    void GetAllDel_Hstate_dot_v( double *pHstate0, double *pHstate1, double *pHstate2, double *pHstate3, double *pHstate4, double *s, double *s_pos, double *pv, double *cross_section, double cell_volume, double *pDel_Hstate_dot_v );
-#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
     void GetAllDel_Hstate_dot_v( double *pHstate0, double *pHstate1, double *pHstate2, double *pHstate3, double *pHstate4, double *s, double *s_pos, double *pv, double delta_s, double *pDel_Hstate_dot_v );
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
     void Normalize( double *pHstate );
 
     int GetNumberOfTransitions( void );
