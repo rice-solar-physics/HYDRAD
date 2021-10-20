@@ -1,0 +1,1 @@
+g++ -O3 -flto -Wall -Wno-unused-variable ../source/main.cpp ../source/amr.cpp ../source/meshtool.cpp ../../../source/fitpoly.cpp ../../../source/file.cpp -o ../meshTool.exe

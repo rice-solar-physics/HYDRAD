@@ -1,1 +1,0 @@
-g++ -O3 -flto -Wall ../source/main.cpp ../../../source/file.cpp -o ../calculateEM.exe

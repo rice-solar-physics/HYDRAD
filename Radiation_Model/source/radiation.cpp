@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 05/04/2021
+// * Date last modified: 10/14/2021
 // *
 // ****
 
@@ -535,11 +535,7 @@ return ( fne * fnH ) * result;
 // NOTE: free-free radiation is NOT added here
 }
 
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-void CRadiation::Getdnibydt( int iZ, double flog_10T, double flog_10n, double *pni0, double *pni1, double *pni2, double *pni3, double *pni4, double *s, double *s_pos, double *pv, double *cross_section, double cell_volume, double *pdnibydt, double *pTimeScale )
-#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
 void CRadiation::Getdnibydt( int iZ, double flog_10T, double flog_10n, double *pni0, double *pni1, double *pni2, double *pni3, double *pni4, double *s, double *s_pos, double *pv, double delta_s, double *pdnibydt, double *pTimeScale )
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 {
 int i;
 
@@ -549,18 +545,10 @@ for( i=0; i<NumElements; i++ )
 
 if( i == NumElements ) return;
 
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-ppElements[i]->Getdnibydt( flog_10T, flog_10n, pni0, pni1, pni2, pni3, pni4, s, s_pos, pv, cross_section, cell_volume, pdnibydt, pTimeScale );
-#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
 ppElements[i]->Getdnibydt( flog_10T, flog_10n, pni0, pni1, pni2, pni3, pni4, s, s_pos, pv, delta_s, pdnibydt, pTimeScale );
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 }
 
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-void CRadiation::GetAlldnibydt( double flog_10T, double flog_10n, double **ppni0, double **ppni1, double **ppni2, double **ppni3, double **ppni4, double *s, double *s_pos, double *pv, double *cross_section, double cell_volume, double **ppdnibydt, double *pTimeScale )
-#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
 void CRadiation::GetAlldnibydt( double flog_10T, double flog_10n, double **ppni0, double **ppni1, double **ppni2, double **ppni3, double **ppni4, double *s, double *s_pos, double *pv, double delta_s, double **ppdnibydt, double *pTimeScale )
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
 {
 double TimeScale, SmallestTimeScale;
 int i;
@@ -569,11 +557,7 @@ SmallestTimeScale = LARGEST_DOUBLE;
 
 for( i=0; i<NumElements; i++ )
 {
-#ifdef USE_POLY_FIT_TO_MAGNETIC_FIELD
-    ppElements[i]->Getdnibydt( flog_10T, flog_10n, ppni0[i], ppni1[i], ppni2[i], ppni3[i], ppni4[i], s, s_pos, pv, cross_section, cell_volume, ppdnibydt[i], &TimeScale );
-#else // USE_POLY_FIT_TO_MAGNETIC_FIELD
     ppElements[i]->Getdnibydt( flog_10T, flog_10n, ppni0[i], ppni1[i], ppni2[i], ppni3[i], ppni4[i], s, s_pos, pv, delta_s, ppdnibydt[i], &TimeScale );
-#endif // USE_POLY_FIT_TO_MAGNETIC_FIELD
     if( TimeScale < SmallestTimeScale )
         SmallestTimeScale = TimeScale;
 }
