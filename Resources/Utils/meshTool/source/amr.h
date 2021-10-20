@@ -4,12 +4,10 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 10/13/2021
+// * Date last modified: 10/20/2021
 // *
 // ****
 
-// Need the refinement level for the .amr file to re-mesh
-#include "../../../../HYDRAD/source/config.h"
 // Need to know whether electron mass density is included in the .amr file
 #include "../../../../Radiation_Model/source/config.h"
 
@@ -35,7 +33,7 @@ class CAMRFile {
 	private:
 
 	char szAMRFilename[256];
-	int iMaxRL = MAX_REFINEMENT_LEVEL;
+	int iMaxRL;
 #ifdef OPTICALLY_THICK_RADIATION
 #ifdef NLTE_CHROMOSPHERE 
 	int iNumberOfColumns = 7;
@@ -65,7 +63,7 @@ class CAMRFile {
 
 	// Constructor
 	CAMRFile( void );
-	CAMRFile( char *pszAMRFilename );
+	CAMRFile( char *pszAMRFilename, int iAMRMaxRL );
 
 	// Destructor
 	~CAMRFile( void );

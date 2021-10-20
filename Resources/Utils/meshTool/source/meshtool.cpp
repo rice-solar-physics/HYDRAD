@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 10/13/2021
+// * Date last modified: 10/20/2021
 // *
 // ****
 
@@ -22,7 +22,7 @@ CMeshTool::CMeshTool( char *pszConfigFilename )
 		return;
 
 	// Get the existing .amr file
-	pAMRFile = new CAMRFile( szAMRFilename );
+	pAMRFile = new CAMRFile( szAMRFilename, iAMRMaxRL );
 
 	// Create a new .amr file
 	pNewAMRFile = new CAMRFile();
@@ -52,7 +52,7 @@ bool CMeshTool::ReadConfigFile( char *pszConfigFilename )
 	}
 		fscanf( pConfigFile, "%s", szMeshDefinitionFilename );
 		fscanf( pConfigFile, "%s", szNewAMRFilename );
-		fscanf( pConfigFile, "%s", szAMRFilename );
+		fscanf( pConfigFile, "%s", szAMRFilename ); fscanf( pConfigFile, "%i", &iAMRMaxRL );
 	fclose( pConfigFile );
 	return( true );
 }

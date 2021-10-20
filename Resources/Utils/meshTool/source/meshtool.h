@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 10/13/2021
+// * Date last modified: 10/20/2021
 // *
 // ****
 
@@ -18,6 +18,7 @@ class CMeshTool {
     private:
 	
 	char szMeshDefinitionFilename[256], szNewAMRFilename[256], szAMRFilename[256];
+	int iAMRMaxRL;
 	PAMRFILE pNewAMRFile, pAMRFile;
 
 	// Open and read the configuration file

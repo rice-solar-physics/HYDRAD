@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 10/13/2021
+// * Date last modified: 10/20/2021
 // *
 // ****
 
@@ -25,8 +25,9 @@ CAMRFile::CAMRFile( void )
 }
 
 // Constructor
-CAMRFile::CAMRFile( char *pszAMRFilename )
+CAMRFile::CAMRFile( char *pszAMRFilename, int iAMRMaxRL )
 {
+	iMaxRL = iAMRMaxRL;
 	if( !ReadAMRFile( pszAMRFilename ) )
 		printf( "\nFailed to ReadAMRFile()\n" );
 }
@@ -152,7 +153,7 @@ bool CAMRFile::ReadAMRFile( char *pszAMRFilename )
 			for( j=0; j<iNumberOfColumns; j++ )
 				ReadDouble( pAMRFile, &(ppfAMRQuantities[i][j]) );
 			// Skip the cell ID data for the refinement algorithm
-			for( j=0; j<=MAX_REFINEMENT_LEVEL; j++ )
+			for( j=0; j<=iMaxRL; j++ )
 				fscanf( pAMRFile, "%i", &(ppiUniqueIDStructure[i][j]) );
 		}
 	fclose( pAMRFile );
@@ -211,7 +212,7 @@ bool CAMRFile::DefineAMRFile( char *pszMeshDefinitionFilename )
 	}
 		// Get the scaling factor to use with the template of relative cell sizes
 		ReadDouble( pMeshDefinitionFile, &fScaleFactor );
-		// Get the maximum refinement level (overwrites iMaxRL = MAX_REFINEMENT_LEVEL in amr.h)
+		// Get the maximum refinement level
 		fscanf( pMeshDefinitionFile, "%i", &iMaxRL );
 		// Get the minimum number of cells
 		fscanf( pMeshDefinitionFile, "%i", &iMinNumberOfCells );
