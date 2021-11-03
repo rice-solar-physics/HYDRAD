@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 10/09/2021
+// * Date last modified: 11/02/2021
 // *
 // ****
 
@@ -1447,48 +1447,50 @@ void CAdaptiveMesh::EnforceBoundaryConditions( void )
 #else // FORCE_SYMMETRY
 
 	// Code for open right-hand boundary
-	double x[3], y[3], fv[2], fDiff, fdrho;
+	double fds, fv[4], fdvds, fdrhods;
 
-	x[1] = CellProperties[0].s[1];
-	x[2] = CellProperties[1].s[1];
-
-	// Interpolate the mass density across the ghost cells
-	y[1] = CellProperties[0].rho[1];
-	y[2] = CellProperties[1].rho[1];
-	LinearFit( x, y, GhostCellProperties[0].s[1], &(GhostCellProperties[0].rho[1]) );
-	LinearFit( x, y, GhostCellProperties[1].s[1], &(GhostCellProperties[1].rho[1]) );
-
-	// Limit cell-to-cell density changes to EPSILON
-	fDiff = ( GhostCellProperties[0].rho[1] - CellProperties[1].rho[1] ) / GhostCellProperties[0].rho[1];
-	if( fabs( fDiff ) > EPSILON ) {
-		fdrho = ( fDiff / fabs( fDiff ) ) * EPSILON * GhostCellProperties[0].rho[1];
-		GhostCellProperties[0].rho[1] = CellProperties[1].rho[1] + fdrho;
+	// MASS DENSITY
+	// This method advects the mass density across the boundary, into the ghost cells, in
+	// steady-state while preventing a density increase at the boundary (positive density gradient). 
+	// This prevents material from being reflected back into the domain and incoming waves via, 
+	// for example, a build-up of pressure at the boundary
+	fds = ( 0.5 * CellProperties[0].cell_width ) + ( 0.5 * CellProperties[1].cell_width );
+	fv[0] = CellProperties[0].rho_v[1] / CellProperties[0].rho[1];
+	fv[1] = CellProperties[1].rho_v[1] / CellProperties[1].rho[1];
+	fdvds = ( fv[1] - fv[0] ) / fds;
+	
+	if( fv[1] > 0.0 ) {
+		fdrhods = - ( CellProperties[1].rho[1] / fv[1] ) * fdvds;
+		if( fdrhods > 0.0 ) fdrhods = 0.0;
+	} else {
+		fdrhods = 0.0;
 	}
 
-	fDiff = ( GhostCellProperties[1].rho[1] - GhostCellProperties[0].rho[1] ) / GhostCellProperties[1].rho[1];
-	if( fabs( fDiff ) > EPSILON ) {
-		fdrho = ( fDiff / fabs( fDiff ) ) * EPSILON * GhostCellProperties[1].rho[1];
-		GhostCellProperties[1].rho[1] = GhostCellProperties[0].rho[1] + fdrho;
-	}
+	fds = ( 0.5 * CellProperties[1].cell_width ) + ( 0.5 * GhostCellProperties[0].cell_width );
+	GhostCellProperties[0].rho[1] = CellProperties[1].rho[1] + ( fdrhods * fds );
+	fds = ( 0.5 * CellProperties[1].cell_width ) + ( GhostCellProperties[0].cell_width ) + ( 0.5 * GhostCellProperties[1].cell_width );
+	GhostCellProperties[1].rho[1] = CellProperties[1].rho[1] + ( fdrhods * fds );
 
-	// Ensure constant mass flux across the ghost cells
+	// MOMENTUM DENSITY
+	// Constant mass flux
 	GhostCellProperties[0].rho_v[1] = CellProperties[1].rho_v[1];
 	GhostCellProperties[1].rho_v[1] = GhostCellProperties[0].rho_v[1];
 
-	// Ensure constant energy flux across the ghost cells
-	fv[0] = CellProperties[1].rho_v[1] / CellProperties[1].rho[1];
-	fv[1] = GhostCellProperties[0].rho_v[1] / GhostCellProperties[0].rho[1];
-	for( j=0; j<SPECIES; j++ )
-		GhostCellProperties[0].TE_KE[1][j] = CellProperties[1].TE_KE[1][j] * ( fv[0] / fv[1] );
-
-	fv[0] = GhostCellProperties[1].rho_v[1] / GhostCellProperties[1].rho[1];
-	for( j=0; j<SPECIES; j++ )
-		GhostCellProperties[1].TE_KE[1][j] = GhostCellProperties[0].TE_KE[1][j] * ( fv[1] / fv[0] );
+	// ENERGY DENSITY
+	// Constant energy flux
+	fv[2] = GhostCellProperties[0].rho_v[1] / GhostCellProperties[0].rho[1];
+	fv[3] = GhostCellProperties[1].rho_v[1] / GhostCellProperties[1].rho[1];
+	for( j=0; j<SPECIES; j++ ) {
+		GhostCellProperties[0].TE_KE[1][j] = CellProperties[1].TE_KE[1][j] * ( fv[1] / fv[2] );
+		GhostCellProperties[1].TE_KE[1][j] = GhostCellProperties[0].TE_KE[1][j] * ( fv[2] / fv[3] );
+	}
 
 #ifdef NON_EQUILIBRIUM_RADIATION
-	double **ppIonFrac[3];
+	double **ppIonFrac[3], x[3];
 	if( GhostCellProperties[0].pIonFrac && GhostCellProperties[1].pIonFrac )
     {
+		x[1] = CellProperties[0].s[1];
+		x[2] = CellProperties[1].s[1];
     	ppIonFrac[1] = CellProperties[0].pIonFrac->ppGetIonFrac();
         ppIonFrac[2] = CellProperties[1].pIonFrac->ppGetIonFrac();
         GhostCellProperties[0].pIonFrac->InterpolateAllIonFrac( x, ppIonFrac, 2, GhostCellProperties[0].s[1] );
@@ -1498,24 +1500,10 @@ void CAdaptiveMesh::EnforceBoundaryConditions( void )
 
 #ifdef OPTICALLY_THICK_RADIATION
 #ifdef NLTE_CHROMOSPHERE
-	// Interpolate the electron mass density across the ghost cells
-	y[1] = CellProperties[0].rho_e;
-	y[2] = CellProperties[1].rho_e;
-	LinearFit( x, y, GhostCellProperties[0].s[1], &(GhostCellProperties[0].rho_e) );
-	LinearFit( x, y, GhostCellProperties[1].s[1], &(GhostCellProperties[1].rho_e) );
-
-	// Limit cell-to-cell density changes to EPSILON
-	fDiff = ( GhostCellProperties[0].rho_e - CellProperties[1].rho_e ) / GhostCellProperties[0].rho_e;
-	if( fabs( fDiff ) > EPSILON ) {
-		fdrho = ( fDiff / fabs( fDiff ) ) * EPSILON * GhostCellProperties[0].rho_e;
-		GhostCellProperties[0].rho_e = CellProperties[1].rho_e + fdrho;
-	}
-
-	fDiff = ( GhostCellProperties[1].rho_e - GhostCellProperties[0].rho_e ) / GhostCellProperties[1].rho_e;
-	if( fabs( fDiff ) > EPSILON ) {
-		fdrho = ( fDiff / fabs( fDiff ) ) * EPSILON * GhostCellProperties[1].rho_e;
-		GhostCellProperties[1].rho_e = GhostCellProperties[0].rho_e + fdrho;
-	}
+	// Calculate the electron mass densities in the ghost cells by assuming the ratios between
+	// electron and heavy ion mass densities in the boundary cells are preserved
+	GhostCellProperties[0].rho_e = GhostCellProperties[0].rho[1] * ( CellProperties[1].rho_e / CellProperties[1].rho[1] );
+	GhostCellProperties[1].rho_e = GhostCellProperties[1].rho[1] * ( GhostCellProperties[0].rho_e / GhostCellProperties[0].rho[1] );
 #endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
 
