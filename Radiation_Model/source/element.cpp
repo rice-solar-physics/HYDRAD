@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 08/26/2021
+// * Date last modified: 03/03/2022
 // *
 // ****
 
@@ -1027,16 +1027,16 @@ for( iIndex=0; iIndex<=Z; iIndex++ )
 		// Note: The flow is in the opposite direction and so the conditional is switched
         if( y[1] <= y[2] )
         {
-            QT = min( Q1, Q2 );
-            if( Q3 > QT )
+            QT = max( Q1, Q2 );
+            if( Q3 < QT )
                 ni0 = Q3;
             else
                 ni0 = QT;
         }
         else
         {
-            QT = max( Q1, Q2 );
-            if( Q3 < QT )
+            QT = min( Q1, Q2 );
+            if( Q3 > QT )
                 ni0 = Q3;
             else
                 ni0 = QT;
@@ -1097,16 +1097,16 @@ for( iIndex=0; iIndex<=Z; iIndex++ )
 		// Note: The flow is in the opposite direction and so the conditional is switched
         if( y[1] <= y[2] )
         {
-            QT = min( Q1, Q2 );
-            if( Q3 > QT )
+            QT = max( Q1, Q2 );
+            if( Q3 < QT )
                 ni2 = Q3;
             else
                 ni2 = QT;
         }
         else
         {
-            QT = max( Q1, Q2 );
-            if( Q3 < QT )
+            QT = min( Q1, Q2 );
+            if( Q3 > QT )
                 ni2 = Q3;
             else
                 ni2 = QT;
