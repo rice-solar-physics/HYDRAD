@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 03/03/2022
+// * Date last modified: 05/13/2022
 // *
 // ****
 
@@ -30,11 +30,12 @@ double fLogLambda_ei( double Te, double Ti, double n )
 {
 double limit;
 
-	Te *= 1.29199251618e-4;
-	Ti *= 1.29199251618e-4;
+	// Convert from degrees Kelvin to eV
+	Te *= 8.61326443E-05;
+	Ti *= 8.61326443E-05;
 
+	// Implement the formulae (b) on page 34 of the NRL Plasma Formulary 
 	limit = Ti * ( ELECTRON_MASS / AVERAGE_PARTICLE_MASS );
-
 	if( limit < Te && Te < 10.0 )
 	{
     	return 23.0 - log( sqrt( n ) * pow( Te, (-1.5) ) );
@@ -53,6 +54,10 @@ double fLogLambda_ii( double Ti, double n )
 {
 double term1;
 
+	// Convert from degrees Kelvin to eV
+	Ti *= 8.61326443E-05;
+
+	// Implement the formula (c), for i = i', on page 34 of the NRL Plasma Formulary 
 	// Assume that proton-proton collisions dominate ion-ion interactions
 	// sqrt(2.0) * Z^3 = 1.4142135623730950488016887242097 * 1.0 * 1.0 * 1.0
 	term1 = 1.4142135623730950488016887242097 * ( sqrt( n ) / pow( Ti, 1.5 ) );
