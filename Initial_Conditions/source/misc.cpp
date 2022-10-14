@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/28/2020
+// * Date last modified: 10/14/2022
 // *
 // ****
 
@@ -151,7 +151,7 @@ if( iMAX_CELLS & 1 )
 
 #ifdef ADAPT
 // Allocate sufficient memory to hold the unique ID numbers that pair grid cells following refinement
-ppiID = (long**)malloc( sizeof(long) * iMAX_CELLS );
+ppiID = (long**)malloc( sizeof(long*) * iMAX_CELLS );
 for( i=0; i<iMAX_CELLS; i++ )
 	ppiID[i] = (long*)malloc( sizeof(long) * INITIAL_REFINEMENT_LEVEL );
 

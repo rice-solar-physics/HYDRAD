@@ -5,7 +5,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 11/11/2020
+// * Date last modified: 10/14/2022
 // *
 // ****
 
@@ -690,7 +690,7 @@ pFile = fopen ( "Radiation_Model/atomic_data/OpticallyThick/VAL_atmospheres/VAL.
 // Get the number of data points in the file
 fscanf( pFile, "%i", &iVALTemperatureDP );
 // Allocate sufficient memory to hold the VAL atmosphere data
-ppVALTemperature = (double**)malloc( sizeof(double) * 2 );
+ppVALTemperature = (double**)malloc( sizeof(double*) * 2 );
 for( i=0; i<2; i++ )
     ppVALTemperature[i] = (double*)malloc( sizeof(double) * iVALTemperatureDP );
 for( i=0; i<iVALTemperatureDP; i++ )
