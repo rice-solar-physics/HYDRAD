@@ -8,7 +8,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 02/14/2017
+// * Date last modified: 12/08/2022
 // *
 // ****
 
@@ -22,22 +22,21 @@
 #include "../../Resources/source/file.h"
 #include "../../Resources/source/fitpoly.h"
 
-
-// The Coulomb logarithm for electron-electron collisions
-// (The Coulomb logarithms for electron-ion and ion-ion collisions are already defined in eqns.cpp)
-
-double fLogLambda_ee( double Te, double n )
+// Electron - electron Coulomb logarithm
+// Implement the formula (a) on page 34 of the NRL Plasma Formulary (2016)
+double getLogLambda_ee( double fTe, double fne )
 {
-    Te *= 1.29199251618e-4;
+    double fterm[2];
 
-    if( Te < 10.0 )
-    {
-        return 23.0 - log( sqrt( n ) * pow( Te, (-1.5) ) );
-    }
-    else
-    {
-    	return 24.0 - log( sqrt( n ) * ( 1.0 / Te ) );
-    }
+    // 1 eV = 11606 K ( 1 / 11606 = 8.61326443e-5 )
+    fTe *= 8.61326443e-5;
+
+    fterm[0] = sqrt( fne ) * pow( fTe, (-1.25) );
+    fterm[1] = log( fTe ) - 2.0;
+    fterm[1] *= fterm[1] / 16.0;
+    fterm[1] += 1e-5;
+
+    return ( 23.5 - log( fterm[0] ) - sqrt( fterm[1] ) );
 }
 
 // This function calculates the electron collisional mean free path at near thermal velocities
@@ -56,15 +55,13 @@ upsilon2 = u_th * u_th;
 upsilon3 = upsilon2 * u_th;
 
 #ifdef USE_APPROXIMATE_NU_EI
-term1_ei = (8.037815988653620e17) * n * fLogLambda_ei( Te, Ti, n );
-
+term1_ei = (8.037815988653620e17) * n * getLogLambda_ei( Te, n, Ti, n, AVERAGE_PARTICLE_MASS, 1 );
 nu_ei = term1_ei / upsilon3;
 #else // USE_APPROXIMATE_NU_EI
 double term2_ei, x_ei;
 // 2.0 * BOLTZMANN_CONSTANT = 2.76e-16
 term1_ei = ( AVERAGE_PARTICLE_MASS / (2.76e-16) ) / Ti;
-term2_ei = (9.069704110543940e17) * ( 1.0 + ( ELECTRON_MASS / AVERAGE_PARTICLE_MASS ) ) * n * fLogLambda_ei( Te, Ti, n );
-
+term2_ei = (9.069704110543940e17) * ( 1.0 + ( ELECTRON_MASS / AVERAGE_PARTICLE_MASS ) ) * n * getLogLambda_ei( Te, n, Ti, n, AVERAGE_PARTICLE_MASS, 1 );
 x_ei = term1_ei * upsilon2;
 nu_ei = ( term2_ei / upsilon3 ) * gammp( 1.5, x_ei );
 #endif // USE_APPROXIMATE_NU_EI
@@ -155,16 +152,16 @@ int i, j, half_data_points = ( DISTRIBUTION_DATA_POINTS / 2 );
 term1_ee = (3.30072463768116e-12) / Te;
 // 1.0 + ( ELECTRON_MASS / ELECTRON_MASS ) = 2.0
 // 9.069704110543940e17 * 2.0 = 1.813940822108790e18
-term2_ee = (1.813940822108790e18) * n * fLogLambda_ee( Te, n );
+term2_ee = (1.813940822108790e18) * n * getLogLambda_ee( Te, n );
 
 // Values used to calculate nu_ei
 #ifdef USE_APPROXIMATE_NU_EI
-term1_ei = (8.037815988653620e17) * n * fLogLambda_ei( Te, Ti, n );
+term1_ei = (8.037815988653620e17) * n * getLogLambda_ei( Te, n, Ti, n, AVERAGE_PARTICLE_MASS, 1 );
 #else // USE_APPROXIMATE_NU_EI
 double term2_ei, x_ei;
 // 2.0 * BOLTZMANN_CONSTANT = 2.76e-16
 term1_ei = ( AVERAGE_PARTICLE_MASS / (2.76e-16) ) / Ti;
-term2_ei = (9.069704110543940e17) * ( 1.0 + ( ELECTRON_MASS / AVERAGE_PARTICLE_MASS ) ) * n * fLogLambda_ei( Te, Ti, n );
+term2_ei = (9.069704110543940e17) * ( 1.0 + ( ELECTRON_MASS / AVERAGE_PARTICLE_MASS ) ) * n * getLogLambda_ei( Te, n, Ti, n, AVERAGE_PARTICLE_MASS, 1 );
 #endif // USE_APPROXIMATE_NU_EI
 
 for( i=0; i<half_data_points; i++ )
@@ -208,7 +205,7 @@ double term1e, term1i, term2e, term2i, term3, term4e, term4i;
 double alpha_E, Te_bar;
 double temp0, temp1, temp2;
 // Omit extra factor of n so that alpha_E is in units of [T]^-1
-temp0 = n * fLogLambda_ei( Te, Ti, n );
+temp0 = n * getLogLambda_ei( Te, n, Ti, n, AVERAGE_PARTICLE_MASS, 1 );
 temp1 = pow( ( ( ELECTRON_MASS * Ti ) + ( AVERAGE_PARTICLE_MASS * Te ) ), (1.5) );
 alpha_E = (6.16e-41) * ( temp0 / temp1 );
 

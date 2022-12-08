@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 05/13/2022
+// * Date last modified: 12/08/2022
 // *
 // ****
 
@@ -25,45 +25,83 @@
 	#include <omp.h>
 #endif // OPENMP
 
-
-double fLogLambda_ei( double Te, double Ti, double n )
+// Electron - ion Coulomb logarithm
+// Implement the formulae (b) on page 34 of the NRL Plasma Formulary (2016)
+double getLogLambda_ei( double fTe, double fne, double fTi, double fni, double fmi, int iZ )
 {
-double limit;
+    double flimit[2], fmu;
 
-	// Convert from degrees Kelvin to eV
-	Te *= 8.61326443E-05;
-	Ti *= 8.61326443E-05;
+    // 1 eV = 11606 K ( 1 / 11606 = 8.61326443e-5 )
+	fTe *= 8.61326443e-5;
+	fTi *= 8.61326443e-5;
 
-	// Implement the formulae (b) on page 34 of the NRL Plasma Formulary 
-	limit = Ti * ( ELECTRON_MASS / AVERAGE_PARTICLE_MASS );
-	if( limit < Te && Te < 10.0 )
+	flimit[0] = fTi * ( ELECTRON_MASS / fmi );
+    flimit[1] = 10.0 * (double)iZ * (double)iZ;
+
+	if( flimit[0] < fTe && fTe < flimit[1] )
 	{
-    	return 23.0 - log( sqrt( n ) * pow( Te, (-1.5) ) );
+    	return 23.0 - log( sqrt( fne ) * (double)iZ * pow( fTe, (-1.5) ) );
 	}
-	else if( limit < 10.0 && 10.0 < Te )
+
+	if( flimit[0] < flimit[1] && flimit[1] < fTe )
 	{
-    	return 24.0 - log( sqrt( n ) * ( 1.0 / Te ) );
+    	return 24.0 - log( sqrt( fne ) / fTe );
 	}
-	else // if( Te < limit )
-	{
-    	return 30.0 - log( sqrt( n ) * pow( Ti, (-1.5) ) );
-	}
+
+    fmu = fmi / PROTON_MASS;
+   	return 16.0 - log( sqrt( fni ) * pow( fTi, (-1.5) ) * ( 0.1 * flimit[1] ) * fmu );
 }
 
-double fLogLambda_ii( double Ti, double n )
+// Ion - ion Coulomb logarithm
+// Implement the formula (c) on page 34 of the NRL Plasma Formulary (2016)
+#define ION         0
+#define ION_PRIME   1
+double getLogLambda_ii( double fTi, double fni, double fmi, int iZ )
 {
-double term1;
+    double pfTi[2], pfni[2], pfmi[2], fterm[5], fmu[2];
+    int piZ[2], iZZ[3];
 
-	// Convert from degrees Kelvin to eV
-	Ti *= 8.61326443E-05;
+	pfTi[ION] = pfTi[ION_PRIME] = fTi;
+	pfni[ION] = pfni[ION_PRIME] = fni;
+	pfmi[ION] = pfmi[ION_PRIME] = fmi;
+	piZ[ION] = piZ[ION_PRIME] = iZ;
 
-	// Implement the formula (c), for i = i', on page 34 of the NRL Plasma Formulary 
-	// Assume that proton-proton collisions dominate ion-ion interactions
-	// sqrt(2.0) * Z^3 = 1.4142135623730950488016887242097 * 1.0 * 1.0 * 1.0
-	term1 = 1.4142135623730950488016887242097 * ( sqrt( n ) / pow( Ti, 1.5 ) );
-	return 23.0 - log( term1 );
+    // 1 eV = 11606 K ( 1 / 11606 = 8.61326443e-5 )
+	pfTi[ION] *= 8.61326443E-05;
+	pfTi[ION_PRIME] *= 8.61326443E-05;
+
+    fmu[ION] = pfmi[ION] / PROTON_MASS;
+    fmu[ION_PRIME] = pfmi[ION_PRIME] / PROTON_MASS;
+
+    iZZ[0] = piZ[ION] * piZ[ION];
+    iZZ[1] = piZ[ION_PRIME] * piZ[ION_PRIME];
+    iZZ[2] = piZ[ION] * piZ[ION_PRIME];
+
+    fterm[0] = (double)iZZ[2] * ( fmu[ION] + fmu[ION_PRIME] );
+    fterm[1] = ( fmu[ION] * pfTi[ION_PRIME] ) + ( fmu[ION_PRIME] * pfTi[ION] ); 
+    fterm[2] = ( pfni[ION] * (double)iZZ[0] ) / pfTi[ION];
+    fterm[3] = ( pfni[ION_PRIME] * (double)iZZ[1] ) / pfTi[ION_PRIME];
+    fterm[4] = ( fterm[0] / fterm[1] ) * sqrt( fterm[2] + fterm[3] );
+
+	return 23.0 - log( fterm[4] );
 }
 
+// Equation for average rate of energy loss given on page 34 of the NRL Plasma Formulary (2016)
+double getnuLossAverage_ei( double fTe, double fne, double fTi, double fni, double fmi, int iZ )
+{
+    double fterm[2], fnuLossAverage_ei;
+
+    fterm[0] = sqrt( ELECTRON_MASS * fmi ) * ( (double)iZ * (double)iZ ) * fni * getLogLambda_ei( fTe, fne, fTi, fni, fmi, iZ );
+    // Note: temperatures are converted from K to eV in the function getLogLambda_ei() but must also be converted below for the denominator to be correctly evaluated
+    // 1 eV = 11606 K ( 1 / 11606 = 8.61326443e-5 )
+	fTe *= 8.61326443e-5;
+	fTi *= 8.61326443e-5;
+    fterm[1] = pow( ( ( ELECTRON_MASS * fTi ) + ( fmi * fTe ) ), 1.5 );
+
+    fnuLossAverage_ei = (1.80e-19) * ( fterm[0] / fterm[1] );
+
+    return fnuLossAverage_ei;
+}
 
 // Constructor
 CEquations::CEquations( void )
@@ -189,6 +227,7 @@ void CEquations::CalculateInitialPhysicalQuantities( void )
 {
 PCELL pNextActiveCell;
 CELLPROPERTIES CellProperties, NextCellProperties;
+double fLogLambda_ei;
 
 #ifdef USE_JB
 	Tc = 0.0;
@@ -571,9 +610,7 @@ double fBB_lu[6], fBB_ul[6], fBF[4], fFB[4], fColl_ex_lu[10], fColl_ex_ul[10], f
     	CellProperties.nu_ie = 1.0 / MINIMUM_COLLISIONAL_COUPLING_TIME_SCALE;
 #else // FORCE_SINGLE_FLUID
     	// Calculate the collision frequency between the electrons and ions
-    	// 4.820055089755540 * ELECTRON_MASS = 4.391070186767300e-27
-    	// For derivation of 4.820055089755540 refer to research diary entry: Monday 6th February 2007 (p26)
-    	CellProperties.nu_ie = ( ( (4.391070186767300e-27) / AVERAGE_PARTICLE_MASS ) * CellProperties.n[ELECTRON] * fLogLambda_ei( CellProperties.T[ELECTRON], CellProperties.T[HYDROGEN], CellProperties.n[ELECTRON] ) ) / pow( CellProperties.T[ELECTRON], 1.5 );
+		CellProperties.nu_ie = getnuLossAverage_ei( CellProperties.T[ELECTRON], CellProperties.n[ELECTRON], CellProperties.T[HYDROGEN], CellProperties.n[HYDROGEN], AVERAGE_PARTICLE_MASS, 1 );
 #endif // FORCE_SINGLE_FLUID
     	// Calculated in EvaluateTerms when the collisional term is known
     	CellProperties.collision_delta_t = Params.Duration;
@@ -646,6 +683,7 @@ void CEquations::CalculatePhysicalQuantities( void )
 	#endif // USE_JB
 #endif // OPENMP
 CELLPROPERTIES CellProperties;
+double fLogLambda_ei;
 
 #ifdef USE_JB
 	double old_s = 0.0, old_T = 0.0, tau_JB = 1.0, L_T;
@@ -1210,9 +1248,7 @@ int j;
     	CellProperties.nu_ie = 1.0 / MINIMUM_COLLISIONAL_COUPLING_TIME_SCALE;
 #else // FORCE_SINGLE_FLUID
     	// Calculate the collision frequency between the electrons and ions
-    	// 4.820055089755540 * ELECTRON_MASS = 4.391070186767300e-27
-    	// For derivation of 4.820055089755540 refer to research diary entry: Monday 6th February 2007 (p26)
-    	CellProperties.nu_ie = ( ( (4.391070186767300e-27) / AVERAGE_PARTICLE_MASS ) * CellProperties.n[ELECTRON] * fLogLambda_ei( CellProperties.T[ELECTRON], CellProperties.T[HYDROGEN], CellProperties.n[ELECTRON] ) ) / pow( CellProperties.T[ELECTRON], 1.5 );
+		CellProperties.nu_ie = getnuLossAverage_ei( CellProperties.T[ELECTRON], CellProperties.n[ELECTRON], CellProperties.T[HYDROGEN], CellProperties.n[HYDROGEN], AVERAGE_PARTICLE_MASS, 1 );
 #endif // FORCE_SINGLE_FLUID
     	// Calculated in EvaluateTerms when the collisional term is known
     	CellProperties.collision_delta_t = Params.Duration;
@@ -1986,7 +2022,7 @@ int j;
 
 			// Calculate the viscosity flux at the left boundary
 			gradv = ( v[1] - v[0] ) / CellProperties.cell_width;
-			CellProperties.eta = DYNAMIC_VISCOSITY * ( pow( T[1][j], 2.5 ) / fLogLambda_ii( T[1][j], n[j] ) );
+			CellProperties.eta = DYNAMIC_VISCOSITY * ( pow( T[1][j], 2.5 ) / getLogLambda_ii( T[1][j], n[j], AVERAGE_PARTICLE_MASS, 1 ) );
 
 // **** VISCOUS TIME STEP ****
 			// The time-step is calculated by: delta_t = ( rho ) * ( cell width )^2 / ( 2.0 * (4/3) * coefficient of dynamic viscosity )

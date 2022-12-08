@@ -5,13 +5,12 @@
 // *
 // * Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 05/11/2012
+// * Date last modified: 12/08/2022
 // *
 // ****
 
+// Lower incomplete gamma function
+double gammp( double a, double x );
 
-// #define REGULARISED                          // Return the regularised incomplete gamma function
-#define LOWER                                   // Return the lower incomplete gamma function
-
-
-double gammp(double a, double x);
+// Derivative (w.r.t x) of the lower incomplete gamma function
+double gammpPrime( double a, double x );

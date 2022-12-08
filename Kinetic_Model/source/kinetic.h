@@ -8,26 +8,26 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 05/11/2012
+// * Date last modified: 12/08/2022
 // *
 // ****
 
 
 // Definitions for the properties of the distribution function
 
-#define V_RANGE_UPPER			12.0	// Upper velocity bound relative to the greatest thermal speed
+#define V_RANGE_UPPER				12.0	// Upper velocity bound relative to the greatest thermal speed
 #define DISTRIBUTION_DATA_POINTS	1000	// Number of discrete data points
 
-#define F_MIN				1e-300	// The smallest value of the distribution function (to avoid underflow errors)
+#define F_MIN						1e-300	// The smallest value of the distribution function (to avoid underflow errors)
 
-#define KNUDSEN_NUMBER			2e-3	// Ratio of the electron mean-free-path to the temperature scale-length at
-						// which the Spitzer-Harm heat flux becomes invalid
+#define KNUDSEN_NUMBER				2e-3	// Ratio of the electron mean-free-path to the temperature scale-length at
+											// which the Spitzer-Harm heat flux becomes invalid
 
 // #define USE_APPROXIMATE_NU_EI		// Use to speed up the calculation of nu_ei (else uses more detailed equation in NRL Plasma Formulary)
 
 
-double fLogLambda_ee( double Te, double n );
-double fLogLambda_ei( double Te, double Ti, double n );
+double getLogLambda_ee( double fTe, double fne );
+double getLogLambda_ei( double fTe, double fne, double fTi, double fni, double fmi, int iZ );
 double fSHMeanFreePath( double u_th, double Te, double Ti, double n );
 
 
