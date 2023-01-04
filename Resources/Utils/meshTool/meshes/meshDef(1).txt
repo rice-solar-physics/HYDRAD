@@ -61,3 +61,8 @@
 1.0
 1.0
 1.0
+
+// Seed grid cell size
+// Number of refinement levels
+// Number of cells
+// Size of cell as a multiple of the seed grid cell size

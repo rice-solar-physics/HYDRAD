@@ -103,3 +103,9 @@
 0.98	26.91035506
 0.99	28.13762816
 1	29.40254167
+
+// Order of polynomial fit
+// Number of domains to fit
+// Domain boundaries. E.g. 0 1 (one domain) or 0 0.5 1 (two domains)
+// Number of tabulated data points
+// Normalized spatial coordinate [0,1] and quantity to fit to

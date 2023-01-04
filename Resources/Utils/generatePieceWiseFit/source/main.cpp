@@ -1,16 +1,35 @@
+// ****
+// *
+// * A utility to calculate piece-wise polynomial fits to tabulated data
+// *
+// * (c) Dr. Stephen J. Bradshaw
+// *
+// * Date last modified: 01/04/2023
+// *
+// ****
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "piecewisefit.h"
 
-
-int main( void )
+int main( int argc, char **argv )
 {
 	PPIECEWISEFIT pMagneticField;
 
-	pMagneticField = new CPieceWiseFit( (char*)"fits/B(closed).txt", (char*)"fits/initial.amr.B" );
-	// pMagneticField = new CPieceWiseFit( (char*)"fits/B(open).txt", (char*)"fits/initial.amr.B" );
-	// pMagneticField = new CPieceWiseFit( (char*)"fits/initial.amr.B" );
+	if( argc == 1 ) {
+		printf( "\nEither:\n" );
+		printf( "\t1. Input (data) and output (fit) files must be specified. E.g. generatePieceWiseFit fits/B(closed).txt fits/initial.amr.B\n" );
+		printf( "\t2. An existing fit file must be specified. E.g. generatePieceWiseFit fits/initial.amr.B\n");
+		exit( EXIT_SUCCESS );
+	} else if( argc == 2 ) {
+		pMagneticField = new CPieceWiseFit( argv[1] );
+	} else {
+		pMagneticField = new CPieceWiseFit( argv[1], argv[2] );
+	}
+
+	// Example useage
+
 #ifdef VERBOSE
 	pMagneticField->ShowPieceWiseFit();
 #endif // VERBOSE

@@ -5,21 +5,20 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 01/21/2021
+// * Date last modified: 01/04/2023
 // *
 // ****
 
 #include <stdio.h>
-#include <malloc.h>
+#include <stdlib.h>
 
 #include "../../../source/file.h"
 
-
-int main(void)
+int main( int argc, char **argv )
 {
 FILE *pCONFIGFile, *pINPUTFile, *pOUTPUTFile;
 char **ppcDataType;
-char szRoot[256], szExtension[32], szINPUTFilename[256], szOUTPUTFilename[256];
+char szResultsDirectory[256], szRoot[256], szExtension[32], szINPUTFilename[256], szOUTPUTFilename[256];
 char cBuffer;
 double fBuffer;
 int *piNumColumns, *piRow, *piColumn, iRange[2];
@@ -27,8 +26,15 @@ int iNumRows, iNumEntries, iEntry, iNumRecords;
 int i, j, m, n;
 int iBuffer;
 
+if( argc == 1 ) {
+	printf( "\nA configuration file must be specified. E.g. extractQuantities config.cfg\n");
+	exit( EXIT_SUCCESS );
+}
+
 // Open the configuration file
-pCONFIGFile = fopen( "config.cfg", "r" );
+pCONFIGFile = fopen( argv[1], "r" );
+	// Get the directory containing the numerical results
+	fscanf( pCONFIGFile, "%s", szResultsDirectory );
 	// Get the filename structure of the files containing the data to be extracted
 	fscanf(pCONFIGFile, "%s", szRoot );
 	fscanf(pCONFIGFile, "%s", szExtension );
@@ -48,7 +54,7 @@ pCONFIGFile = fopen( "config.cfg", "r" );
 				}
 		}
 	// Get the number of entries to extract from each record
-	fscanf(pCONFIGFile, "%i", &iNumEntries );
+	fscanf( pCONFIGFile, "%i", &iNumEntries );
 		// Allocate memory to store the row and column number for each entry
 		piRow = (int*)malloc( sizeof(int) * iNumEntries );
 		piColumn = (int*)malloc( sizeof(int) * iNumEntries );	
@@ -63,7 +69,7 @@ pCONFIGFile = fopen( "config.cfg", "r" );
 // Close the configuration file
 fclose( pCONFIGFile );
 
-printf( "\n%s.%s\n", szRoot, szExtension );
+printf( "\n%s/%s.%s\n", szResultsDirectory, szRoot, szExtension );
 printf( "\niNumber of Rows = %i\n", iNumRows );
 for( i=0; i<iNumRows; i++ ) {
 	printf( "Number of Columns in Row %i = %i\n", i+1, piNumColumns[i] );
@@ -86,7 +92,7 @@ for( i=iRange[0]; i<=iRange[1]; i++ ) {
 
 	// Get the number of records from the .amr file
 	// Construct the .amr filename and open the file
-	sprintf( szINPUTFilename, "profile%i.amr", i );
+	sprintf( szINPUTFilename, "%s/profile%i.amr", szResultsDirectory, i );
 	pINPUTFile = fopen( szINPUTFilename, "r" );
 		// Get the timestamp from the .amr file
 		ReadDouble( pINPUTFile, &fBuffer );
@@ -99,10 +105,10 @@ for( i=iRange[0]; i<=iRange[1]; i++ ) {
 	fclose( pINPUTFile );
 
 	// Construct the output filename and open the file
-	sprintf( szOUTPUTFilename, "profile%i.qts", i );
+	sprintf( szOUTPUTFilename, "%s/profile%i.qts", szResultsDirectory, i );
 	pOUTPUTFile = fopen( szOUTPUTFilename, "w" );
 		// Construct the input filename and open the file
-		sprintf( szINPUTFilename, "%s%i.%s", szRoot, i, szExtension );
+		sprintf( szINPUTFilename, "%s/%s%i.%s", szResultsDirectory, szRoot, i, szExtension );
 		pINPUTFile = fopen( szINPUTFilename, "r" );
 			// Extract the specified entries from each record and write them to a new file
 			for( j=0; j<iNumRecords; j++ ) {

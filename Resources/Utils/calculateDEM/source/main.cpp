@@ -5,7 +5,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 10/20/2021
+// * Date last modified: 01/04/2023
 // *
 // ****
 
@@ -22,8 +22,8 @@
 
 int main( int argc, char **argv )
 {
-FILE *pCONFIGFile, *pAMRFile, *pPHYFile, *pDEMFile;
-char szAMRFilename[256], szPHYFilename[256], szDEMFilename[256];
+FILE *pCFGFile, *pAMRFile, *pPHYFile, *pDEMFile;
+char szResultsDirectory[256], szAMRFilename[256], szPHYFilename[256], szDEMFilename[256];
 double *pflog10T, *pfDEM;
 double fdexStep, fds, fne, fTe, flog10Te;
 double fBuffer;
@@ -33,31 +33,33 @@ int i, j, k, m;
 int iBuffer;
 
 if( argc == 1 ) {
-	printf( "\nERROR! No configuration file specified.\n" );
-	exit(EXIT_SUCCESS);
+	printf( "\nA configuration file must be specified. E.g. calculateDEM config.cfg\n");
+	exit( EXIT_SUCCESS );
 }
 
 // Open the configuration file
 printf( "\nUsing: %s\n", argv[1] );
-pCONFIGFile = fopen( argv[1], "r" );
+pCFGFile = fopen( argv[1], "r" );
+	// Get the directory containing the numerical results
+	fscanf( pCFGFile, "%s", szResultsDirectory );
 	// Get the number of temperature bins
-	fscanf( pCONFIGFile, "%i", &iNumBins );
+	fscanf( pCFGFile, "%i", &iNumBins );
 	// Get the bin width (dex)
-	ReadDouble( pCONFIGFile, &fdexStep );
+	ReadDouble( pCFGFile, &fdexStep );
 	// Allocate memory for the temperature intervals which define each bin
 	pflog10T = (double*)malloc( sizeof(double*) * ( iNumBins + 1 ) );
 	// Read the temperature intervals from the configuration file
 	for( i=0; i<(iNumBins+1); i++ ) {
-		ReadDouble( pCONFIGFile, &(pflog10T[i]) );
+		ReadDouble( pCFGFile, &(pflog10T[i]) );
 	}
 	// Get the number of output files to write 
 	// (the specified range is split into this number and summed over to calculate each DEM(T))
-	fscanf( pCONFIGFile, "%i", &iNumOutputFiles );
+	fscanf( pCFGFile, "%i", &iNumOutputFiles );
 	// Get the input file range
-	fscanf( pCONFIGFile, "%i", &iFileRangeStart );
-	fscanf( pCONFIGFile, "%i", &iFileRangeEnd );
+	fscanf( pCFGFile, "%i", &iFileRangeStart );
+	fscanf( pCFGFile, "%i", &iFileRangeEnd );
 // Close the configuration file
-fclose( pCONFIGFile );
+fclose( pCFGFile );
 
 // Split the input file range to produce the specified number of output files
 iSubRangeStep = ( iFileRangeEnd - iFileRangeStart ) / iNumOutputFiles;
@@ -100,8 +102,8 @@ for( i=0; i<iNumOutputFiles; i++ ) {
 	memset( pfDEM, '\0', iNumBins*sizeof(double) );
 	for( j=ppiFileSubRange[LOWER][i]; j<=ppiFileSubRange[UPPER][i]; j++ ) {
 		// Construct the .amr and .phy filenames
-		sprintf( szAMRFilename, "profile%i.amr", j );
-		sprintf( szPHYFilename, "profile%i.phy", j );
+		sprintf( szAMRFilename, "%s/profile%i.amr", szResultsDirectory, j );
+		sprintf( szPHYFilename, "%s/profile%i.phy", szResultsDirectory, j );
 		// Open the .amr file and read the header information
 		pAMRFile = fopen( szAMRFilename, "r" );
 			// Read the header
@@ -155,7 +157,7 @@ for( i=0; i<iNumOutputFiles; i++ ) {
 		fclose( pAMRFile );
 	}
 	// Construct the output filename
-	sprintf( szDEMFilename, "DEM(%ito%i).txt", ppiFileSubRange[LOWER][i], ppiFileSubRange[UPPER][i] );
+	sprintf( szDEMFilename, "%s/DEM(%ito%i).txt", szResultsDirectory, ppiFileSubRange[LOWER][i], ppiFileSubRange[UPPER][i] );
 	// Write the DEM(T) profile to the output file
 	pDEMFile = fopen( szDEMFilename, "w" );
 		fprintf( pDEMFile, "%i\n", iNumBins );

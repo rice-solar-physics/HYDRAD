@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 01/03/2023
+// * Date last modified: 01/04/2023
 // *
 // ****
 
@@ -29,22 +29,22 @@ double fBuffer;
 int iFrom, iTo, iNumCells;
 int iBuffer, i, j;
 
-if( argc > 1 ) {
-	// Open and read the configuration file
-	pCFGFile = fopen( argv[1], "r" );
-		// Get the directory containing the numerical results
-		fscanf( pCFGFile, "%s", szResultsDirectory );
-		// Get the (log) temperature range and increment (dex) over which to calculate the (effective) ionization temperature
-		for( i=0; i<3; i++ )
-			ReadDouble( pCFGFile, &(flogTRange[i]) );
-		// Get the range of output files over which to calculate the (effective) ionization temperature
-		fscanf( pCFGFile, "%i", &iFrom );
-		fscanf( pCFGFile, "%i", &iTo );
-	fclose( pCFGFile );
-} else {
+if( argc == 1 ) {
 	printf( "\nA configuration file must be specified. E.g. calculateIonizationTemperature config.cfg\n");
 	exit( EXIT_SUCCESS );
 }
+
+// Open and read the configuration file
+pCFGFile = fopen( argv[1], "r" );
+	// Get the directory containing the numerical results
+	fscanf( pCFGFile, "%s", szResultsDirectory );
+	// Get the (log) temperature range and increment (dex) over which to calculate the (effective) ionization temperature
+	for( i=0; i<3; i++ )
+		ReadDouble( pCFGFile, &(flogTRange[i]) );
+	// Get the range of output files over which to calculate the (effective) ionization temperature
+	fscanf( pCFGFile, "%i", &iFrom );
+	fscanf( pCFGFile, "%i", &iTo );
+fclose( pCFGFile );
 
 pRadiation = new CRadiation( (char *)"Radiation_Model/config/elements_neq.cfg" );
 pIonFrac = new CIonFrac( NULL, (char *)"Radiation_Model/config/elements_neq.cfg", pRadiation );

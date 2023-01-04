@@ -1,10 +1,10 @@
 //
-//  updateVAL.cpp
+//  main.cpp
 //
 //  Updates the VAL heating profile in the case that the initial
 //  density profile has been altered.
 //
-//  Created by Jeffrey Reep on 7/27/15.
+//  Created by Jeffrey Reep on 07/27/2015
 //
 //
 
@@ -21,10 +21,10 @@
 
 using namespace std;
 
-int main()
+int main( void )
 {
-    
-    /*ifstream fin("Radiation_Model/atomic_data/OpticallyThick/VAL_atmospheres/VAL.heat");
+    /*
+    ifstream fin("Radiation_Model/atomic_data/OpticallyThick/VAL_atmospheres/VAL.heat");
     int heat_num_lines,i;
     double **heat_rows;
     fin >> heat_num_lines;

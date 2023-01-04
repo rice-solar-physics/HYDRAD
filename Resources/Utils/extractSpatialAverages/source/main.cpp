@@ -5,24 +5,22 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 01/21/2021
+// * Date last modified: 01/04/2023
 // *
 // ****
 
 #include <stdio.h>
-#include <malloc.h>
+#include <stdlib.h>
 
 #include "../../../../HYDRAD/source/config.h"
 #include "../../../source/file.h"
 
-
 // #define READ_ELECTRON_MASS_DENSITY		// Required for runs using the optically-thick chromosphere model
 
-
-int main(void)
+int main( int argc, char **argv )
 {
 FILE *pCONFIGFile, *pAMRFile, *pEXTFile, *pOUTPUTFile;
-char szRoot[256], szExtension[32], szAMRFilename[256], szEXTFilename[256], szOUTPUTFilename[256];
+char szResultsDirectory[256], szRoot[256], szExtension[32], szAMRFilename[256], szEXTFilename[256], szOUTPUTFilename[256];
 double *pfSum;
 double fLLp, fULp, fLL, fUL;
 double fTimeStamp, fL, fs, fds;
@@ -32,9 +30,15 @@ int iNumColumns, iNumAverages, iNumFiles, iNumCells;
 int i, j, k, l, m, n;
 int iBuffer;
 
-// Open the configuration file
-pCONFIGFile = fopen( "config.cfg", "r" );
+if( argc == 1 ) {
+	printf( "\nA configuration file must be specified. E.g. extractSpatialAverages config.cfg\n");
+	exit( EXIT_SUCCESS );
+}
 
+// Open the configuration file
+pCONFIGFile = fopen( argv[1], "r" );
+	// Get the directory containing the numerical results
+	fscanf( pCONFIGFile, "%s", szResultsDirectory );
 	// Get the filename structure of the files containing the data to be spatially averaged
 	fscanf(pCONFIGFile, "%s", szRoot );
 	fscanf(pCONFIGFile, "%s", szExtension );
@@ -55,9 +59,9 @@ pCONFIGFile = fopen( "config.cfg", "r" );
 	fLLp /= 100.0; fULp /= 100.0;
 
 	// Get the number of spatial average files to write
-	fscanf(pCONFIGFile, "%i", &iNumFiles );
+	fscanf( pCONFIGFile, "%i", &iNumFiles );
 
-	printf( "\n%s.%s\n", szRoot, szExtension );
+	printf( "\n%s/%s.%s\n", szResultsDirectory, szRoot, szExtension );
 	printf( "\nNumber of Columns = %i\n", iNumColumns );
 	printf( "\nNumber of Columns to Average = %i\n", iNumAverages );	
 	printf( "\tColumns:");
@@ -78,7 +82,7 @@ pCONFIGFile = fopen( "config.cfg", "r" );
 		printf( " [%i,%i]", iRange[0], iRange[1] );
 
 		// Construct the output filename and open the file
-		sprintf( szOUTPUTFilename, "f(t)(%ito%i).txt", iRange[0], iRange[1] );
+		sprintf( szOUTPUTFilename, "%s/f(t)(%ito%i).txt", szResultsDirectory, iRange[0], iRange[1] );
 		pOUTPUTFile = fopen( szOUTPUTFilename, "w" );
 			// Write the number of rows to the output file
 			fprintf( pOUTPUTFile, "%i\n", (iRange[1]-iRange[0])+1 );
@@ -89,7 +93,7 @@ pCONFIGFile = fopen( "config.cfg", "r" );
 					pfSum[k] = 0.0;
 
 				// Construct the .amr filename and open the file
-				sprintf( szAMRFilename, "profile%i.amr", j );
+				sprintf( szAMRFilename, "%s/profile%i.amr", szResultsDirectory, j );
 				pAMRFile = fopen( szAMRFilename, "r" );
 					// Get the timestamp from the .amr file
 					ReadDouble( pAMRFile, &fTimeStamp );
@@ -102,7 +106,7 @@ pCONFIGFile = fopen( "config.cfg", "r" );
 					fscanf( pAMRFile, "%i", &iNumCells );
 
 					// Construct the .ext filename and open the file
-					sprintf( szEXTFilename, "%s%i.%s", szRoot, j, szExtension );
+					sprintf( szEXTFilename, "%s/%s%i.%s", szResultsDirectory, szRoot, j, szExtension );
 					pEXTFile = fopen( szEXTFilename, "r" );
 						for( k=0; k<iNumCells; k++ )
 						{

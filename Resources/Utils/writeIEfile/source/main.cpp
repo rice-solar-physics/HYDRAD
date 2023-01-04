@@ -5,7 +5,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 05/04/2021
+// * Date last modified: 01/04/2023
 // *
 // ****
 
@@ -17,24 +17,31 @@
 #include "../../../../Radiation_Model/source/radiation.h"
 #include "../../../source/file.h"
 
-int main(void)
+int main( int argc, char **argv )
 {
 PRADIATION pRadiation;
-FILE *pAMRFile, *pPHYFile, *pIEFile;
+FILE *pCFGFile, *pAMRFile, *pPHYFile, *pIEFile;
 char szResultsDirectory[256], szAMRFilename[256], szPHYFilename[256], szIEFilename[256];
 double fs, fn, fT;
 double fBuffer;
 int iFrom, iTo, iNumCells;
 int iBuffer, i, j;
 
-pRadiation = new CRadiation( (char *)"Radiation_Model/config/elements_neq.cfg" );
+if( argc == 1 ) {
+	printf( "\nA configuration file must be specified. E.g. writeIEFile config.cfg\n");
+	exit( EXIT_SUCCESS );
+}
 
-printf( "\nResults directory: " );
-scanf( "%s", szResultsDirectory );
-printf( "\nProfile range (from): " );
-scanf( "%i", &iFrom );
-printf( "                (to): " );
-scanf( "%i", &iTo );
+// Open and read the configuration file
+pCFGFile = fopen( argv[1], "r" );
+	// Get the directory containing the numerical results
+	fscanf( pCFGFile, "%s", szResultsDirectory );
+	// Get the range of output files over which to calculate the .ie files
+	fscanf( pCFGFile, "%i", &iFrom );
+	fscanf( pCFGFile, "%i", &iTo );
+fclose( pCFGFile );
+
+pRadiation = new CRadiation( (char *)"Radiation_Model/config/elements_neq.cfg" );
 
 for( i=iFrom; i<=iTo; i++ )
 {
