@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 10/14/2021
+// * Date last modified: 07/29/2023
 // *
 // ****
 
@@ -21,46 +21,62 @@
 
 CRadiation::CRadiation( char *szFilename )
 {
-#if !defined (USE_POWER_LAW_RADIATIVE_LOSSES)
-	// The power-law radiative losses ARE NOT being used
-	// The atomic data are required to calculate the radiative losses
-	Initialise( szFilename );
-#else // !(USE_POWER_LAW_RADIATIVE_LOSSES)
-	// The power-law radiative losses ARE being used
-	#ifdef OPTICALLY_THICK_RADIATION
-		#if defined (NLTE_CHROMOSPHERE) || defined(DECOUPLE_IONISATION_STATE_SOLVER)
-			// If the NLTE chromosphere is being used or a non-equilibrium ionization calculation is being performed then the atomic data are required
-			Initialise( szFilename );
-		#endif // NLTE_CHROMOSPHERE || DECOUPLE_IONISATION_STATE_SOLVER
-	#else // OPTICALLY_THICK_RADIATION
-		#ifdef DECOUPLE_IONISATION_STATE_SOLVER
-			// If a non-equilibrium ionisation calculation is being performed then the atomic data are required
-			Initialise( szFilename );
-		#endif // DECOUPLE_IONISATION_STATE_SOLVER
-	#endif // OPTICALLY_THICK_RADIATION
-#endif // !(USE_POWER_LAW_RADIATIVE_LOSSES)
+#ifdef BEAM_HEATING
+    // Beam heating is being used
+    // The atomic data are required to calculate the non-uniform ionization state along the beam path
+    Initialise( szFilename );
+#else // BEAM_HEATING
+    // Beam heating is not being used
+    // The atomic data is only required under certain circumstances
+    #if !defined (USE_POWER_LAW_RADIATIVE_LOSSES)
+	    // The power-law radiative losses are not being used
+	    // The atomic data are required to calculate the radiative losses
+	    Initialise( szFilename );
+    #else // !(USE_POWER_LAW_RADIATIVE_LOSSES)
+	    // The power-law radiative losses ARE being used
+	    #ifdef OPTICALLY_THICK_RADIATION
+		    #if defined (NLTE_CHROMOSPHERE) || defined(DECOUPLE_IONISATION_STATE_SOLVER)
+			    // If the NLTE chromosphere is being used or a non-equilibrium ionization calculation is being performed then the atomic data are required
+			    Initialise( szFilename );
+		    #endif // NLTE_CHROMOSPHERE || DECOUPLE_IONISATION_STATE_SOLVER
+	    #else // OPTICALLY_THICK_RADIATION
+		    #ifdef DECOUPLE_IONISATION_STATE_SOLVER
+			    // If a non-equilibrium ionisation calculation is being performed then the atomic data are required
+			    Initialise( szFilename );
+		    #endif // DECOUPLE_IONISATION_STATE_SOLVER
+	    #endif // OPTICALLY_THICK_RADIATION
+    #endif // !(USE_POWER_LAW_RADIATIVE_LOSSES)
+#endif // BEAM_HEATING
 }
 
 CRadiation::~CRadiation( void )
 {
-#if !defined (USE_POWER_LAW_RADIATIVE_LOSSES)
-	// The power-law radiative losses ARE NOT being used
-	// The atomic data are required to calculate the radiative losses
-	FreeAll();
-#else // !(USE_POWER_LAW_RADIATIVE_LOSSES)
-	// The power-law radiative losses ARE being used
-	#ifdef OPTICALLY_THICK_RADIATION
-		#if defined (NLTE_CHROMOSPHERE) || defined(DECOUPLE_IONISATION_STATE_SOLVER)
-			// If the NLTE chromosphere is being used or a non-equilibrium ionization calculation is being performed then the atomic data are required
-			FreeAll();
-		#endif // NLTE_CHROMOSPHERE || DECOUPLE_IONISATION_STATE_SOLVER
-	#else // OPTICALLY_THICK_RADIATION
-		#ifdef DECOUPLE_IONISATION_STATE_SOLVER
-			// If a non-equilibrium ionisation calculation is being performed then the atomic data are required
-			FreeAll();
-		#endif // DECOUPLE_IONISATION_STATE_SOLVER
-	#endif // OPTICALLY_THICK_RADIATION
-#endif // !(USE_POWER_LAW_RADIATIVE_LOSSES)
+#ifdef BEAM_HEATING
+    // Beam heating is being used
+    // The atomic data are required to calculate the non-uniform ionization state along the beam path
+    FreeAll();
+#else // BEAM_HEATING
+    // Beam heating is not being used
+    // The atomic data is only required under certain circumstances
+    #if !defined (USE_POWER_LAW_RADIATIVE_LOSSES)
+	    // The power-law radiative losses are not being used
+	    // The atomic data are required to calculate the radiative losses
+	    FreeAll();
+    #else // !(USE_POWER_LAW_RADIATIVE_LOSSES)
+	    // The power-law radiative losses ARE being used
+	    #ifdef OPTICALLY_THICK_RADIATION
+		    #if defined (NLTE_CHROMOSPHERE) || defined(DECOUPLE_IONISATION_STATE_SOLVER)
+			    // If the NLTE chromosphere is being used or a non-equilibrium ionization calculation is being performed then the atomic data are required
+			    FreeAll();
+		    #endif // NLTE_CHROMOSPHERE || DECOUPLE_IONISATION_STATE_SOLVER
+	    #else // OPTICALLY_THICK_RADIATION
+		    #ifdef DECOUPLE_IONISATION_STATE_SOLVER
+			    // If a non-equilibrium ionisation calculation is being performed then the atomic data are required
+			    FreeAll();
+		    #endif // DECOUPLE_IONISATION_STATE_SOLVER
+	    #endif // OPTICALLY_THICK_RADIATION
+    #endif // !(USE_POWER_LAW_RADIATIVE_LOSSES)
+#endif // BEAM_HEATING
 }
 
 void CRadiation::Initialise( char *szFilename )
