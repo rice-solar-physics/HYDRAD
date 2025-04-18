@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 12/08/2022
+// * Date last modified: 04/18/2025
 // *
 // ****
 
@@ -1985,13 +1985,20 @@ int j;
             	CellProperties.Fc[0][j] =  term1 / sqrt( term2 );
 
 // **** THERMAL CONDUCTION TIME STEP ****
-				// Recalculate the coefficient of thermal conduction
-				Kappa_B = fabs( CellProperties.Fc[0][j] / gradT );
 		    	// The time-step is calculated by: delta_t = ( n * k_B ) * ( cell width )^2 / ( 2.0 * coefficient of thermal conduction )
 		    	// 0.5 * BOLTZMANN_CONSTANT = 6.9e-17
 	    		term1 = SAFETY_CONDUCTION * (6.9e-17) * CellProperties.cell_width * CellProperties.cell_width;
 				CellProperties.conduction_delta_t[j] = ( term1 * n[j] ) / Kappa_B;
-			    if( CellProperties.conduction_delta_t[j] < TIME_STEP_LIMIT )
+				// Calculate the time step due to the local saturated heat flux
+				term1 = CellProperties.cell_width / ( fabs( CellProperties.v[0] ) + sqrt( ( GAMMA * BOLTZMANN_CONSTANT * T[1][j] ) / AVERAGE_PARTICLE_MASS ) + ( ( max_flux_coeff[j] / 1.50 ) * sqrt( 2.0 * BOLTZMANN_CONSTANT * T[1][j] ) ) );
+				// Invert the time steps
+				CellProperties.conduction_delta_t[j] = 1.0 / CellProperties.conduction_delta_t[j];
+				term1 = 1.0 / term1;
+				// Calculate the inverted time step
+				term2 = ( CellProperties.conduction_delta_t[j] * term1 ) / sqrt( ( CellProperties.conduction_delta_t[j] * CellProperties.conduction_delta_t[j] ) + ( term1 * term1 ) );
+				// Calculate the time step
+				CellProperties.conduction_delta_t[j] = 1.0 / term2;
+				if( CellProperties.conduction_delta_t[j] < TIME_STEP_LIMIT )
 			    {
 	    			Kappa_B = ( term1 * n[j] ) / TIME_STEP_LIMIT;
 					CellProperties.Fc[0][j] = - Kappa_B * gradT;
@@ -2023,30 +2030,37 @@ int j;
 			// Calculate the viscosity flux at the left boundary
 			gradv = ( v[1] - v[0] ) / CellProperties.cell_width;
 			CellProperties.eta = DYNAMIC_VISCOSITY * ( pow( T[1][j], 2.5 ) / getLogLambda_ii( T[1][j], n[j], AVERAGE_PARTICLE_MASS, 1 ) );
-
-// **** VISCOUS TIME STEP ****
-			// The time-step is calculated by: delta_t = ( rho ) * ( cell width )^2 / ( 2.0 * (4/3) * coefficient of dynamic viscosity )
-			term1 = SAFETY_VISCOSITY * ( ( AVERAGE_PARTICLE_MASS * CellProperties.cell_width * CellProperties.cell_width ) / 2.6666666666666666666666666666667 );
-    		CellProperties.viscosity_delta_t = ( term1 * n[j] ) / CellProperties.eta;
-
-			if( CellProperties.viscosity_delta_t < TIME_STEP_LIMIT )
-			{
-    			CellProperties.eta = ( term1 * n[j] ) / TIME_STEP_LIMIT;
-	    		CellProperties.viscosity_delta_t = TIME_STEP_LIMIT;
-			}
-
-			LeftCellProperties.viscosity_delta_t += CellProperties.viscosity_delta_t;
-			LeftCellProperties.viscosity_delta_t /= 2.0;
-// **** VISCOUS TIME STEP ****
-
 			CellProperties.Feta[0] = 1.3333333333333333333333333333333 * CellProperties.eta * gradv;
-
+		
 			// The viscous flux forms the anisotropic part of the pressure tensor and therefore cannot exceed the total pressure
 			// Hence, it must be limited to the value of the total pressure
 			P = BOLTZMANN_CONSTANT * n[j] * T[1][j];
 			term1 = CellProperties.Feta[0] * P;
 			term2 = ( CellProperties.Feta[0] * CellProperties.Feta[0] ) + ( P * P );
 			CellProperties.Feta[0] =  term1 / sqrt( term2 );
+
+// **** VISCOUS TIME STEP ****
+			// The time-step is calculated by: delta_t = ( rho ) * ( cell width )^2 / ( 2.0 * (4/3) * coefficient of dynamic viscosity )
+			term1 = SAFETY_VISCOSITY * ( ( AVERAGE_PARTICLE_MASS * CellProperties.cell_width * CellProperties.cell_width ) / 2.6666666666666666666666666666667 );
+    		CellProperties.viscosity_delta_t = ( term1 * n[j] ) / CellProperties.eta;
+			// Calculate the time step due to the local limited viscous flux
+			term1 = CellProperties.cell_width / ( fabs( CellProperties.v[0] ) + sqrt( ( GAMMA * BOLTZMANN_CONSTANT * T[1][j] ) / AVERAGE_PARTICLE_MASS ) );
+			// Invert the time steps
+			CellProperties.viscosity_delta_t = 1.0 / CellProperties.viscosity_delta_t;
+			term1 = 1.0 / term1;
+			// Calculate the inverted time step
+			term2 = ( CellProperties.viscosity_delta_t * term1 ) / sqrt( ( CellProperties.viscosity_delta_t * CellProperties.viscosity_delta_t ) + ( term1 * term1 ) );
+			// Calculate the time step
+			CellProperties.viscosity_delta_t = 1.0 / term2;
+			if( CellProperties.viscosity_delta_t < TIME_STEP_LIMIT )
+			{
+    			CellProperties.eta = ( term1 * n[j] ) / TIME_STEP_LIMIT;
+				CellProperties.Feta[0] = 1.3333333333333333333333333333333 * CellProperties.eta * gradv;
+				CellProperties.viscosity_delta_t = TIME_STEP_LIMIT;
+			}
+			LeftCellProperties.viscosity_delta_t += CellProperties.viscosity_delta_t;
+			LeftCellProperties.viscosity_delta_t /= 2.0;
+// **** VISCOUS TIME STEP ****
 
 			LeftCellProperties.Feta[2] = CellProperties.Feta[0];
 
