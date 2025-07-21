@@ -18,8 +18,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <alloca.h>
 #include <math.h>
+
+// alloca() is a non-standard function, so the header that contains
+// it depends on the operating system and compiler.  The following
+// should catch the major cases (Unix, Mac, Cygwin, MinGW, MSVC).
+#if defined(_MSC_VER) || defined(__MINGW32__) || defined(__MINGW64__)
+  // MSVC or MinGW
+  #include <malloc.h>
+#elif defined(__unix__) || defined(__APPLE__) || defined(__CYGWIN__)
+  // Linux, macOS, or Cygwin
+  #include <alloca.h>
+#else
+  #error "Error in RadiativeRates.cpp: alloca not supported on this platform."
+#endif
 
 #include "../../../Resources/source/fitpoly.h"
 #include "../../../Resources/source/file.h"
