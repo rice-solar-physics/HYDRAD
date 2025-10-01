@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 07/20/2020
+// * Date last modified: 10/01/2025
 // *
 // ****
 
@@ -56,8 +56,8 @@ void CPieceWiseFit::OpenPieceWiseFit( char *pszInputFilename )
 			ReadDouble( pInputFile, &(pfSDBoundary[i]) );
 		// Allocate memory to store the coefficients and min/max 
 		// values for the fitted quantity in each sub-domain
-		ppfSDCoefficient = (double**)malloc( sizeof(double*) * inumSD );
-		ppfSDMinMax = (double**)malloc( sizeof(double*) * inumSD );
+		ppfSDCoefficient = (double**)malloc( (unsigned int)( sizeof(double*) * inumSD ) );
+		ppfSDMinMax = (double**)malloc( (unsigned int)( sizeof(double*) * inumSD ) );
 		for( i=0; i<inumSD; i++ ) {
 			ppfSDCoefficient[i] = (double*)malloc( sizeof(double) * ( iPolyOrder + 1 ) );
 			ppfSDMinMax[i] = (double*)malloc( sizeof(double) * 2 );
@@ -301,4 +301,5 @@ unsigned int factorial(unsigned int n)
     return (n == 1 || n == 0) 
                ? 1 
                : n * factorial(n - 1); 
+
 }
