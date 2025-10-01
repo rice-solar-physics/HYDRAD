@@ -4,7 +4,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 03/03/2022
+// * Date last modified: 10/01/2025
 // *
 // ****
 
@@ -18,7 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <alloca.h>
+// #include <alloca.h>
 #include <math.h>
 
 #include "../../../Resources/source/fitpoly.h"
@@ -1647,3 +1647,4 @@ void CRadiativeRates::SetScaledTrt( int i, double Trt, bool iFlag )
 
 #endif // NLTE_CHROMOSPHERE
 #endif // OPTICALLY_THICK_RADIATION
+
