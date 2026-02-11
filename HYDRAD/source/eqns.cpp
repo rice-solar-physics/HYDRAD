@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 04/18/2025
+// * Date last modified: 02/11/2026
 // *
 // ****
 
@@ -587,7 +587,7 @@ double fBB_lu[6], fBB_ul[6], fBF[4], fFB[4], fColl_ex_lu[10], fColl_ex_ul[10], f
     	}
 
 	    term1 = ( GAMMA * ( CellProperties.P[1][ELECTRON] + CellProperties.P[1][HYDROGEN] ) ) / CellProperties.rho[1];
-	    CellProperties.Cs = pow( term1, 0.5 );
+	    CellProperties.Cs = sqrt( term1 );
 	    CellProperties.M = fabs( CellProperties.v[1] / CellProperties.Cs );
 
 #ifdef USE_JB
@@ -1220,7 +1220,7 @@ int j;
     	}
 
 	    term1 = ( GAMMA * ( CellProperties.P[1][ELECTRON] + CellProperties.P[1][HYDROGEN] ) ) / CellProperties.rho[1];
-    	CellProperties.Cs = pow( term1, 0.5 );
+    	CellProperties.Cs = sqrt( term1 );
     	CellProperties.M = fabs( CellProperties.v[1] / CellProperties.Cs );
 
 #ifdef USE_JB
@@ -1990,7 +1990,7 @@ int j;
 	    		term1 = SAFETY_CONDUCTION * (6.9e-17) * CellProperties.cell_width * CellProperties.cell_width;
 				CellProperties.conduction_delta_t[j] = ( term1 * n[j] ) / Kappa_B;
 				// Calculate the time step due to the local saturated heat flux
-				term1 = CellProperties.cell_width / ( fabs( CellProperties.v[0] ) + sqrt( ( GAMMA * BOLTZMANN_CONSTANT * T[1][j] ) / AVERAGE_PARTICLE_MASS ) + ( ( max_flux_coeff[j] / 1.50 ) * sqrt( 2.0 * BOLTZMANN_CONSTANT * T[1][j] ) ) );
+				term1 = SAFETY_CONDUCTION * ( CellProperties.cell_width / ( fabs( CellProperties.v[0] ) + CellProperties.Cs + ( ( max_flux_coeff[j] / 1.50 ) * sqrt( 2.0 * BOLTZMANN_CONSTANT * T[1][j] ) ) ) );
 				// Invert the time steps
 				CellProperties.conduction_delta_t[j] = 1.0 / CellProperties.conduction_delta_t[j];
 				term1 = 1.0 / term1;
@@ -2031,7 +2031,7 @@ int j;
 			gradv = ( v[1] - v[0] ) / CellProperties.cell_width;
 			CellProperties.eta = DYNAMIC_VISCOSITY * ( pow( T[1][j], 2.5 ) / getLogLambda_ii( T[1][j], n[j], AVERAGE_PARTICLE_MASS, 1 ) );
 			CellProperties.Feta[0] = 1.3333333333333333333333333333333 * CellProperties.eta * gradv;
-		
+
 			// The viscous flux forms the anisotropic part of the pressure tensor and therefore cannot exceed the total pressure
 			// Hence, it must be limited to the value of the total pressure
 			P = BOLTZMANN_CONSTANT * n[j] * T[1][j];
@@ -2044,7 +2044,7 @@ int j;
 			term1 = SAFETY_VISCOSITY * ( ( AVERAGE_PARTICLE_MASS * CellProperties.cell_width * CellProperties.cell_width ) / 2.6666666666666666666666666666667 );
     		CellProperties.viscosity_delta_t = ( term1 * n[j] ) / CellProperties.eta;
 			// Calculate the time step due to the local limited viscous flux
-			term1 = CellProperties.cell_width / ( fabs( CellProperties.v[0] ) + sqrt( ( GAMMA * BOLTZMANN_CONSTANT * T[1][j] ) / AVERAGE_PARTICLE_MASS ) );
+			term1 = SAFETY_VISCOSITY * ( CellProperties.cell_width / ( fabs( CellProperties.v[0] ) + CellProperties.Cs + ( ( max_flux_coeff[j] / 1.50 ) * sqrt( 2.0 * BOLTZMANN_CONSTANT * T[1][j] ) ) ) );
 			// Invert the time steps
 			CellProperties.viscosity_delta_t = 1.0 / CellProperties.viscosity_delta_t;
 			term1 = 1.0 / term1;
