@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 02/11/2026
+// * Date last modified: 06/23/2026
 // *
 // ****
 
@@ -2717,9 +2717,10 @@ void CEquations::GetSmallestTimeScale( double *delta_t, int iFirstStep )
 {
 if( !iFirstStep )
 	return;
-	
+
 PCELL pNextActiveCell;
 CELLPROPERTIES CellProperties;
+double flocalTimeScale;
 int j;
 
 	*delta_t = Params.Duration;
@@ -2731,34 +2732,35 @@ int j;
     	pActiveCell = pNextActiveCell;
     	pActiveCell->GetCellProperties( &CellProperties );
 
+		flocalTimeScale = 0.0;
+
 	    // Advection timescale
-    	if( CellProperties.advection_delta_t < *delta_t )
-			*delta_t = CellProperties.advection_delta_t;
+		flocalTimeScale += 1.0 / CellProperties.advection_delta_t;
 
 	    // Thermal conduction timescale
     	for( j=0; j<SPECIES; j++ )
     	{
-			if( CellProperties.conduction_delta_t[j] < *delta_t )
-            	*delta_t = CellProperties.conduction_delta_t[j];
+			flocalTimeScale += 1.0 / CellProperties.conduction_delta_t[j];
     	}
 
 	    // Viscous timescale
-    	if( CellProperties.viscosity_delta_t < *delta_t )
-			*delta_t = CellProperties.viscosity_delta_t;
+		flocalTimeScale += 1.0 / CellProperties.viscosity_delta_t;
 
 	    // Collisional timescale
-    	if( CellProperties.collision_delta_t >= MINIMUM_COLLISIONAL_COUPLING_TIME_SCALE && CellProperties.collision_delta_t < *delta_t )
-        	*delta_t = CellProperties.collision_delta_t;
+		if( CellProperties.collision_delta_t >= MINIMUM_COLLISIONAL_COUPLING_TIME_SCALE )
+			flocalTimeScale = 1.0 / CellProperties.collision_delta_t;
 
-	    // Radiation timescale
-    	if( CellProperties.radiation_delta_t < *delta_t )
-			*delta_t = CellProperties.radiation_delta_t;
+		// Radiation timescale
+		flocalTimeScale += 1.0 / CellProperties.radiation_delta_t;
 
 #ifdef NON_EQUILIBRIUM_RADIATION
 	    // Ionisation and recombination timescale
-    	if( CellProperties.atomic_delta_t < *delta_t )
-        	*delta_t = CellProperties.atomic_delta_t;
+		flocalTimeScale = 1.0 / CellProperties.atomic_delta_t;
 #endif // NON_EQUILIBRIUM_RADIATION
+
+		flocalTimeScale = 1.0 / flocalTimeScale;
+		if( flocalTimeScale < *delta_t )
+			*delta_t = flocalTimeScale;
 
 	    pNextActiveCell = pActiveCell->pGetPointer( RIGHT );
 	}
