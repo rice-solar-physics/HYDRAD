@@ -8,4 +8,4 @@ HYDrodynamics and RADiation Code for computing solutions to field-aligned hydrod
 
 To get started and to begin using HYDRAD for your own numerical modeling purposes, please consult the [HYDRAD user guide][1].
 
-[1]: HYDRAD_User_Guide(03_20_2021).pdf
+[1]: HYDRAD_User_Guide(05_15_2026).pdf
