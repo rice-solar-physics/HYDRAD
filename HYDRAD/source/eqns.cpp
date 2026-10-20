@@ -6,7 +6,7 @@
 // *
 // * (c) Dr. Stephen J. Bradshaw
 // *
-// * Date last modified: 06/23/2026
+// * Date last modified: 10/19/2026
 // *
 // ****
 
@@ -2748,14 +2748,14 @@ int j;
 
 	    // Collisional timescale
 		if( CellProperties.collision_delta_t >= MINIMUM_COLLISIONAL_COUPLING_TIME_SCALE )
-			flocalTimeScale = 1.0 / CellProperties.collision_delta_t;
+			flocalTimeScale += 1.0 / CellProperties.collision_delta_t;
 
 		// Radiation timescale
 		flocalTimeScale += 1.0 / CellProperties.radiation_delta_t;
 
 #ifdef NON_EQUILIBRIUM_RADIATION
 	    // Ionisation and recombination timescale
-		flocalTimeScale = 1.0 / CellProperties.atomic_delta_t;
+		flocalTimeScale += 1.0 / CellProperties.atomic_delta_t;
 #endif // NON_EQUILIBRIUM_RADIATION
 
 		flocalTimeScale = 1.0 / flocalTimeScale;
